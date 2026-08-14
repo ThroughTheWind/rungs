@@ -81,7 +81,12 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
       } else {
         try {
           const key = tableKey(g.engine);
-          const section = table[key] ?? table;
+          let section = table[key] ?? table;
+          // An array table holds one entry per gate; select by trailing id.
+          if (Array.isArray(section) && section.some((s: any) => s?.id)) {
+            const mine = section.filter((s: any) => !s.id || g.id.includes(s.id));
+            if (mine.length) section = mine;
+          }
           const r = ENGINES[g.engine](section, repoRoot, files);
           findings = r.findings;
           examined = r.examined;
@@ -160,6 +165,13 @@ const tableKey = (engine: string) =>
     'link-integrity': 'link_integrity',
     'file-population': 'file_population',
     'gate-meta': 'gate_meta',
+    'id-integrity': '__whole__',
+    'render-freshness': 'render_freshness',
+    'register-schema': 'register_schema',
+    'filename-schema': 'filename_schema',
+    'cross-reference': 'cross_reference',
+    'git-status-reconcile': 'merged_status',
+    'computed-claim': 'computed_claim',
   })[engine] ?? engine;
 
 /**

@@ -122,8 +122,8 @@ that its content was paid for once already.
 **Phases 0–4 complete.** Research, synthesis, ADRs 0001–0005, and all fifteen modules authored.
 
 **Phase 5 in progress.** `modules`, `doctor`, `add`, `render` and `check` work. Twelve modules
-install into a fresh repo; 31 gates register; 16 run and pass, 13 name an engine that does not
-exist yet and **block rather than report green**. Detection is verified against all four source
+install into a fresh repo; **31 gates register and all 31 have engines** — 28 pass, 2 fail, 0
+unimplemented. Detection is verified against all four source
 repos ([detection-verification.md](docs/design/detection-verification.md)). Remaining: the twelve
 engines, then `init`, `upgrade`, `eject`.
 

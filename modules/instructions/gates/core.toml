@@ -21,6 +21,7 @@ that has grown past ~15 lines is usually the one to look at first.
 [[render_freshness]]
 id      = "rules"
 sources = [".ai/rules/**/*.md"]
+exclude = [".ai/rules/README.md"]   # the scaffold doc is not a rule
 targets = [".claude/rules/**/*.md", ".github/instructions/**/*.instructions.md", ".cursor/rules/**/*.mdc"]
 command = "rungs render"
 # Targets are checked only for harnesses in the installed matrix; the rest are ignored rather

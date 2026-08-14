@@ -1,6 +1,15 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { matchAny, walk } from './glob.ts';
+import {
+  computedClaim,
+  crossReference,
+  filenameSchema,
+  gitStatusReconcile,
+  idIntegrity,
+  registerSchema,
+  renderFreshness,
+} from './engines2.ts';
 
 export interface Finding {
   file?: string;
@@ -200,6 +209,13 @@ export const ENGINES: Record<string, Engine> = {
   'link-integrity': linkIntegrity,
   'file-population': filePopulation,
   'gate-meta': gateMeta,
+  'id-integrity': idIntegrity,
+  'render-freshness': renderFreshness,
+  'register-schema': registerSchema,
+  'filename-schema': filenameSchema,
+  'cross-reference': crossReference,
+  'git-status-reconcile': gitStatusReconcile,
+  'computed-claim': computedClaim,
 };
 
 /**
