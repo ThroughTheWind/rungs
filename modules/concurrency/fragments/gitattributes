@@ -1,0 +1,15 @@
+# rungs:begin concurrency@1.0.0
+# Merge drivers per conflict class. INERT until `rungs setup git` installs them — the driver names
+# below mean nothing to git on a fresh clone, and merges quietly fall back to the default. For a
+# generated artifact that default is a clean text merge of a file that is a fixed point of nothing.
+
+# Id ledgers: take the higher NEXT-ID counter, keep both claim comments, resolve nothing else.
+docs/**/BACKLOG.md    merge=rungs-ledger
+docs/**/FINDINGS.md   merge=rungs-ledger
+
+# Generated artifacts: always refuse, and print the regenerate command.
+.claude/rules/**      merge=rungs-generated
+.github/instructions/** merge=rungs-generated
+.cursor/rules/**      merge=rungs-generated
+.ai/render-report.md  merge=rungs-generated
+# rungs:end concurrency

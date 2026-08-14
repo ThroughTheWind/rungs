@@ -1,0 +1,111 @@
+[module]
+name    = "doc-authority"
+version = "1.0.0"
+rung    = 4
+summary = "One owner per topic, declared in a registry and checked — plus a propagation gate for rules that live in more surfaces than their authority."
+
+[requires]
+modules = ["gates"]
+
+[conflicts]
+modules = []
+
+# Rung 4: for repos where several documentation surfaces make claims about the
+# same things. Below that it is ceremony — a repo with six docs does not need an
+# ownership registry, it needs six good docs.
+#
+# This module is the corpus's most valuable combination and no source repo has
+# it: axiom-mesh wrote the best ownership model and checked none of it;
+# rift-forge built the propagation gate and has no registry.
+
+[params.registry_path]
+description = "The ownership registry — topic, owner, and where the topic must not appear"
+default     = "docs/doc-ownership.md"
+
+[params.rules_path]
+description = "Cross-cutting working rules and the surfaces that restate each one"
+default     = "docs/working-rules.md"
+
+[params.scope_headers]
+description = """
+Require every document to open with `Authoritative for:` / `Not authoritative for:`. The root
+README is always exempt — it is a navigation page, and demanding a scope header there produces a
+worse landing page for no gain.
+"""
+default     = true
+
+[[gates]]
+id     = "docauth-ownership-respected"
+kind   = "declared"
+engine = "term-ownership"
+table  = "gates/authority.toml"
+tier   = "fast"
+why    = """
+The registry's third column — where a topic must NOT appear — is what turns "one source of truth"
+from a principle into a lookup. Checked by term, which is approximate; approximate is enough,
+because the failure it catches is a whole section restated in the wrong file, not a passing mention.
+"""
+
+[[gates]]
+id     = "docauth-scope-headers"
+kind   = "declared"
+engine = "sections"
+table  = "gates/authority.toml"
+tier   = "fast"
+why    = "A mandatory rule with a zero-cost check has no excuse to be manual, and this one was manual in the repo that called it non-negotiable."
+
+[[gates]]
+id     = "docauth-working-rules"
+kind   = "declared"
+engine = "rule-propagation"
+table  = "gates/authority.toml"
+tier   = "fast"
+why    = """
+A working rule lives in more places than its authority: the authority document, the always-on
+document, the skills that execute it, the tool that automates it. Fixing the authority does not
+reach the rest, and a citation is not propagation — "see §3" ages into a false claim the moment §3
+changes, and reads as verified precisely because it names a source.
+"""
+
+[[gates]]
+id     = "docauth-no-redirect-stubs"
+kind   = "declared"
+engine = "file-population"
+table  = "gates/authority.toml"
+tier   = "fast"
+why    = "A file that exists only to say 'go elsewhere' is a bug: it will be cited, and the citation will look authoritative."
+
+[detect]
+paths   = ["**/doc-ownership.md", ".ai/context/doc_ownership.md", "docs/**/working-rules.md", ".github/scripts/check-working-rules.*"]
+markers = ["rungs:begin doc-authority"]
+
+[[detect.adopt_as]]
+kind = "registry-without-gates"
+paths = [".ai/context/doc_ownership.md", "**/doc-ownership.md"]
+note = """
+A registry with no checker is the axiom-mesh case exactly, and it is the highest-value adoption in
+the catalogue: the hard part — deciding who owns what — is already done, and what is missing is the
+enforcement. Adopt the registry as authored, install only the gates, and report how many rows the
+first run finds violated.
+"""
+
+[provenance]
+sources  = ["axiom-mesh", "rift-forge"]
+patterns = [
+  "doc-ownership-registry",
+  "scope-headers",
+  "stub-rule",
+  "no-paraphrase",
+  "no-redirect-stubs",
+  "working-rule-propagation",
+  "defect-register-split",
+  "inline-gap-callout",
+]
+incident = """
+axiom-mesh declared "no fact is ever stated in two docs" and "drift is a bug" as non-negotiable,
+enforced by review only — and its own 350-line instruction file had to warn four times that one of
+its routing targets was a dead redirect stub. hexguard-templates forbids restating scope and its
+entry document's repo map grew five duplicated entries. rift-forge measured the other half:
+five repo-level rules had changed and none had reached the files that teach them, with four skills
+citing as authority the very section that had reversed them.
+"""

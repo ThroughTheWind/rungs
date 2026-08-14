@@ -1,0 +1,122 @@
+# Gate table for the `doc-authority` module.
+#
+# Every gate here is vocabulary-based, which is a real ceiling: it catches a surface that dropped
+# the current phrasing, not one that kept the phrasing and changed meaning. That limit is pinned in
+# each message rather than hidden, so green never reads as "verified".
+
+# ── docauth-ownership-respected ───────────────────────────────────────────────
+
+[term_ownership]
+registry     = "{{registry_path}}"
+columns      = { topic = "Topic", owner = "Owner", forbidden = "Must NOT appear in" }
+# A topic is "engaged" by a document that carries several of its terms in one section — not by a
+# passing mention. Under-detection is the correct bias: a false refusal on a cross-reference is a
+# gate people delete.
+engage_min_terms = 3
+engage_window    = "section"
+exempt_marker    = "ownership-ok:"       # ignored unless it states a reason
+message = """
+{file} restates the topic "{topic}", which is owned by {owner}. Reference it with a link instead —
+a paraphrase looks maintained while it decays, and when {owner} changes this becomes wrong while
+still reading as deliberate.
+"""
+
+[term_ownership.pins]
+note = "Detects restatement by vocabulary. It cannot detect a restatement that uses different words, nor one that is subtly wrong while using the right words."
+
+# ── docauth-scope-headers ─────────────────────────────────────────────────────
+
+[[sections]]
+id       = "scope-headers"
+scan     = ["docs/**/*.md"]
+exclude  = ["README.md", "docs/**/archive/**"]
+requires_opening = ["**Authoritative for:**", "**Not authoritative for:**"]
+enabled_by = "{{scope_headers}}"
+message  = "{file} does not open with both scope blocks. A reader who opened the wrong document should learn it in one line."
+
+# The stub rule: a file carrying only scope headers may hold nothing but cross-references.
+[sections.stub_rule]
+when        = "only_scope_headers"
+allows_only = ["links", "headings"]
+message     = "{file} is a stub and has grown content. Promote it deliberately or move the content to its owner — this is how a placeholder quietly acquires a topic it does not own."
+
+# ── docauth-working-rules ─────────────────────────────────────────────────────
+
+[rule_propagation]
+registry = "{{rules_path}}"
+columns  = { rule = "Rule", authority = "Authority", surfaces = "Surfaces that restate it", retired = "Retired wording" }
+# Read the negation before the token: a `retired` phrase inside "do NOT <retired>" is the fix, not
+# the violation. A guard that also refuses its own fix is one people disable.
+negation_window = 60
+exempt_marker   = "working-rule-ok:"     # ignored unless it states a reason
+message = """
+{surface} engages "{rule}" but carries the retired wording, or is missing the current vocabulary.
+Fix the authority first, then the citers — a citer corrected against a stale authority is a second
+wrong statement, and the next reader cannot tell which one won.
+"""
+
+# ── docauth-no-redirect-stubs ─────────────────────────────────────────────────
+
+[file_population]
+id       = "redirect-stubs"
+scan     = ["docs/**/*.md"]
+detect   = "body_is_only_a_pointer"
+max_body_words = 40
+fail_at  = 1
+message  = """
+{file} exists only to point elsewhere. It will be cited, and the citation will look authoritative.
+Delete it and repoint the citers — one repo needed four separate warnings in its instruction file
+because it kept one of these.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate   = "docauth-working-rules"
+expect = "fail"
+input  = "Claim the id on the integration branch before starting."
+
+[[self_test]]
+gate   = "docauth-working-rules"
+expect = "pass"
+input  = "Do not claim the id on the integration branch; claim it on your own."
+
+[[self_test]]
+gate   = "docauth-working-rules"
+expect = "pass"
+input  = "We used to claim on the integration branch. <!-- working-rule-ok: id-claiming — quotes the retired wording to explain the change -->"
+
+[[self_test]]
+gate   = "docauth-working-rules"
+expect = "fail"
+input  = "We used to claim on the integration branch. <!-- working-rule-ok: -->"
+
+[[self_test]]
+gate    = "docauth-scope-headers"
+expect  = "fail"
+fixture = { file = "docs/a.md", opening = "# A" }
+
+[[self_test]]
+gate    = "docauth-scope-headers"
+expect  = "pass"
+fixture = { file = "README.md", opening = "# Project" }
+
+[[self_test]]
+gate    = "docauth-ownership-respected"
+expect  = "pass"
+fixture = { terms_matched = 1 }
+
+[[self_test]]
+gate    = "docauth-ownership-respected"
+expect  = "fail"
+fixture = { terms_matched = 5, file = "docs/other.md", owner = "AGENTS.md" }
+
+[[self_test]]
+gate    = "docauth-no-redirect-stubs"
+expect  = "fail"
+fixture = { body_words = 12, links = 1 }
+
+[[self_test]]
+gate    = "docauth-no-redirect-stubs"
+expect  = "pass"
+fixture = { body_words = 300, links = 4 }

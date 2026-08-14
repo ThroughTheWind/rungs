@@ -77,15 +77,16 @@ genuinely fragmented — so the CLI renders one primitive, not four.
 - [ADR-0004](docs/decisions/ADR-0004-adoption-detection.md) adoption detection — **accepted**:
   adoption is a mapping, not a migration
 
-### Phase 4 — Module catalog · **in progress**
+### Phase 4 — Module catalog · **done**
 
 The ~80 patterns become **15 modules**, each with a rung, dependencies, parameters, and the
 patterns it implements. Three dependencies (`audit → findings → backlog`, `workflows → skills`,
 `doc-authority → gates`) exist because a source repo violated them and paid.
 
-→ [`docs/design/module-catalog.md`](docs/design/module-catalog.md) — **the set is specified**,
-including install profiles and the corpus expectation matrix that Phase 6 checks against.
-Next: author `modules/backlog/` in full as the exemplar that proves the format.
+→ [`docs/design/module-catalog.md`](docs/design/module-catalog.md) — the specification, with
+install profiles and the corpus expectation matrix that Phase 6 checks against.
+→ [`modules/`](modules/) — **all fifteen authored**, rung 0 through 5. Authoring them produced
+sixteen corrections to the module format itself, each applied to its source rather than noted.
 
 - [ADR-0006](docs/decisions/ADR-0006-the-name.md) the name — **accepted**: the tool is `rungs`
   (working title `ai-cli` through 2026-08-14, which is what commits before `fc143cb` say). Taken
@@ -118,8 +119,9 @@ that its content was paid for once already.
 
 ## Status
 
-**Phase 3 closed** — product brief + ADRs 0001–0005 all accepted.
+**Phases 0–4 complete.** Research, synthesis, ADRs 0001–0005, and all fifteen modules authored.
 
-**Phase 4 in progress** — the 15-module set is specified in
-[`module-catalog.md`](docs/design/module-catalog.md). Remaining: author the modules themselves,
-starting with `backlog` as the format exemplar.
+**Phase 5 is next, and nothing has been executed yet.** Every finding so far came from *writing*
+modules, not running them: the `[detect]` blocks are unverified claims and the gate tables
+describe engines that do not exist. The first executable milestone is `render` + `doctor` run
+against the four source repos.

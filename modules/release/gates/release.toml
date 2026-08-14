@@ -1,0 +1,85 @@
+# Gate table for the `release` module.
+
+# ── release-changelog-fragment ────────────────────────────────────────────────
+#
+# Fires on a branch that changed shipping code and added no fragment. Deliberately narrow: docs,
+# tests and tooling changes do not need release notes, and a gate that demands one for a typo fix
+# is a gate people learn to bypass.
+
+[file_population]
+require_when_changed = ["src/**", "lib/**", "app/**", "server/**", "web/**", "packages/**"]
+requires_one_of     = ["{{changelog_dir}}/*.md"]
+ignore_when_only    = ["docs/**", "**/*.test.*", "**/*.spec.*", ".github/**", "*.md"]
+exempt_marker       = "changelog-ok:"      # ignored unless it states a reason
+message = """
+This branch changes shipping code and adds no fragment in {{changelog_dir}}/. Add one, or state why
+not with `changelog-ok: <reason>` — internal refactors with no user-visible effect are a legitimate
+reason, and saying so takes less time than reconstructing it at cut time.
+"""
+
+# ── release-version-consistent ────────────────────────────────────────────────
+#
+# The version is derivable, so it is computed rather than compared against a typed value. Probing
+# only what the data settles without judgement: every listed location must agree with every other,
+# which needs no opinion about which is right.
+
+[[computed_claim]]
+id      = "version"
+sources = [
+  { file = "package.json", path = "version" },
+  { file = "*/package.json", path = "version" },
+  { file = "Directory.Build.props", xpath = "//Version" },
+  { file = "pyproject.toml", path = "project.version" },
+]
+rule    = "all-agree"
+autofix = "rungs release sync-version"
+message = """
+Version disagrees across {count} locations: {values}. One of them was bumped and the others were
+not, which is discovered by a user rather than by us. Do not hand-edit — run the autofix.
+"""
+
+# What this does not cover is pinned, so green never reads as "verified":
+[computed_claim.pins]
+uncovered = [
+  "version strings embedded in source constants",
+  "versions in documentation prose",
+  "container image tags",
+]
+note = "A green check means these files agree, not that the version is correct everywhere."
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "fail"
+fixture = { changed = ["src/a.ts"], fragments = [] }
+
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "pass"
+fixture = { changed = ["src/a.ts"], fragments = ["{{changelog_dir}}/42.feature.md"] }
+
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "pass"
+fixture = { changed = ["docs/a.md"], fragments = [] }
+
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "pass"
+fixture = { changed = ["src/a.ts"], fragments = [], exempt = "changelog-ok: internal rename, no user-visible effect" }
+
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "fail"
+fixture = { changed = ["src/a.ts"], fragments = [], exempt = "changelog-ok:" }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { values = ["1.2.0", "1.1.0"] }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "pass"
+fixture = { values = ["1.2.0", "1.2.0"] }

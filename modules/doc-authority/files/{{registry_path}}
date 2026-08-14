@@ -1,0 +1,59 @@
+**Authoritative for:** which document owns which topic.
+**Not authoritative for:** the content of any topic listed below.
+
+# Document ownership
+
+The arbiter. **When a question arises about where something belongs, it is resolved here first,
+before any content is written.** If the answer is missing, add the row before writing.
+
+## The registry
+
+The third column is what makes this enforceable rather than aspirational: it converts "one source
+of truth" from a principle into a lookup, and it is what `rungs check` reads.
+
+| Topic | Owner | Must NOT appear in |
+| --- | --- | --- |
+| *(example)* Build and test commands | `AGENTS.md` | `README.md`, `docs/**` |
+| | | |
+
+<!-- Add a row before writing content whose home is unclear. A row costs a minute; a topic living
+     in two documents costs a divergence nobody notices until they disagree. -->
+
+## The rules this enforces
+
+**No fact is stated in two documents.** If a value, rule or contract already exists in its owning
+document, the second one references it with a link — never restates it, **not even as a summary.**
+
+**Paraphrase is not permitted.** This is the one people argue with, so it is worth being explicit:
+a paraphrase looks maintained while it decays. A summary that "just gives the gist" is a second
+statement of the fact, and when the original changes, the gist becomes wrong while still reading
+as deliberate.
+
+**Drift is a bug**, not untidiness. A document that paraphrases rather than references *will*
+diverge — the only question is when it is noticed and what was built on it in the meantime.
+
+**No redirect stubs.** A file that exists only to say "go elsewhere" gets cited, and the citation
+looks authoritative. Delete it and repoint the citers.
+
+**Review outbound links on every edit.** After editing, confirm the documents you link to still
+say what you are citing them for. This is the step that catches drift while it is cheap.
+
+## Scope headers
+
+Every document opens with both blocks, so a reader who opened the wrong file learns it in one line:
+
+```markdown
+**Authoritative for:** …
+**Not authoritative for:** …
+```
+
+The repository root `README.md` is exempt — it is a navigation page.
+
+**A stub may contain only scope headers and cross-references** until it is explicitly promoted.
+This is what stops a placeholder quietly accreting content it does not own.
+
+## When two documents both claim a topic
+
+Do not split the difference, and do not pick the better-written one. Decide which is the **owner**,
+move the content there, and leave a link. A topic owned by two documents is owned by neither, and
+the next reader will find whichever one search puts first.

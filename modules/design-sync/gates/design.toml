@@ -1,0 +1,70 @@
+# Gate table for the `design-sync` module.
+
+# ── design-deltas-routed ──────────────────────────────────────────────────────
+#
+# Reads the pull record and requires every delta to name a route. The gate cannot judge whether a
+# route is the right one — only that a decision was made and written down.
+
+[register_schema]
+file          = "{{mirror}}/PULL-RECORD.md"
+table         = "Deltas"
+required_cols = ["Delta", "Route", "Where"]
+enum          = { Route = ["implement", "defer", "upstream", "accept-as-is"] }
+non_empty     = ["Where"]
+message       = """
+Delta "{delta}" has no route. Every difference is work we have decided to do, work we have decided
+to defer, a disagreement to send upstream, or a mirror that is stale. A fifth state — noticed and
+unrouted — is how the design and the implementation drift while both sides believe they are aligned.
+"""
+
+# A deferred delta must carry a revisit trigger. "Later" is not a route.
+[[register_schema.conditional]]
+when      = { Route = "defer" }
+non_empty = ["Where"]
+min_words = { Where = 4 }
+message   = "Delta \"{delta}\" is deferred with no revisit trigger. A deferral with no trigger is a decision to never do it, taken without saying so."
+
+# ── design-mirror-not-edited ──────────────────────────────────────────────────
+
+[[render_freshness]]
+id       = "design-mirror"
+targets  = ["{{mirror}}/**"]
+generated_by = "rungs design pull"
+detect   = "local-modification"
+message  = """
+{file} in the mirror has been edited locally. The mirror is generated and the next pull destroys
+this — and until then it is a fact about the design system that the design system does not know.
+Route it instead: a work item if we should change, an upstream request if they should.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "design-deltas-routed"
+expect  = "fail"
+fixture = { row = { Delta = "spacing scale changed", Route = "", Where = "" } }
+
+[[self_test]]
+gate    = "design-deltas-routed"
+expect  = "pass"
+fixture = { row = { Delta = "spacing scale changed", Route = "implement", Where = "WI-051" } }
+
+[[self_test]]
+gate    = "design-deltas-routed"
+expect  = "fail"
+fixture = { row = { Delta = "new chart component", Route = "defer", Where = "later" } }
+
+[[self_test]]
+gate    = "design-deltas-routed"
+expect  = "pass"
+fixture = { row = { Delta = "new chart component", Route = "defer", Where = "revisit when analytics ships" } }
+
+[[self_test]]
+gate    = "design-mirror-not-edited"
+expect  = "fail"
+fixture = { modified = ["{{mirror}}/tokens.json"] }
+
+[[self_test]]
+gate    = "design-mirror-not-edited"
+expect  = "pass"
+fixture = { modified = [] }

@@ -1,0 +1,51 @@
+**Authoritative for:** which cross-cutting working rules exist, and which surfaces restate each one.
+**Not authoritative for:** why any rule is what it is — that lives in the rule's own authority document.
+
+# Working rules
+
+A **working rule** is how we do something: how an id is claimed, how a dataset is republished,
+which source outranks which. It is different from a domain fact in one specific way, and it is
+worse: a stale domain fact produces a number someone can check, while **a stale working rule
+produces someone confidently doing the retired thing, correctly, all day.**
+
+A working rule lives in more places than its authority:
+
+| Surface | What it holds | What keeps it true |
+| --- | --- | --- |
+| the **authority document** | the rule, and *why* — the only place the reasoning belongs | review |
+| the **always-on document** | the one-paragraph version every session reads | this registry's gate |
+| the **skills that execute it** | the step-by-step form, where it is actually met | this registry's gate |
+| the **tool that automates it** | the rule made mechanical, and its self-test | its own gate |
+
+## The registry
+
+Each rule is declared with the surfaces that restate it. A surface that **engages the topic** must
+carry the rule's current vocabulary and must not carry the retired instruction.
+
+| Rule | Authority | Surfaces that restate it | Retired wording |
+| --- | --- | --- | --- |
+| *(example)* Ids are claimed on your own branch | `docs/backlog/README.md` | `AGENTS.md`, `skills/work-item` | "claim on the integration branch" |
+| | | | |
+
+## Four rules about changing a rule
+
+1. **Fix the authority first, then the citers.** A citer corrected against a stale authority is a
+   second wrong statement, and the next reader cannot tell which one won.
+2. **A citation is not propagation.** *"See §3"* ages into a **false claim** the moment §3 changes
+   — and it reads as verified precisely because it names a source.
+3. **Declare the rule here** when it is cross-cutting, with its surfaces. That is what turns "we
+   should remember to update the skills" into a build failure. Adding a cross-cutting rule without
+   a row is how the next several get missed.
+4. **A tool that invalidates a generated artifact must say so in its own output.** The standing
+   rule: **a green check means "not yet regenerated", never "current".**
+
+## Exemptions
+
+Prose that *quotes* a retired rule to explain why it was retired is exempted by name and reason:
+
+```markdown
+<!-- working-rule-ok: <rule-id> — quotes the retired wording to explain the change -->
+```
+
+**The marker is ignored unless it states a reason.** An escape hatch nobody has to justify is not
+an escape hatch, it is an off switch. Never exempt by rewriting the history.

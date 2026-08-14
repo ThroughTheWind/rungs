@@ -1,0 +1,97 @@
+[module]
+name    = "release"
+version = "1.0.0"
+rung    = 3
+summary = "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file."
+
+[requires]
+modules = ["backlog", "ci"]
+
+[conflicts]
+modules = []
+
+[params.candidate_prefix]
+description = """
+Prefix for the branch integrating the next release — `candidate/0.2.0`. A prefix, not a full name:
+the version is decided when a release is cut, not when the module is installed, so a parameter
+holding the whole branch name would be stale before it was ever used.
+"""
+default     = "candidate/"
+
+[params.stable_branch]
+description = "The released line. Tagged, never developed on directly."
+default     = "main"
+
+[params.deploy_branch_prefix]
+description = """
+Long-lived branch cut per release to deploy from — and to roll back to. A rollback that means
+reverting commits on the stable line is a rollback nobody performs under pressure.
+"""
+default     = "release/"
+
+[params.changelog_dir]
+description = """
+One file per change instead of a shared CHANGELOG. A shared changelog is a guaranteed conflict on
+every concurrent branch, and the conflict is always resolved by keeping both — which is how
+duplicate entries ship.
+"""
+default     = "changelog.d"
+
+[params.version_scheme]
+description = "semver | calver"
+default     = "semver"
+consumed_by = "render"
+
+[[gates]]
+id     = "release-changelog-fragment"
+kind   = "declared"
+engine = "file-population"
+table  = "gates/release.toml"
+tier   = "fast"
+why    = """
+A change with no changelog fragment is a change the release notes will not mention, discovered at
+cut time when nobody remembers what it did. Cheaper to require the fragment on the branch that made
+the change.
+"""
+
+[[gates]]
+id     = "release-version-consistent"
+kind   = "declared"
+engine = "computed-claim"
+table  = "gates/release.toml"
+tier   = "fast"
+why    = "A version appears in several files and drifts in exactly one of them. It is derivable, so it is computed rather than typed."
+
+[skills.cut-release]
+extensions = { disable-model-invocation = true }
+extension_note = """
+Cutting a release tags, merges and moves a deploy branch. A model must never decide that now is the
+moment to ship. This costs packaging for claude.ai uploads and the Skills API; it stays portable to
+every skills-compatible CLI.
+"""
+
+[detect]
+paths   = ["CHANGELOG.md", "changelog.d/**", ".github/workflows/release*.yml", "docs/**/release-workflow.md"]
+markers = ["rungs:begin release"]
+
+[[detect.paradigm]]
+id      = "trunk-tag-only"
+paths   = [".github/workflows/release*.yml"]
+compare = "docs/research/synthesis.md#5-the-maturity-ladder"
+note    = """
+Tagging directly on the trunk is a legitimate, cheaper model, and most repos should stay there. The
+candidate/stable/deploy split earns its cost when several sessions integrate into one release and
+a rollback has to be possible without reverting commits. Report the difference; do not convert.
+"""
+
+[provenance]
+sources  = ["rift-forge"]
+patterns = ["candidate-and-release-lines", "release-skill"]
+incident = """
+rift-forge separates the candidate that integrates the next release, the stable line that is tagged,
+and a long-lived deploy branch cut per release — because a rollback that means reverting commits on
+the stable line is a rollback nobody performs correctly under pressure. Its changelog is fragment
+files rather than one document, for the same reason its id ledgers needed a merge driver: a shared
+file touched by every concurrent branch conflicts every time, and the conflict is always resolved
+by keeping both.
+"""

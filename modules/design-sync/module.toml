@@ -1,0 +1,82 @@
+[module]
+name    = "design-sync"
+version = "1.0.0"
+rung    = 3
+summary = "An external design authority pulled into a local mirror, with every delta routed to a work item, a future item, or an upstream change request — never silent divergence."
+
+[requires]
+modules = ["backlog", "skills"]
+
+[conflicts]
+modules = []
+
+[params.source]
+description = "The upstream design authority — a URL, a project id, or a repository."
+default     = ""
+required    = true
+consumed_by = "design-pull"
+# Behavioural: it tells the pull where to fetch from and never appears in a
+# template. Deliberately not written into the skill body — the skill would then
+# carry a URL that changes independently of it.
+
+[params.mirror]
+description = "Local mirror of the pulled design system. Generated; never hand-edited."
+default     = "design-system"
+
+[params.request_path]
+description = "Where upstream change requests are drafted before being sent"
+default     = "docs/design-requests"
+
+[[gates]]
+id     = "design-deltas-routed"
+kind   = "declared"
+engine = "register-schema"
+table  = "gates/design.toml"
+tier   = "fast"
+why    = """
+Every difference between the mirror and the implementation is either work we have decided to do,
+work we have decided to defer, or a disagreement to send upstream. A fourth category — noticed and
+not routed — is how a design system and its implementation drift apart while both sides believe
+they are aligned.
+"""
+
+[[gates]]
+id     = "design-mirror-not-edited"
+kind   = "declared"
+engine = "render-freshness"
+table  = "gates/design.toml"
+tier   = "fast"
+why    = "A hand-edit in the mirror is a local change that the next pull silently destroys, and until then it is a fact about the design system that the design system does not know."
+
+[skills.design-pull]
+# Read-only against upstream. Safe for a model to run unprompted.
+
+[skills.design-align]
+# No extensions: it writes backlog items and drafts requests, both of which
+# are reversible and reviewable. It does not send anything upstream.
+
+[detect]
+paths   = ["design-system/**", "docs/**/design-tokens*", ".design/**"]
+markers = ["rungs:begin design-sync"]
+
+[[detect.paradigm]]
+id      = "design-in-repo"
+paths   = ["**/tokens.{json,css,scss}", "**/theme.{ts,css}"]
+compare = "docs/research/synthesis.md#2-convergences--where-independent-repos-agreed"
+note    = """
+A design system authored *in* this repo is not an external authority and does not need syncing —
+it needs the ordinary rules for shared code. This module is for the case where somebody else owns
+the design and disagreements have to travel back to them. Report and stop.
+"""
+
+[provenance]
+sources  = ["rift-forge", "hexguard-templates"]
+patterns = ["external-authority-precedence", "two-way-design-sync"]
+incident = """
+hexguard-templates states the precedence rule that makes an external authority workable: the design
+project is "layout/visual guidance, not a functional spec, and its output must still satisfy this
+repo's technical constraints". Without a stated precedence, an external source either gets ignored
+or overrides constraints it knows nothing about. rift-forge industrialised the same integration into
+a down-pull plus an alignment pass whose rule is that every delta is routed somewhere — never
+silent divergence, and never forced convergence either.
+"""

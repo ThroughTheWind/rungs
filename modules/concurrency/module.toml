@@ -1,0 +1,105 @@
+[module]
+name    = "concurrency"
+version = "1.0.0"
+rung    = 5
+summary = "Many sessions on one integration branch: a verified base to cut from, attributed failures, a land protocol that cannot redden the branch, and merge drivers per conflict class."
+
+[requires]
+modules = ["backlog", "gates", "ci"]
+
+[conflicts]
+modules = []
+
+# ── THRESHOLD ─────────────────────────────────────────────────────────────────
+#
+# `add` states this and requires explicit confirmation:
+#
+#   Below roughly five concurrent sessions on one integration branch, every
+#   mechanism here is pure overhead. It is a real tooling surface with its own
+#   failure modes, and it earns its cost only when sessions genuinely cannot see
+#   each other's work.
+#
+# Selling this to a rung-1 repo is the most likely way this tool does harm.
+
+[threshold]
+metric  = "concurrent sessions on one integration branch"
+minimum = 5
+confirm = true
+
+[params.integration_branch]
+description = "The shared branch work lands on"
+default     = "main"
+
+[params.green_prefix]
+description = """
+Ref marking the last merge that was actually verified. Branches are cut from this rather than from
+the tip, so a session does not start on top of an unverified merge.
+"""
+default     = "green/"
+
+[params.integ_prefix]
+description = "Scratch ref a merge is verified on before the integration branch moves"
+default     = "integ/"
+
+[[gates]]
+id     = "concurrency-no-integration-checkout"
+kind   = "declared"
+engine = "git-state"
+table  = "gates/concurrency.toml"
+tier   = "fast"
+why    = """
+Recorded as a correction, not a preference. The first design held the integration branch checked
+out for the whole verification and called that single-writer. It was both worse than useless: it
+blocked every other session — on one measured day every session in the repo sat in standby behind
+one land — and it did not prevent concurrent landing anyway, because switching to the scratch ref
+releases the branch mid-run. Two land processes were measured running at once.
+"""
+
+[[gates]]
+id     = "concurrency-generated-not-text-merged"
+kind   = "declared"
+engine = "merge-driver-check"
+table  = "gates/concurrency.toml"
+tier   = "fast"
+why    = """
+Two branches that each regenerated an artifact produce hunks git interleaves cleanly into something
+neither pipeline would emit. The failure surfaces later as a digest mismatch with an uninformative
+diff. The driver refuses and prints the regenerate command instead.
+"""
+
+[detect]
+paths   = [".gitattributes", ".git/rungs-land.lock"]
+markers = ["rungs:begin concurrency"]
+
+[[detect.paradigm]]
+id      = "trunk-based"
+compare = "docs/research/synthesis.md#35-concurrency-model"
+note    = """
+Few branches and direct merges is not a lesser model — it is the right one below the threshold, and
+two of the four source repos ran hundreds of commits that way. Report the branch and worktree
+counts and let the operator decide; never install this because the mechanism is interesting.
+"""
+
+[provenance]
+sources  = ["rift-forge"]
+patterns = [
+  "green-ref",
+  "failure-attribution",
+  "land-protocol",
+  "lock-not-checkout",
+  "no-pre-land-full-verify",
+  "preflight",
+  "conflict-classes",
+  "regenerate-never-merge",
+  "id-claiming",
+  "worktree-lifecycle",
+  "ci-at-land-time",
+]
+incident = """
+rift-forge reached 401 branches and 51 live worktrees with many sessions branching off one
+candidate and unable to see each other. This module ships its corrections included, because both
+were expensive: the checkout-based lock that blocked every session and did not work, and the
+pre-land full verify that widened the window the merge then conflicted in — three of five land
+attempts refused in one measured session, every one after a 4–12 minute pre-verify, every one on
+the same four generated artifacts.
+"""

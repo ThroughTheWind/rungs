@@ -17,13 +17,18 @@ specified in [module-catalog.md](../docs/design/module-catalog.md).
 | [`workflows`](workflows/) | 2 | **authored** |
 | [`skills`](skills/) | 2 | **authored** |
 | [`audit`](audit/) | 2 | **authored** |
-| `release` · `design-sync` | 3 | not authored |
-| `doc-authority` | 4 | not authored |
-| `concurrency` | 5 | not authored |
+| [`release`](release/) | 3 | **authored** |
+| [`design-sync`](design-sync/) | 3 | **authored** |
+| [`doc-authority`](doc-authority/) | 4 | **authored** |
+| [`concurrency`](concurrency/) | 5 | **authored** |
 
-**The `disciplined` profile is complete** — eleven of fifteen modules, every rung 0, 1 and 2. Its
-assembled entry document is **134 of the 200-line budget**, leaving 66 for the repo's own content.
-The four remaining are rung 3+ and are opt-in for repos with those specific problems.
+**All fifteen are authored.** Installing every one assembles an entry document of **165 of the
+200-line budget**, leaving 35 for the repo's own conventions — and no repo should install all
+fifteen, since rung 3+ modules are for specific problems.
+
+`concurrency` carries a **threshold** in its manifest (`minimum = 5` concurrent sessions,
+`confirm = true`): `add` states it and requires explicit confirmation. Selling rung 5 to a rung-1
+repo is the most likely way this tool does harm.
 
 ## Anatomy
 
@@ -96,6 +101,13 @@ whether its guard has ever actually fired.
    mode; it is not installing `session`. Dropped.
 9e. **Audit parameters across modules, not within one.** `adr` declared `id_width` that nothing
    consumed — a knob wired to nothing, invisible until every module was compared at once.
+9f. **A parameter never holds a value decided at runtime.** `release` first declared
+   `candidate_branch = "candidate/{{version}}"`, referencing a version that does not exist at
+   install time. It is a **prefix**; the version is chosen when a release is cut. A parameter
+   holding a runtime value is stale before it is ever used.
+9g. **A module may declare a `[threshold]`** with `confirm = true`, which makes `add` state the
+   cost and require explicit acknowledgement. Only `concurrency` uses it, and it exists because
+   the maturity ladder is advice until something enforces it.
 
 10. **Genuinely optional prose ships commented out, with the reason** — substitution-only templating
    has no other way to offer a choice, and a commented block is a decision the installer makes once

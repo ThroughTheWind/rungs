@@ -1,0 +1,54 @@
+# Gate table for the `concurrency` module.
+
+# ── concurrency-no-integration-checkout ───────────────────────────────────────
+
+[git_state]
+refuse_checked_out = ["{{integration_branch}}"]
+scope              = "all-worktrees"
+message = """
+`{{integration_branch}}` is checked out in {worktree}. Nothing should hold it: `rungs land` runs
+from wherever you are, verifies on a scratch ref, and advances the branch with a compare-and-swap.
+Holding it checked out blocks every other session and does not prevent concurrent landing anyway —
+switching to the scratch ref releases it mid-run, and two land processes have been measured running
+at once under exactly that design.
+"""
+
+# ── concurrency-generated-not-text-merged ─────────────────────────────────────
+#
+# Two failure modes, and the second is the quiet one: drivers declared in .gitattributes are inert
+# until installed, so a fresh clone silently gets git's default merge on files that must never be
+# text-merged.
+
+[merge_driver_check]
+attributes_file = ".gitattributes"
+required_drivers = ["rungs-ledger", "rungs-generated"]
+verify_installed = true
+install_command  = "rungs setup git"
+message = """
+The merge drivers named in .gitattributes are not installed in this clone, so they are inert and
+merges are falling back to git's default. For a generated artifact that default is a clean text
+merge of a file that is a fixed point of nothing — it surfaces later as a mismatch with an
+uninformative diff. Run `rungs setup git` once per clone.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "concurrency-no-integration-checkout"
+expect  = "fail"
+fixture = { worktrees = [{ branch = "{{integration_branch}}" }] }
+
+[[self_test]]
+gate    = "concurrency-no-integration-checkout"
+expect  = "pass"
+fixture = { worktrees = [{ branch = "feature/wi-001" }] }
+
+[[self_test]]
+gate    = "concurrency-generated-not-text-merged"
+expect  = "fail"
+fixture = { declared = ["rungs-ledger", "rungs-generated"], installed = [] }
+
+[[self_test]]
+gate    = "concurrency-generated-not-text-merged"
+expect  = "pass"
+fixture = { declared = ["rungs-ledger", "rungs-generated"], installed = ["rungs-ledger", "rungs-generated"] }

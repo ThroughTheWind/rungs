@@ -421,13 +421,12 @@ lacks).
    authored: the two modules that own every shared surface the others merge into.
 3. ~~Then `findings`, `adr`, `session`~~ — **done 2026-08-14. The `tracked` profile is complete**:
    six modules, every rung-0 and rung-1 module in the catalog.
-4. ~~Then rung 2 — `specs`, `workflows`, `skills`, `audit`, `ci`~~ — **done 2026-08-14. The
-   `disciplined` profile is complete**: eleven of fifteen modules, every rung 0, 1 and 2. The four
-   remaining (`release`, `design-sync`, `doc-authority`, `concurrency`) are rung 3+ and opt-in.
-5. **Or stop authoring and start Phase 5.** Eleven modules is more than enough to build `add`,
-   `doctor` and `render` against, and **nothing has been executed yet** — every finding so far came
-   from *writing* modules, not running them. The `[detect]` blocks in particular are unverified
-   claims until something runs them against the four source repos.
+4. ~~Then rung 2, then rung 3+~~ — **done 2026-08-14. All fifteen modules are authored.**
+   Phase 4 is complete.
+5. **Phase 5.** Nothing has been executed yet: every finding so far came from *writing* modules,
+   not running them. The `[detect]` blocks are unverified claims and the gate tables describe
+   engines that do not exist. The first executable milestone is `render` plus `doctor` on the
+   four source repos, which is also Phase 6's acceptance criterion arriving early.
 
 **Still unexercised by the three authored modules**, and therefore unproven: a module with more
 than one `rules/` file; a live `command` gate (`gates` documents the kind and adopts into it, but
@@ -455,5 +454,12 @@ Rung 2 added three more, one of them the most consequential yet:
   single module could have revealed. Rewritten as routing stanzas the profile assembles to
   **134**, leaving 66.
 
-Fourteen findings across eleven modules, and the character has changed: the early ones were
-corrections to the format, the later ones are constraints only visible when modules are composed.
+Rung 3+ added two more: **a parameter never holds a value decided at runtime** (`release` first
+declared `candidate/{{version}}`, referencing a version that does not exist at install time), and
+**a module may declare a `[threshold]` with `confirm = true`** — used only by `concurrency`,
+because the maturity ladder is advice until something enforces it.
+
+**Sixteen findings across fifteen modules**, and the character changed twice: the early ones were
+corrections to the format, the middle ones were constraints only visible when modules compose, and
+the last were refinements. A full fifteen-module install assembles to **165 of the 200-line
+budget**.
