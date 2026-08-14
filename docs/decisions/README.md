@@ -7,6 +7,10 @@ Architecture decision records for ai-cli itself.
 | ADR | Title | Status | Date |
 | --- | --- | --- | --- |
 | [0001](ADR-0001-multi-harness-rendering.md) | Multi-harness rendering: render only what is fragmented | accepted | 2026-08-14 |
+| [0005](ADR-0005-self-instrumentation.md) | Self-instrumentation: the runner records what it observes, and nothing else | accepted | 2026-08-14 |
+
+> 0002–0004 are reserved and open (stack · module definition format · adoption detection). 0005 was
+> decided out of order because it changes the gate-shipping module contract and blocked Phase 4.
 
 ## Admission rule
 

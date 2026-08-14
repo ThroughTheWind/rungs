@@ -304,10 +304,29 @@ Open problems. The CLI should not pretend these are answered.
    knows the ceiling.
 5. **Worktree/branch garbage collection with multiple owners.** *"Removing someone else's worktree
    is not a script's call"* — correct, and 51 accumulated.
-6. **Measuring whether any of this works.** No repo tracks agent-session outcomes: rework rate,
-   gate hit rate, which instruction prevented what. Every improvement here was justified by an
-   incident, never by a trend. **This is the biggest gap in the corpus** — and the one thing a CLI
-   is uniquely placed to fix, because it can instrument what it generates.
+6. **Nothing is recorded across runs.** No repo keeps any per-run history, so no question about
+   change over time can be asked at all.
+
+> **Amended 2026-08-14 — this item originally read "measuring whether any of this works… no repo
+> tracks agent-session outcomes: rework rate, gate hit rate, which instruction prevented what…
+> justified by an incident, never by a trend."** Arguing
+> [ADR-0005](../decisions/ADR-0005-self-instrumentation.md) showed it wrong twice over.
+>
+> **It bundled three problems of very different tractability.** Gate hit rate is a fact the runner
+> already observes. Rework rate needs a judgement about what counts as rework. "Which instruction
+> prevented what" is a counterfactual and is unknowable. Only the first is addressable, and the
+> original wording implied all three were one gap a CLI could close.
+>
+> **And "never by a trend" undersold what `rift-forge` did.** It measured constantly — 7 of 11
+> false claims, 37 mis-statused items, 95% of 474 rows, 3 of 5 lands, 62 of 90 worktrees. Those
+> are *censuses*: count the state, act, replace the census with a gate. Cheap, actionable, and
+> self-eliminating. What is missing is not measurement; it is **persistence**. The corrected item
+> above is what remains true.
+>
+> The concrete cost of that, found while arguing the ADR: `verify.mjs` carries **82 gates with
+> hand-typed `ms` durations** from one date, supporting a "~30s" budget stated in an authority
+> doc — and the runner produces the real duration of all 82 on every run and discards it. That is
+> [`computed-claims`](pattern-catalog.md) failing inside the runner that enforces the other gates.
 
 ---
 

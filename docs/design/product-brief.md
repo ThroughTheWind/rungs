@@ -61,7 +61,9 @@ A module ships up to six things — and **which of the six it ships is the modul
 1. **Structure** — directories, templates, registers (`docs/backlog/items/`, `TEMPLATE.md`)
 2. **Rules** — always-on (P1) or path-scoped (P2) instruction content
 3. **Procedures** — skills (P3), each with its invocation surface
-4. **Gates** — `check:` scripts and their self-tests
+4. **Gates** — `check:` scripts, their self-tests, and a **registry entry declaring each to the
+   runner** ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md)). Gates stay dumb: exit 0
+   or 1, no logging. The `gates` module owns the runner; every other module registers with it
 5. **Hooks** — P4, where the harness supports them
 6. **Docs** — the authority doc explaining the *why*, which the rules cite
 
@@ -167,7 +169,11 @@ Ordered by what blocks Phase 4.
 | **0002** | **Implementation stack.** | Node/TypeScript. `npx ai-cli` is the lowest-friction install, all four source repos already run pnpm, and the gates being generated are `.mjs` in three of them |
 | **0003** | **Module definition format.** How a module declares files, deps, rung, cost, and rules. Must be authorable by hand, since the module set is the product | TOML manifest + a file tree, over a programmatic API |
 | **0004** | **Adoption detection.** How `add` recognizes a hand-built equivalent well enough to adopt rather than overwrite. Hardest unsolved piece; the four repos are the test set | — |
-| **0005** | **Does the CLI instrument what it generates?** [synthesis §6](../research/synthesis.md) calls this the corpus's biggest gap — no repo tracks rework rate, gate hit rate, or which instruction prevented what. Every improvement in four repos was justified by an incident, never a trend | Yes, minimally and locally: gates log hits to a gitignored file, `doctor` reports which gates never fire and which fire constantly. **A gate that never fires and a gate that matches nothing are indistinguishable** — the same argument that made `rift-forge` write self-tests |
+| ~~0005~~ | **Self-instrumentation** — [**decided 2026-08-14**](../decisions/ADR-0005-self-instrumentation.md) | The runner records what it directly observes (exit status, wall-clock, per gate); `doctor` asks two questions with provenance attached; rework rate, instruction attribution, aggregation, and any health score are refused permanently |
 
-Decision 0005 is the one worth arguing about. It is the only place ai-cli could produce knowledge
-the source repos could not, rather than repackaging what they already learned.
+**0005 was argued first** because it changes the gate-shipping module contract — gates are declared
+to a runner registry, not dropped as scripts — and Phase 4 could not specify modules without it.
+
+Arguing it also found that [synthesis §6](../research/synthesis.md) was wrong: it bundled one
+tractable problem with two unknowable ones, and it undersold the corpus's measurement discipline.
+The real gap is **persistence**, not measurement. §6 has been amended.

@@ -71,7 +71,9 @@ genuinely fragmented — so the CLI renders one primitive, not four.
 
 - [`docs/design/product-brief.md`](docs/design/product-brief.md) — **done**
 - [ADR-0001 — multi-harness rendering](docs/decisions/ADR-0001-multi-harness-rendering.md) — **accepted**
-- ADRs 0002–0005 (stack · module format · adoption detection · self-instrumentation) — open,
+- [ADR-0005 — self-instrumentation](docs/decisions/ADR-0005-self-instrumentation.md) — **accepted**
+  (argued out of order: it sets the gate-shipping module contract)
+- ADRs 0002–0004 (stack · module format · adoption detection) — open,
   listed in the brief §9
 
 ### Phase 4 — Module catalog
@@ -105,5 +107,5 @@ that its content was paid for once already.
 
 ## Status
 
-Phase 3 in progress: the product brief and ADR-0001 (multi-harness rendering) are done; ADRs
-0002–0005 are open. Phase 4 (module catalog) is blocked on ADR-0003.
+Phase 3 in progress: the product brief, ADR-0001 (multi-harness rendering) and ADR-0005
+(self-instrumentation) are done; ADRs 0002–0004 are open. Phase 4 is blocked on ADR-0003.
