@@ -1,8 +1,11 @@
 ---
+import { createElement } from "react";
 import { getCollection, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import { TitleBlock } from "../../design-system/components/index.js";
 import { docTitle, shelf, SHELVES } from "../../lib/wiki";
+import { sourceFor } from "../../lib/source-map.mjs";
+import { SITE } from "../../site.config";
 
 export async function getStaticPaths() {
   const docs = await getCollection("wiki");
@@ -19,9 +22,21 @@ const title = docTitle(doc, headings);
 const s = shelf(doc.id);
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 
+// The real path, from the build-time index — not reconstructed from the slug, which is lowercased.
+const source = sourceFor(doc.id);
+
+// createElement, not JSX: an .astro frontmatter block is TypeScript, and TitleBlock takes a node.
+const sourceLink = source
+  ? createElement("a", { href: `${SITE.repo}/blob/main/${source}` }, source)
+  : "unmapped";
+
+// The README's H1 is the product name, so the default would read "rungs — rungs wiki".
+const pageTitle =
+  title.toLowerCase() === SITE.name ? `${SITE.name} — ${(SHELVES[s] ?? s).toLowerCase()}` : `${title} — rungs wiki`;
+
 const fields = [
   { label: "Shelf", value: SHELVES[s] ?? s },
-  { label: "Source", value: `docs/${doc.id}.md` },
+  { label: "Source", value: sourceLink },
   ...(doc.data.status ? [{ label: "Status", value: doc.data.status }] : []),
   ...(doc.data.date
     ? [{ label: "Dated", value: typeof doc.data.date === "string" ? doc.data.date : doc.data.date.toISOString().slice(0, 10) }]
@@ -29,7 +44,7 @@ const fields = [
 ];
 ---
 
-<Base title={`${title} — rungs wiki`} width={1100}>
+<Base title={pageTitle} width={1100}>
   <div class="sheet">
     <TitleBlock kicker={`Wiki · ${SHELVES[s] ?? s}`} title={title} fields={fields} />
 

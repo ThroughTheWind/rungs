@@ -3,7 +3,8 @@ import { getCollection, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import { SITE } from "../../site.config";
 import { TitleBlock, Callout } from "../../design-system/components/index.js";
-import { docTitle, shelf, SHELVES } from "../../lib/wiki";
+import { docTitle, shelf, SHELVES, SHELF_ORDER } from "../../lib/wiki";
+import { sourceFor } from "../../lib/source-map.mjs";
 
 const all = await getCollection("wiki");
 
@@ -16,12 +17,17 @@ const entries = await Promise.all(
     .filter((d) => d.id !== "")
     .map(async (d) => {
       const { headings } = await render(d);
-      return { id: d.id, title: docTitle(d, headings), shelf: shelf(d.id), status: d.data.status };
+      return {
+        id: d.id,
+        title: docTitle(d, headings),
+        shelf: shelf(d.id),
+        status: d.data.status,
+        source: sourceFor(d.id),
+      };
     }),
 );
 
-const ORDER = ["research", "design", "decisions", "backlog", "root"] as const;
-const grouped = ORDER.map((s) => ({
+const grouped = SHELF_ORDER.map((s) => ({
   shelf: s,
   label: SHELVES[s],
   docs: entries.filter((e) => e.shelf === s).sort((a, b) => a.id.localeCompare(b.id)),
@@ -58,9 +64,9 @@ const grouped = ORDER.map((s) => ({
               {g.docs.map((d) => (
                 <tr>
                   <td class="reg-t">
-                    <a href={`/wiki/${d.id}`}>{d.title}</a>
+                    <a href={`/wiki/${d.id}/`}>{d.title}</a>
                   </td>
-                  <td class="reg-s">docs/{d.id}.md</td>
+                  <td class="reg-s">{d.source ?? "unmapped"}</td>
                   <td class="reg-x">{d.status ?? "—"}</td>
                 </tr>
               ))}

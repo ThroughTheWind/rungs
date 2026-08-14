@@ -12,7 +12,9 @@
  * RULES below is the honest inventory: `done` rules run, `todo` rules do not. There is no third
  * state, which is the same rule the product enforces on itself.
  */
+import { fileURLToPath } from "node:url";
 import { visit } from "unist-util-visit";
+import { routeForDoc } from "../lib/routes.mjs";
 
 export const RULES = [
   { id: "pattern-table", status: "done", detects: "table with id · pattern · src · rung headers" },
@@ -29,6 +31,9 @@ export const RULES = [
 ];
 
 const REPO = "https://github.com/ThroughTheWind/rungs/blob/main/";
+
+/** Repo root — this file sits at <root>/site/src/plugins/. Source paths arrive absolute. */
+const ROOT = fileURLToPath(new URL("../../../", import.meta.url)).replace(/\\/g, "/").replace(/\/$/, "");
 const SOURCES = new Set(["AM", "HG", "HT", "RF"]);
 
 const el = (tagName, properties = {}, children = []) => ({ type: "element", tagName, properties, children });
@@ -87,33 +92,37 @@ function isPatternTable(table) {
   return headers.length === 4 && headers[0] === "id" && headers[2] === "src" && headers[3] === "rung";
 }
 
-/** Resolve a relative docs link to its wiki route, or to GitHub when it leaves docs/. */
-function rewriteHref(href, fromDocsDir) {
+/**
+ * Resolve a relative markdown link to its wiki route, or to GitHub when the target is not
+ * published. `routeForDoc` is shared with content.config.ts so the two cannot disagree about
+ * where a document lives.
+ */
+function rewriteHref(href, fromDir) {
   if (/^([a-z]+:|\/\/|#|\/)/i.test(href)) return href;
   const [path, hash] = href.split("#");
   if (!path.endsWith(".md")) return href;
 
-  const parts = [...fromDocsDir.split("/").filter(Boolean)];
+  const parts = [...fromDir.split("/").filter(Boolean)];
   for (const seg of path.split("/")) {
     if (seg === "." || seg === "") continue;
     if (seg === "..") parts.pop();
     else parts.push(seg);
   }
-  // parts is now repo-relative. Anything outside docs/ is not part of the wiki.
-  if (parts[0] !== "docs") return REPO + parts.join("/") + (hash ? `#${hash}` : "");
 
-  // Must match content.config.ts's generateId exactly, or every cross-link 404s.
-  let slug = parts.slice(1).join("/").replace(/\.md$/, "").toLowerCase();
-  slug = slug.replace(/(^|\/)readme$/, "");
-  return `/wiki/${slug}`.replace(/\/+$/, "/") + (hash ? `#${hash}` : "");
+  const repoRel = parts.join("/");
+  const route = routeForDoc(repoRel);
+  return (route ?? REPO + repoRel) + (hash ? `#${hash}` : "");
 }
 
 export function rehypeRungs() {
   return (tree, file) => {
-    const source = (file?.history?.[0] ?? file?.path ?? "").replace(/\\/g, "/");
-    const canonical = source.includes("/docs/research/pattern-catalog.md");
-    const m = source.match(/\/docs\/(.*)\/[^/]+$/);
-    const fromDocsDir = `docs/${m ? m[1] : ""}`;
+    // Repo-relative, so that a document at the root (README.md) resolves its links from the root
+    // rather than from inside docs/. Getting this wrong is silent: every relative link still
+    // produces a plausible-looking URL, it just points at the wrong file.
+    const abs = (file?.history?.[0] ?? file?.path ?? "").replace(/\\/g, "/");
+    const repoRel = abs.startsWith(`${ROOT}/`) ? abs.slice(ROOT.length + 1) : abs;
+    const fromDir = repoRel.includes("/") ? repoRel.slice(0, repoRel.lastIndexOf("/")) : "";
+    const canonical = repoRel === "docs/research/pattern-catalog.md";
 
     visit(tree, "element", (node, index, parent) => {
       /* R1 · pattern tables ---------------------------------------------------------------- */
@@ -218,7 +227,7 @@ export function rehypeRungs() {
 
       /* R9 · cross-document links -------------------------------------------------------------- */
       if (node.tagName === "a" && typeof node.properties?.href === "string") {
-        node.properties.href = rewriteHref(node.properties.href, fromDocsDir);
+        node.properties.href = rewriteHref(node.properties.href, fromDir);
       }
     });
   };

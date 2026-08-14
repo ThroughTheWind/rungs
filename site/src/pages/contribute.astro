@@ -1,5 +1,7 @@
 ---
+import { createElement } from "react";
 import Base from "../layouts/Base.astro";
+import { routeForDoc } from "../lib/routes.mjs";
 import { SITE } from "../site.config";
 import { Button, Callout, Claim, EnforcementTag, Measurement, SourceMark, TitleBlock } from "../design-system/components/index.js";
 import { RULES } from "../plugins/rehype-rungs.mjs";
@@ -9,6 +11,10 @@ import { RULES } from "../plugins/rehype-rungs.mjs";
 // against — the difference between a rule and a rule that is checked.
 const done = RULES.filter((r) => r.status === "done");
 const todo = RULES.filter((r) => r.status !== "done");
+
+// The rule this page argues from is now on the wiki, so cite it there rather than off-site.
+// createElement, not JSX: an .astro frontmatter block is TypeScript.
+const governedBy = createElement("a", { href: routeForDoc("CLAUDE.md") }, "CLAUDE.md — the evidence rule");
 ---
 
 <Base title="Contribute — rungs" width={1000}>
@@ -17,7 +23,7 @@ const todo = RULES.filter((r) => r.status !== "done");
       kicker="Contribute"
       title="Author a module"
       fields={[
-        { label: "Governed by", value: "CLAUDE.md — the evidence rule" },
+        { label: "Governed by", value: governedBy },
         { label: "Updated", value: SITE.asOf },
       ]}
     />
