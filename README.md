@@ -65,8 +65,16 @@ git clone <this repo> && cd rungs && npm install
 node src/cli.ts --help
 ```
 
-Requires **Node 22.18+** — it runs TypeScript directly, no build step. A
-published `npx rungs` is Phase 7.
+Requires **Node 22.18+** — it runs TypeScript directly, no build step.
+
+Published as **`@rungs/cli`** — the unscoped name `rungs` is unpublishable, being
+one edit away from both `rung` and `runjs`, which npm's typosquat filter refuses.
+The tool, the command and everything it writes are still `rungs`; only the
+package identifier differs:
+
+```bash
+npx @rungs/cli doctor
+```
 
 ## What you get
 

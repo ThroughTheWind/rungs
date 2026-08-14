@@ -1,10 +1,22 @@
 {
-  "name": "rungs",
+  "name": "@rungs/cli",
   "version": "0.1.0",
   "description": "Installs and maintains a repository's agentic development system, composed from modules.",
+  "author": "Antoine Dancre",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThroughTheWind/rungs.git"
+  },
+  "homepage": "https://github.com/ThroughTheWind/rungs#readme",
+  "bugs": {
+    "url": "https://github.com/ThroughTheWind/rungs/issues"
+  },
   "type": "module",
   "bin": {
     "rungs": "./src/cli.ts"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=22.18"
