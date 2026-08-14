@@ -101,3 +101,19 @@ fixture = { file = "{{path}}/a/spec.md", lines = 900 }
 gate    = "specs-split-threshold"
 expect  = "pass"
 fixture = { file = "{{path}}/a/spec.md", lines = 400 }
+
+# ── specs-ids-unique self-tests ───────────────────────────────────────────────
+#
+# Story ids are cited from commits, plans and work items, so a duplicate makes
+# every one of those citations ambiguous — and the citation still resolves,
+# which is why this is checked rather than left to be noticed.
+
+[[self_test]]
+gate    = "specs-ids-unique"
+expect  = "fail"
+fixture = { stories = ["FOUND-US-001", "FOUND-US-001"] }
+
+[[self_test]]
+gate    = "specs-ids-unique"
+expect  = "pass"
+fixture = { stories = ["FOUND-US-001", "AUTH-US-001"] }

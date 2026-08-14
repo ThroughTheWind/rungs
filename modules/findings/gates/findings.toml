@@ -54,3 +54,15 @@ fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "critical", 
 gate    = "findings-disposition-has-reason"
 expect  = "pass"
 fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "high", Pri = "now", What = "x", Evidence = "none — hunch" } }
+
+# ── findings-ids self-tests ───────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "findings-ids"
+expect  = "fail"
+fixture = { register_rows = ["{{id_prefix}}-001", "{{id_prefix}}-001"] }
+
+[[self_test]]
+gate    = "findings-ids"
+expect  = "pass"
+fixture = { register_rows = ["{{id_prefix}}-001", "{{id_prefix}}-002"] }

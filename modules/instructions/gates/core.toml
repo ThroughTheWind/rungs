@@ -90,3 +90,25 @@ fixture = { file = "AGENTS.md", lines = 9999 }
 gate   = "instructions-core-size"
 expect = "pass"
 fixture = { file = "AGENTS.md", lines = 10 }
+
+# ── render-freshness self-tests ───────────────────────────────────────────────
+
+[[self_test]]
+gate    = "instructions-render-current"
+expect  = "fail"
+fixture = { sources = [".ai/rules/backend.md"], targets = [] }
+
+[[self_test]]
+gate    = "instructions-render-current"
+expect  = "pass"
+fixture = { sources = [".ai/rules/backend.md"], targets = [".claude/rules/backend.md"] }
+
+[[self_test]]
+gate    = "instructions-repo-map-current"
+expect  = "fail"
+fixture = { file = "AGENTS.md", blocks = [] }
+
+[[self_test]]
+gate    = "instructions-repo-map-current"
+expect  = "pass"
+fixture = { file = "AGENTS.md", blocks = ["repo-map"] }

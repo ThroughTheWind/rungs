@@ -83,3 +83,24 @@ input  = "status: in_progress, branch merged into {{integration_branch}}"
 gate   = "backlog-merged-status"
 expect = "pass"
 input  = "status: in_progress, branch not merged"
+
+# ── backlog-ids self-tests ────────────────────────────────────────────────────
+#
+# The marker case is the one worth pinning: a NEXT-ID pointing at an id that is
+# already spent hands the next session a collision, and the archive is indexed
+# precisely so an archived id still counts as taken.
+
+[[self_test]]
+gate    = "backlog-ids"
+expect  = "fail"
+fixture = { items = ["{{id_prefix}}-001-a.md", "{{id_prefix}}-001-b.md"] }
+
+[[self_test]]
+gate    = "backlog-ids"
+expect  = "pass"
+fixture = { items = ["{{id_prefix}}-001-a.md", "{{id_prefix}}-002-b.md"] }
+
+[[self_test]]
+gate    = "backlog-ids"
+expect  = "fail"
+fixture = { items = ["{{id_prefix}}-001-a.md"], marker = "{{id_prefix}}-001" }

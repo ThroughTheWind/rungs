@@ -99,3 +99,29 @@ fixture = { gate = "example", self_tests = ["pass"] }
 gate   = "gates-self-tests-both-directions"
 expect = "pass"
 fixture = { gate = "example", self_tests = ["pass", "fail"] }
+
+# `gates-paths-exist` and `gates-frontmatter-valid` share the tables above with
+# their siblings, but the meta-gate keys self-tests by gate id — so a shared
+# table still needs a pass and a fail per gate. That is correct: two gates
+# running the same engine can still be scoped differently, and only their own
+# fixtures prove each one fires.
+
+[[self_test]]
+gate   = "gates-paths-exist"
+expect = "fail"
+input  = "The mapper lives in [`src/gone.ts`](src/gone.ts)."
+
+[[self_test]]
+gate   = "gates-paths-exist"
+expect = "pass"
+input  = "The mapper lives in [`structural.toml`](./structural.toml)."
+
+[[self_test]]
+gate    = "gates-frontmatter-valid"
+expect  = "pass"
+fixture = { file = ".claude/skills/x/SKILL.md", frontmatter = { name = "x", description = "d" } }
+
+[[self_test]]
+gate    = "gates-frontmatter-valid"
+expect  = "fail"
+fixture = { file = ".claude/skills/x/SKILL.md", frontmatter = { description = "d" } }
