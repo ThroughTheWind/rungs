@@ -22,9 +22,25 @@ specified in [module-catalog.md](../docs/design/module-catalog.md).
 | [`doc-authority`](doc-authority/) | 4 | **authored** |
 | [`concurrency`](concurrency/) | 5 | **authored** |
 
-**All fifteen are authored.** Installing every one assembles an entry document of **165 of the
-200-line budget**, leaving 35 for the repo's own conventions — and no repo should install all
+**All fifteen are authored.** Installing every one assembles an entry document of **129 of the
+200-line budget**, leaving 71 for the repo's own conventions — and no repo should install all
 fifteen, since rung 3+ modules are for specific problems.
+
+Per profile, measured 2026-08-15 by installing each into an empty directory and counting
+`AGENTS.md` the way `instructions-core-size` does (frontmatter, HTML comments and blank lines
+dropped — that is what the harness loads, not what `wc -l` reports):
+
+| Profile | Modules | Loaded lines | Left of 200 |
+| --- | --- | --- | --- |
+| `minimal` | 1 | 64 | 136 |
+| `tracked` | 6 | 82 | 118 |
+| `disciplined` | 11 | 106 | 94 |
+| `hardened` | 13 | 117 | 83 |
+| `fleet` | 15 | 129 | 71 |
+
+These move whenever a fragment is edited, and they read as current only because of the date on
+them. `rungs check` is what actually holds the budget; the table is for authors deciding whether a
+fragment has room to grow.
 
 `concurrency` carries a **threshold** in its manifest (`minimum = 5` concurrent sessions,
 `confirm = true`): `add` states it and requires explicit confirmation. Selling rung 5 to a rung-1
@@ -84,9 +100,11 @@ whether its guard has ever actually fired.
    is the binding constraint at profile scale, not per module. Measured while authoring the
    `disciplined` profile: a 73-line skeleton plus ten fragments at ~12 lines each is 193 of the
    200-line budget with nothing left for the repo's own conventions or repo map. Rewritten as
-   routing stanzas the same profile assembles to **134**, leaving 66 for the repo. A fragment says
-   *what exists, where it lives, and which skill runs it*; the reasoning goes in the module's
-   authority document, and the surface-specific rules go in `.ai/rules/`.
+   routing stanzas the same profile assembled to **134**, leaving 66 for the repo. *(Those two are
+   the authoring-time figures, kept because the 193 → 134 delta is the argument. `disciplined`
+   measures **106** as of 2026-08-15 — see the table above — so read them as a before/after, not as
+   current.)* A fragment says *what exists, where it lives, and which skill runs it*; the reasoning
+   goes in the module's authority document, and the surface-specific rules go in `.ai/rules/`.
 8b. **Not every module needs a fragment.** `ci` has none — nothing about it changes what an agent
    should do, and the `gates` fragment already names `rungs check`. A fragment that restates a
    neighbour's is spending shared budget on a duplicate.

@@ -4,6 +4,13 @@
 > the design system it asks for is the thing that becomes authoritative. Paste this file whole
 > into a fresh Claude session opened at the repo root.
 
+> **Amended 2026-08-15.** Two specimens in §6 were captured on 2026-08-14 and have since moved.
+> They are corrected in place rather than deleted, because this file gets pasted whole and a
+> stale exemplar propagates into whatever it seeds. The gate line is simply a newer measurement.
+> The name inventory is the more instructive one: [ADR-0006](../decisions/ADR-0006-the-name.md)
+> retracted it, so the specimen that taught "cite the command" now teaches the sharper rule that
+> replaced it — **name the command *and* state what it proves.**
+
 ---
 
 ## 0. Read first
@@ -20,7 +27,7 @@ the source, not the source.
 | [`docs/research/synthesis.md`](../research/synthesis.md) §5 | The maturity ladder. It is the product's name and its central metaphor |
 | [`docs/research/pattern-catalog.md`](../research/pattern-catalog.md) | The densest page the wiki has to render. If the type system survives §A, it survives everything |
 | [`docs/design/module-catalog.md`](module-catalog.md) §1, §4 | The 15 modules, the dependency graph, the 5 install profiles |
-| [`docs/decisions/ADR-0006`](../decisions/ADR-0006-the-name.md) | Why the tool is called `rungs`, and the 28-name free list — which doubles as a mood board (§6) |
+| [`docs/decisions/ADR-0006`](../decisions/ADR-0006-the-name.md) | Why the tool is called `rungs`, and its Correction — the ADR retracted its own 28-name "free" list, so read that list as a mood board (§6) and never as an availability claim |
 
 Then load the `frontend-design` skill.
 
@@ -112,17 +119,28 @@ $ npx @rungs/cli add concurrency
 > *"you have an audit skill and no findings register"* · *"this rule says MANDATORY and has no
 > gate"* · *"14 near-identical release workflows"*
 
-**A measurement done right** (ADR-0006): *84 candidate names checked on 2026-08-14 with
-`npm view <name> version`. 56 taken, 28 free.* — count, date, and command in one line.
+**A measurement done right** (`rungs check`): *20 gates register and all 20 have engines — 20 pass,
+0 fail, 0 unimplemented, on 2026-08-15, from `npx @rungs/cli check`.* — count, date, and command in
+one line, and the command tests the property the sentence claims.
+
+**A measurement done wrong, which is the more useful specimen** (ADR-0006): *84 candidate names
+checked on 2026-08-14 with `npm view <name> version`. 56 taken, 28 free.* It named its count, its
+date and its command, and it was still false — `npm view` proves a name is **unregistered**, not
+that it is **publishable**, and four of the 28 were not. **Where the claim and the check diverge,
+the divergence is the finding, and it belongs next to the number.** The design has to make that
+distinction visible; a `Measurement` component that renders any count-date-command triple as
+verified is reproducing the exact failure.
 
 **An opinion, marked** (ADR-0006): *"Opinion, mine, offered as opinion: every one of the 28
 available candidates could have been argued for, and the choice among them is judgement, not
 measurement."* First person, and visibly not a measurement.
 
-**The status paragraph the landing page must not soften** (README): *31 gates register and all 31
-have engines — 28 pass, 2 fail, 0 unimplemented.* Two failing gates go on the site. Make honest
+**The status paragraph the landing page must not soften** (README): *20 gates register and all 20
+have engines — 20 pass, 0 fail, 0 unimplemented* (2026-08-15; it read *28 pass, 2 fail* when this
+prompt was written). Whatever the count is on the day, failing gates go on the site. Make honest
 failure read as confidence rather than as a broken build; that is a real design problem and
-solving it well is most of the personality.
+solving it well is most of the personality — and the design must not assume the number is zero,
+because it was not, and will not stay so.
 
 **A dependency chain**, each arrow earned by a repo violating it: `audit → findings → backlog`
 

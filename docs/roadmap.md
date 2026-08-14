@@ -16,7 +16,7 @@ depended on was measured.
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
 | **5** | CLI | ✅ Nine commands, 39 gates, ~2,800 lines |
 | **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; **a real install into a source repo is outstanding** |
-| **7** | Distribution | ⬜ npm publish, docs site, module registry |
+| **7** | Distribution | 🟡 Published as `@rungs/cli` (2026-08-14, v0.1.0; v0.1.1 current) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 
 ## What each phase produced that the next one needed
 
@@ -40,9 +40,11 @@ validators) and `axiom-mesh` (adopts 7 PowerShell validators, no root
 `package.json` added). Neither has been written to. The remaining test is a real
 install, diffed against what that repo built by hand.
 
-**Phase 7.** Publishing, a docs site, and a module registry so third-party
-modules are possible — the format is a plain directory precisely so that does
-not need a format change.
+**Phase 7.** Publishing and the docs site have landed: `@rungs/cli` is on npm
+(v0.1.0 on 2026-08-14, v0.1.1 current) and [`site/`](../site/README.md) builds
+from a pristine checkout and deploys. What remains is the **module registry**, so
+third-party modules are possible — the format is a plain directory precisely so
+that does not need a format change.
 
 ## Known open items
 

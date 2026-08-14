@@ -14,7 +14,7 @@ then keeps checking that they still say what they said.
 $ rungs init . tracked
   instructions   3 create
   gates          1 create · 1 skill · 2 merge
-  backlog        6 create · 1 rule · 2 skill · 1 merge
+  backlog        5 create · 1 rule · 2 skill · 1 merge
   findings       1 create · 1 skill · 1 merge
   adr            2 create · 1 merge
   session        2 create · 1 skill · 1 merge
@@ -168,7 +168,7 @@ Four promises that shape everything else:
 [`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli).
 
 rungs is installed in its own repo and its gates run on every change — 20 pass,
-0 fail (`rungs check`, 2026-08-14). Detection is [verified against all four
+0 fail (`rungs check`, 2026-08-15). Detection is [verified against all four
 source repos](docs/design/detection-verification.md). Not yet done: installing
 into a source repo for real rather than in dry run.
 

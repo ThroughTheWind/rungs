@@ -7,7 +7,9 @@ import { sourceFor } from "../../lib/source-map.mjs";
 
 const all = await getCollection("wiki");
 
-// docs/README.md owns this route's prose; the registry below is derived, never hand-kept.
+// docs/README.md would own this route's prose. It does not exist today, so the page renders the
+// registry alone — deliberately optional rather than a build failure, because the registry below is
+// derived and stands on its own. Writing that file is all it takes to add an intro.
 const root = all.find((d) => d.id === "");
 const Intro = root ? (await render(root)).Content : null;
 
@@ -35,7 +37,12 @@ const grouped = SHELF_ORDER.map((s) => ({
 // "Built" is the build, not a measurement. It read `site.config`'s `asOf` — a hand-typed date that
 // only moves when someone remembers — so the registry claimed a freshness nobody had checked. Astro
 // frontmatter runs at build time, so this is the one date on the site that can simply be taken.
-const builtOn = new Date().toISOString().slice(0, 10);
+//
+// Labelled UTC, and it has to be. Every other date on the site is a calendar day someone wrote
+// down; this one comes from the build host. A local build at 00:43 BST stamps the *previous* day,
+// which read as an off-by-one bug next to a hand-typed `asOf` of the same page. Railway builds in
+// UTC, so naming the zone is what makes the two agree rather than appear to contradict.
+const builtOn = `${new Date().toISOString().slice(0, 10)} UTC`;
 ---
 
 <Base
