@@ -1,0 +1,44 @@
+# Gate table for the `ci` module.
+
+# ── ci-workflow-proliferation ─────────────────────────────────────────────────
+#
+# Counts near-identical workflow files. Similarity is structural — job names, step commands, and
+# `uses:` refs — not textual, because near-identical files differ exactly in the package name.
+
+[file_population]
+scan            = [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+similarity_on   = ["job_ids", "step_uses", "step_run_shape"]
+similarity_min  = 0.85
+warn_at         = 4
+fail_at         = 8
+exempt_marker   = "proliferation-ok:"      # ignored unless it states a reason
+message         = """
+{count} workflows share ~{similarity} of their structure. This is the shape that reached 98 files
+in one repo, where changing release policy became a 98-file edit. Replace them with one workflow
+and a `strategy.matrix`, or state why not with `# proliferation-ok: <reason>`.
+"""
+
+# The threshold is deliberately low. A repo with 8 genuinely different workflows can exempt them
+# once; a repo generating one per package hits it at the point the pattern is still cheap to undo.
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "ci-workflow-proliferation"
+expect  = "fail"
+fixture = { workflows = 12, similarity = 0.97 }
+
+[[self_test]]
+gate    = "ci-workflow-proliferation"
+expect  = "pass"
+fixture = { workflows = 12, similarity = 0.30 }
+
+[[self_test]]
+gate    = "ci-workflow-proliferation"
+expect  = "pass"
+fixture = { workflows = 12, similarity = 0.97, exempt = "proliferation-ok: per-runtime, they differ in the container image" }
+
+[[self_test]]
+gate    = "ci-workflow-proliferation"
+expect  = "fail"
+fixture = { workflows = 12, similarity = 0.97, exempt = "proliferation-ok:" }

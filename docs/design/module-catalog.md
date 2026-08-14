@@ -421,7 +421,13 @@ lacks).
    authored: the two modules that own every shared surface the others merge into.
 3. ~~Then `findings`, `adr`, `session`~~ — **done 2026-08-14. The `tracked` profile is complete**:
    six modules, every rung-0 and rung-1 module in the catalog.
-4. Then rung 2 — `specs`, `workflows`, `skills`, `audit`, `ci`.
+4. ~~Then rung 2 — `specs`, `workflows`, `skills`, `audit`, `ci`~~ — **done 2026-08-14. The
+   `disciplined` profile is complete**: eleven of fifteen modules, every rung 0, 1 and 2. The four
+   remaining (`release`, `design-sync`, `doc-authority`, `concurrency`) are rung 3+ and opt-in.
+5. **Or stop authoring and start Phase 5.** Eleven modules is more than enough to build `add`,
+   `doctor` and `render` against, and **nothing has been executed yet** — every finding so far came
+   from *writing* modules, not running them. The `[detect]` blocks in particular are unverified
+   claims until something runs them against the four source repos.
 
 **Still unexercised by the three authored modules**, and therefore unproven: a module with more
 than one `rules/` file; a live `command` gate (`gates` documents the kind and adopts into it, but
@@ -437,6 +443,17 @@ substitution vs. behavioural parameters (`consumed_by`) · cross-module paramete
 declared dependencies · a path parameter may contain separators · a parameter meaning "do nothing"
 is the absence of the module · and one dead parameter caught only by auditing all six at once.
 
-The rate is falling — six findings in the first three modules, five in the next three, and the
-last batch were refinements rather than corrections. Each was cheaper now than after nine more
-modules had cited it.
+Rung 2 added three more, one of them the most consequential yet:
+
+- **`${{ … }}` is never substituted** — GitHub Actions expressions share the delimiter, so without
+  a `$`-passthrough rule the `ci` module silently corrupts its own workflow file at install.
+- **A behavioural parameter reaches file content through a managed block**, never a conditional
+  (`ci.trigger` regenerates the `on:` block).
+- **A fragment is a routing stanza, not a summary.** Found by assembling the whole profile: a
+  73-line skeleton plus ten ~12-line fragments is 193 of the 200-line budget with **nothing left
+  for the repo's own conventions**. The budget binds at profile scale, not per module — which no
+  single module could have revealed. Rewritten as routing stanzas the profile assembles to
+  **134**, leaving 66.
+
+Fourteen findings across eleven modules, and the character has changed: the early ones were
+corrections to the format, the later ones are constraints only visible when modules are composed.

@@ -1,0 +1,71 @@
+---
+description: >-
+  How to write a skill that fires when it should, does not fire when it should not, and leaves
+  something behind. Loads when creating or editing any SKILL.md.
+paths:
+  - "{{dir}}/**/SKILL.md"
+enforcement: gated
+---
+
+# Writing a skill
+
+## What earns a skill
+
+A **multi-step procedure with a beginning and an end**. Not a fact — that is the entry document.
+Not a rule about a surface — that is a path-scoped rule. A skill's body loads only when it is used,
+so long reference material costs nothing until needed; a fact that belongs in every session costs
+the full context every session and belongs elsewhere.
+
+## Frontmatter: six fields, and that is the list
+
+`name` · `description` · `license` · `compatibility` · `metadata` · `allowed-tools`.
+
+Anything else is a harness extension. claude.ai uploads and the Skills API **reject** unknown keys
+with a hard error rather than ignoring them, so an extension is opted into in the owning module's
+manifest, where the cost is stated at the point of the choice — not added here quietly.
+
+The two that matter:
+
+- **`disable-model-invocation: true`** for anything with side effects — releases, deploys, sends,
+  merges. You do not want a model deciding that now is the moment to ship.
+- **`user-invocable: false`** for background knowledge that is not an action anyone would type.
+
+## The description is the whole routing surface
+
+At startup an agent loads **only the name and description**. A vague description is the single most
+common reason a skill never fires.
+
+Write it in the third person. Lead with the use case, then **list the phrases people actually
+say** — the exact words, not a paraphrase of the capability.
+
+> *Execute a backlog work item end to end… Use when asked to "work on / tackle / start / ship
+> WI-###", to pick up the next item, or to work an epic's sub-items.*
+
+## Name your neighbours
+
+**Every skill names the adjacent skills and the boundary between them**, in the description, in one
+clause each.
+
+The failure this fixes is not "no skill fires". It is **a plausible-but-wrong skill firing and
+running to completion** — which is worse, because it produces confident output against the wrong
+procedure. Naming neighbours makes every skill a correction surface:
+
+> *One mechanic across many subjects is /curate-mechanic; a whole new dataset is /patch-ingest;
+> this skill is one subject, whole kit.*
+
+## Land something durable
+
+A skill that only produces conversation evaporates. **Say in the body where the output goes** — a
+register row, a document at a known path, a status field. This is what makes a skill set compound
+instead of being re-derived every session.
+
+## Write standing instructions, not one-time steps
+
+The rendered body enters the conversation once and stays for the session; it is not re-read on
+later turns. Guidance that should apply throughout a task must read as a standing rule, not as
+step 4.
+
+## Say what the skill cannot do
+
+Near the end, briefly. The limits are what stop it being used for the adjacent problem it almost
+fits — which is the same failure as the wrong skill firing, arriving one step later.

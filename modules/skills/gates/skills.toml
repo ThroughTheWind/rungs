@@ -1,0 +1,94 @@
+# Gate table for the `skills` module.
+#
+# Moved here from `gates/structural.toml`: what a SKILL.md may contain is knowledge about skills,
+# not a repo-agnostic structural fact. `gates` contributes the frontmatter-schema engine.
+
+# ── skills-spec-pure ──────────────────────────────────────────────────────────
+
+[[frontmatter_schema]]
+id       = "skills"
+scan     = ["{{dir}}/**/SKILL.md"]
+required = ["name", "description"]
+allowed  = ["name", "description", "license", "compatibility", "metadata", "allowed-tools"]
+# Extensions are legal only when the owning module opted in. The gate reads that manifest rather
+# than a repo-local allowlist, so the portability cost stays attached to the decision.
+extensions_allowed_from = "module.toml:skills.<name>.extensions"
+message = """
+`{file}` uses non-spec frontmatter key `{key}`. claude.ai uploads and the Skills API reject unknown
+keys with a hard error rather than ignoring them. If this is deliberate, opt in from the owning
+module's manifest, where the portability cost is recorded next to the choice.
+"""
+
+# ── skills-description-routes ─────────────────────────────────────────────────
+#
+# Structure, not quality. A gate cannot judge whether a description is *good*; it can tell that it
+# is a single clause with no trigger vocabulary, which is the shape that never fires.
+
+[[frontmatter_schema.field_shape]]
+field     = "description"
+min_words = 20
+requires_any = ["Use when", "Use for", "Use whenever", "Trigger"]
+message   = """
+`{file}`'s description does not say when to use it. At startup an agent loads only the name and
+description, so this is the entire routing surface — lead with the use case and list the phrases
+people actually say.
+"""
+
+# ── skills-names-neighbours ───────────────────────────────────────────────────
+#
+# Only fires past a threshold: in a repo with three skills there is nothing to disambiguate, and
+# demanding cross-references there is the checklist-as-noise failure.
+
+[cross_reference]
+scan            = ["{{dir}}/**/SKILL.md"]
+field           = "description"
+min_skills      = 6
+requires_mention_of_peer = true
+exempt_marker   = "no-neighbours-ok:"     # ignored unless it states a reason
+message = """
+`{file}` names no neighbouring skill. With {count} skills in this repo, the failure mode is no
+longer "no skill fires" but "a plausible-but-wrong skill fires and runs to completion". Name the
+adjacent skills and the boundary, in one clause each.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "skills-spec-pure"
+expect  = "fail"
+fixture = { frontmatter = { name = "x", description = "d", "argument-hint" = "y" }, opted_in = [] }
+
+[[self_test]]
+gate    = "skills-spec-pure"
+expect  = "pass"
+fixture = { frontmatter = { name = "x", description = "d", "disable-model-invocation" = true }, opted_in = ["disable-model-invocation"] }
+
+[[self_test]]
+gate    = "skills-spec-pure"
+expect  = "fail"
+fixture = { frontmatter = { name = "x", description = "d", "disable-model-invocation" = true }, opted_in = [] }
+
+[[self_test]]
+gate    = "skills-description-routes"
+expect  = "fail"
+fixture = { description = "Executes the release process." }
+
+[[self_test]]
+gate    = "skills-description-routes"
+expect  = "pass"
+fixture = { description = "Cut, tag and ship a release from the active candidate. Use when asked to cut the release, tag a version, hotfix production, or roll back a deploy." }
+
+[[self_test]]
+gate    = "skills-names-neighbours"
+expect  = "pass"
+fixture = { skill_count = 3, mentions_peer = false }
+
+[[self_test]]
+gate    = "skills-names-neighbours"
+expect  = "fail"
+fixture = { skill_count = 9, mentions_peer = false }
+
+[[self_test]]
+gate    = "skills-names-neighbours"
+expect  = "pass"
+fixture = { skill_count = 9, mentions_peer = false, exempt = "no-neighbours-ok: the only skill touching deployment" }

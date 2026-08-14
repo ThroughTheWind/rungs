@@ -1,0 +1,89 @@
+[module]
+name    = "skills"
+version = "1.0.0"
+rung    = 2
+summary = "Skill-authoring discipline and the gates that hold it: spec-pure frontmatter, descriptions that route, neighbours named, and output that lands somewhere."
+
+[requires]
+modules = ["instructions"]
+
+[conflicts]
+modules = []
+
+# This is not "the ability to have skills" — every module ships skills through
+# its own skills/ directory. This module ships the discipline for writing good
+# ones, and it is where the SKILL.md frontmatter schema lives, because knowing
+# what a skill may contain is knowledge about skills rather than a repo-agnostic
+# structural fact.
+
+[params.dir]
+description = """
+Where skills live. Resolved from the harness set (ADR-0001): `.claude/skills/` reaches Claude Code,
+Copilot and Cursor today; `.agents/skills/` is the vendor-neutral direction and is not read by
+Claude Code.
+"""
+default     = ".claude/skills"
+allowed     = [".claude/skills", ".agents/skills"]
+consumed_by = "render"
+
+[[gates]]
+id     = "skills-spec-pure"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/skills.toml"
+tier   = "fast"
+why    = """
+The Agent Skills spec allows six frontmatter fields. Anything else is a harness extension, and
+claude.ai uploads and the Skills API reject unknown keys with a hard error rather than ignoring
+them. An extension must be opted into in the owning module's manifest, where its portability cost
+is stated at the point of the choice.
+"""
+
+[[gates]]
+id     = "skills-description-routes"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/skills.toml"
+tier   = "fast"
+why    = """
+A description is the entire routing surface — at startup an agent loads only the name and
+description, so a vague one is the single most common reason a skill never fires. It has to name
+what the skill does and the phrases people actually say.
+"""
+
+[[gates]]
+id     = "skills-names-neighbours"
+kind   = "declared"
+engine = "cross-reference"
+table  = "gates/skills.toml"
+tier   = "fast"
+why    = """
+Past about a dozen skills with overlapping vocabulary the failure stops being "no skill fires" and
+becomes "a plausible-but-wrong skill fires and runs to completion". Every skill naming its
+neighbours makes each one a correction surface.
+"""
+
+[detect]
+paths   = [".claude/skills/**/SKILL.md", ".agents/skills/**/SKILL.md", ".github/prompts/*.prompt.md", ".ai/prompts/*.md"]
+markers = ["rungs:begin skills"]
+
+[[detect.adopt_as]]
+kind = "prompt-library"
+paths = [".github/prompts/*.prompt.md", ".ai/prompts/*.md"]
+note = """
+A markdown prompt library is a skill set without an invocation surface. Adopting means proposing a
+conversion — frontmatter added, one directory per skill — and it is worth doing: the format is now
+an open standard, so the portability objection that justified staying with plain prompts is gone.
+`add` proposes; it never rewrites a prompt in place.
+"""
+
+[provenance]
+sources  = ["rift-forge", "axiom-mesh", "hexguard"]
+patterns = ["invocable-procedure", "skill-neighbours", "prompt-writes-artifact", "operating-skills", "prompt-index-routing"]
+incident = """
+axiom-mesh wrote 21 prompt playbooks, several with no equivalent anywhere else, and gave them no
+invocation surface at all — they must be found, opened and pasted. hexguard-templates shipped the
+best decision procedure in the corpus behind a placeholder table. rift-forge, at 13 skills, had to
+invent the neighbour-naming convention because descriptions alone had stopped disambiguating
+/curate-mechanic from /curate-champion from /patch-ingest.
+"""

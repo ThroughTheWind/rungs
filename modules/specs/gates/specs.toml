@@ -1,0 +1,103 @@
+# Gate table for the `specs` module.
+
+# ── specs-status-evidence ─────────────────────────────────────────────────────
+#
+# The "demo is not done" gate. A story claiming completion must name what closed it; a partial
+# story must say what is missing. Presence, never quality — a gate cannot judge whether the named
+# commit actually implemented the story, and one that tried would be confidently wrong.
+
+[register_schema]
+scan          = ["{{path}}/**/*.md"]
+table_columns = ["Id", "Story", "Status", "Closed by"]
+enum          = { Status = ["✅", "🟡", "⬜"] }
+
+[[register_schema.conditional]]
+when      = { Status = "✅" }
+non_empty = ["Closed by"]
+message   = """
+Story {id} is marked ✅ with nothing in `Closed by`. A spec that overclaims integration is read as
+verified — by the next contributor, by a plan citing it, and by an agent deciding the story is
+already handled. Name the commit, pull request or work item, or mark it 🟡 with what is missing.
+"""
+
+[[register_schema.conditional]]
+when      = { Status = "🟡" }
+requires_note = true
+message   = "Story {id} is 🟡 with no note. A bare partial is a guess; say what is missing."
+
+# ── specs-scope-section ───────────────────────────────────────────────────────
+
+[sections]
+scan      = ["{{path}}/**/*.md"]
+exclude   = ["{{path}}/README.md", "{{path}}/TEMPLATE.md"]
+required  = ["Purpose", "Scope"]
+non_empty = true
+# The out-of-scope half specifically, not just the heading.
+required_subsections = { Scope = ["Out of scope"] }
+message   = """
+{file} has no non-empty `Out of scope`. Without it, "the spec did not say I could not" is a
+defensible reading, and the surface grows sideways during unrelated work.
+"""
+
+# ── specs-ids-unique ──────────────────────────────────────────────────────────
+
+[kinds.feature]
+format  = "[A-Z]{2,8}-F\\d{2}"
+sources = ["{{path}}/**/*.md"]
+
+[kinds.story]
+format  = "[A-Z]{2,8}-US-\\d{1,4}"
+sources = ["{{path}}/**/*.md"]
+
+[citations]
+roots      = ["docs", ".ai", "AGENTS.md"]
+extensions = [".md"]
+
+# ── specs-split-threshold ─────────────────────────────────────────────────────
+
+[file_budget]
+scan      = ["{{path}}/**/*.md"]
+exclude   = ["{{path}}/README.md"]
+max_lines = {{split_lines}}
+warn_at   = 0.85
+message   = """
+{file} is past {{split_lines}} lines. Split it into spec.md + stories/ — a spec nobody reads to
+the end is one whose later sections collect unverified claims. Do not pre-split anything else.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "specs-status-evidence"
+expect  = "fail"
+fixture = { row = { Id = "X-US-001", Status = "✅", "Closed by" = "" } }
+
+[[self_test]]
+gate    = "specs-status-evidence"
+expect  = "pass"
+fixture = { row = { Id = "X-US-001", Status = "✅", "Closed by" = "WI-042" } }
+
+[[self_test]]
+gate    = "specs-status-evidence"
+expect  = "fail"
+fixture = { row = { Id = "X-US-002", Status = "🟡" }, note = "" }
+
+[[self_test]]
+gate    = "specs-scope-section"
+expect  = "fail"
+fixture = { sections = ["Purpose", "Scope"], subsections = { Scope = ["In scope"] } }
+
+[[self_test]]
+gate    = "specs-scope-section"
+expect  = "pass"
+fixture = { sections = ["Purpose", "Scope"], subsections = { Scope = ["In scope", "Out of scope"] } }
+
+[[self_test]]
+gate    = "specs-split-threshold"
+expect  = "fail"
+fixture = { file = "{{path}}/a/spec.md", lines = 900 }
+
+[[self_test]]
+gate    = "specs-split-threshold"
+expect  = "pass"
+fixture = { file = "{{path}}/a/spec.md", lines = 400 }

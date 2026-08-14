@@ -1,0 +1,65 @@
+# Gate table for the `workflows` module.
+
+# ── workflows-plan-tier-declared ──────────────────────────────────────────────
+
+[[frontmatter_schema]]
+id       = "plans"
+scan     = ["{{plan_path}}/**/*.md"]
+exclude  = ["{{plan_path}}/README.md"]
+required = ["tier", "status", "created"]
+enum     = { tier = [1, 2], status = ["draft", "active", "done", "abandoned"] }
+message  = """
+{file} has no `tier`. A plan that does not declare its tier cannot be checked against that tier's
+required sections, and tiering degrades back into "write whatever felt right" — the judgement call
+the table exists to replace. Tier 0 work has no document, so a document here is tier 1 or 2.
+"""
+
+# ── workflows-plan-sections ───────────────────────────────────────────────────
+
+[[sections]]
+when      = { tier = 1 }
+scan      = ["{{plan_path}}/**/*.md"]
+required  = ["Why", "Decisions", "Phases", "Validation", "Follow-up"]
+non_empty = true
+
+[[sections]]
+when      = { tier = 2 }
+scan      = ["{{plan_path}}/**/*.md"]
+required  = [
+  "Why", "Decisions", "Phases", "Validation", "Follow-up",
+  "Boundary decision", "Reuse table", "Proof-of-reuse gate", "Verification gate",
+  "Explicitly out of scope",
+]
+non_empty = true
+message   = """
+{file} is tier 2 and has no non-empty `{section}`. A tier-2 proposal missing its proof-of-reuse
+gate is a tier-1 plan wearing a heavier label — and the label is what other work will trust.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "workflows-plan-tier-declared"
+expect  = "fail"
+fixture = { frontmatter = { status = "active", created = "2026-01-01" } }
+
+[[self_test]]
+gate    = "workflows-plan-tier-declared"
+expect  = "pass"
+fixture = { frontmatter = { tier = 1, status = "active", created = "2026-01-01" } }
+
+[[self_test]]
+gate    = "workflows-plan-tier-declared"
+expect  = "fail"
+fixture = { frontmatter = { tier = 0, status = "active", created = "2026-01-01" } }
+# Tier 0 has no document by definition, so a tier-0 file is a contradiction rather than a plan.
+
+[[self_test]]
+gate    = "workflows-plan-sections"
+expect  = "fail"
+fixture = { tier = 2, sections = ["Why", "Decisions", "Phases", "Validation", "Follow-up"] }
+
+[[self_test]]
+gate    = "workflows-plan-sections"
+expect  = "pass"
+fixture = { tier = 1, sections = ["Why", "Decisions", "Phases", "Validation", "Follow-up"] }

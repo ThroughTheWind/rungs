@@ -12,10 +12,18 @@ specified in [module-catalog.md](../docs/design/module-catalog.md).
 | [`findings`](findings/) | 1 | **authored** — completes `audit → findings → backlog` |
 | [`adr`](adr/) | 1 | **authored** |
 | [`session`](session/) | 1 | **authored** |
-| *(9 more)* | 2–5 | specified in the catalog, not authored |
+| [`ci`](ci/) | 1 | **authored** |
+| [`specs`](specs/) | 2 | **authored** |
+| [`workflows`](workflows/) | 2 | **authored** |
+| [`skills`](skills/) | 2 | **authored** |
+| [`audit`](audit/) | 2 | **authored** |
+| `release` · `design-sync` | 3 | not authored |
+| `doc-authority` | 4 | not authored |
+| `concurrency` | 5 | not authored |
 
-**The `tracked` profile is complete.** `instructions` and `gates` own every shared surface the
-others merge into, which is what makes the rest additive; the remaining nine are all rung 2+.
+**The `disciplined` profile is complete** — eleven of fifteen modules, every rung 0, 1 and 2. Its
+assembled entry document is **134 of the 200-line budget**, leaving 66 for the repo's own content.
+The four remaining are rung 3+ and are opt-in for repos with those specific problems.
 
 ## Anatomy
 
@@ -40,6 +48,13 @@ whether its guard has ever actually fired.
 ## Authoring rules
 
 1. **Substitution only, no logic.** A module that needs a conditional is two modules, or a variant.
+1b. **`${{ … }}` is never substituted.** A `$` immediately before `{{` marks a passthrough, because
+   GitHub Actions expressions (`${{ github.ref }}`) share the delimiter. Without this rule the CI
+   module's own workflow file is silently corrupted at install — the kind of collision that
+   produces a broken file rather than an error.
+1c. **A behavioural parameter reaches file content through a managed block**, never a conditional.
+   `ci.trigger` regenerates the `ci-triggers` block inside the workflow rather than branching the
+   template. This is the general escape when substitution alone is not enough.
 2. **Not everything is a parameter.** If a value cannot substitute cleanly into prose, a table
    *and* a gate, it is the module's opinion — ship it and let a repo diverge. `backlog`'s
    eight-status lifecycle is the worked example.
@@ -60,9 +75,16 @@ whether its guard has ever actually fired.
 7. **A managed-block marker uses the target file's comment syntax** — `<!-- rungs:begin x -->` in
    markdown, `# rungs:begin x` in TOML and `.gitignore`. Found by writing an HTML comment into a
    TOML registry, where it is a syntax error rather than a marker.
-8. **A fragment counts against the entry document's line budget.** Keep one under ~15 lines. The
-   budget is shared, and a module that spends 40 lines of it is taking them from the repo's own
-   content.
+8. **A fragment is a routing stanza, not a summary — 4 to 8 lines.** The budget is shared, and it
+   is the binding constraint at profile scale, not per module. Measured while authoring the
+   `disciplined` profile: a 73-line skeleton plus ten fragments at ~12 lines each is 193 of the
+   200-line budget with nothing left for the repo's own conventions or repo map. Rewritten as
+   routing stanzas the same profile assembles to **134**, leaving 66 for the repo. A fragment says
+   *what exists, where it lives, and which skill runs it*; the reasoning goes in the module's
+   authority document, and the surface-specific rules go in `.ai/rules/`.
+8b. **Not every module needs a fragment.** `ci` has none — nothing about it changes what an agent
+   should do, and the `gates` fragment already names `rungs check`. A fragment that restates a
+   neighbour's is spending shared budget on a duplicate.
 9b. **A parameter may reference a declared dependency's parameters** as `{{<module>.<param>}}` —
    `findings` places its register at `docs/{{backlog.root}}/FINDINGS.md` so it lands next to the
    backlog it feeds. Only declared dependencies; anything else is an undeclared coupling.

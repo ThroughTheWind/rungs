@@ -1,0 +1,74 @@
+[module]
+name    = "ci"
+version = "1.0.0"
+rung    = 1
+summary = "One workflow that runs the gate registry, a matrix instead of a file per item, and a check that keeps it that way."
+
+[requires]
+modules = ["gates"]
+
+[conflicts]
+modules = []
+
+# Rung 1, but bundled in the `disciplined` profile rather than `tracked`: rung is
+# how mature the practice is, a profile is which problem you have. A solo repo
+# can be at rung 1 without needing CI at all.
+
+[params.provider]
+description  = "CI provider. Only `github` is implemented."
+default      = "github"
+allowed      = ["github"]
+consumed_by  = "render"
+
+[params.trigger]
+description  = """
+When the gate run fires. `push` runs on every push to any branch. `land` runs only on the
+integration branch and on merge refs, which is what a repo with billed minutes and many concurrent
+sessions wants — rift-forge measured ~19 billed minutes per run, and one run per push across ~15
+sessions is 400-1000 minutes a day.
+"""
+default      = "push"
+allowed      = ["push", "land"]
+consumed_by  = "render"
+# Reaches file content through the `ci-triggers` managed block, not through a
+# conditional. That is the general mechanism: a behavioural parameter changes
+# what the renderer writes into a block, and substitution-only stays intact.
+
+[params.workflow_path]
+description = "Where the workflow file lands"
+default     = ".github/workflows/checks.yml"
+
+[[gates]]
+id     = "ci-workflow-proliferation"
+kind   = "declared"
+engine = "file-population"
+table  = "gates/ci.toml"
+tier   = "fast"
+why    = """
+hexguard has 98 near-identical per-package release workflows because a phase checklist told the
+agent to add one each time. Changing release policy there is a 98-file edit and the workflow
+directory is unreadable. A checklist step that creates a file creates N files, and nobody notices
+until N is large — so the count is checked.
+"""
+
+[detect]
+paths   = [".github/workflows/*.yml", ".github/workflows/*.yaml", ".gitlab-ci.yml", "azure-pipelines.yml"]
+markers = ["rungs:begin ci"]
+
+[[detect.adopt_as]]
+kind = "existing-workflows"
+note = """
+A repo with workflows has CI; it does not have this registry-driven one. Adopt means: leave every
+existing workflow alone, add one that runs `rungs check`, and report the proliferation count so the
+owner can see what they have. Never rewrite or delete a workflow — that is somebody's deploy.
+"""
+
+[provenance]
+sources  = ["hexguard", "rift-forge"]
+patterns = ["matrix-not-per-item-ci", "workflow-proliferation-check", "ci-at-land-time"]
+incident = """
+hexguard's .github/workflows/ holds 99 files: one CI workflow and 98 per-package release
+workflows, near-identical, hand-maintained, emitted one at a time by Phase 3 of a mandatory
+checklist. rift-forge went the other way and made CI cost-aware — item branches are deliberately
+not triggers, because the repository is private and one run is ~19 billed minutes.
+"""

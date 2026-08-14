@@ -1,0 +1,48 @@
+# Gate table for the `audit` module.
+
+# ── audit-output-is-rows ──────────────────────────────────────────────────────
+#
+# Refuses a per-subject audit document tree from re-forming. Deliberately does not fire on a small
+# number: one or two written-up assessments are a legitimate thing to have. It fires on the shape
+# that scales — a document per subject, accumulating.
+
+[file_population]
+scan          = ["docs/**/audits/**/*.md", "docs/**/*-audit-*.md", "docs/**/*-readiness-*.md"]
+exclude       = ["docs/**/archive/**"]
+warn_at       = 6
+fail_at       = 15
+exempt_marker = "audit-doc-ok:"        # ignored unless it states a reason
+message       = """
+{count} per-subject audit documents. This is the shape that reached 268 files in one repo, where
+there is still no way to say which findings are open — the prompt was good enough to run 268
+times, the output form was the defect. Audit output belongs in the findings register as rows.
+Existing documents are history and can stay; mark them with `<!-- audit-doc-ok: <reason> -->` or
+move them to an archive.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "audit-output-is-rows"
+expect  = "pass"
+fixture = { matching_files = 3 }
+
+[[self_test]]
+gate    = "audit-output-is-rows"
+expect  = "fail"
+fixture = { matching_files = 40 }
+
+[[self_test]]
+gate    = "audit-output-is-rows"
+expect  = "pass"
+fixture = { matching_files = 40, location = "docs/archive/audits/" }
+
+[[self_test]]
+gate    = "audit-output-is-rows"
+expect  = "pass"
+fixture = { matching_files = 40, exempt = "audit-doc-ok: regulatory evidence, retained per policy" }
+
+[[self_test]]
+gate    = "audit-output-is-rows"
+expect  = "fail"
+fixture = { matching_files = 40, exempt = "audit-doc-ok:" }

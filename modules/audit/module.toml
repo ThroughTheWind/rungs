@@ -1,0 +1,66 @@
+[module]
+name    = "audit"
+version = "1.0.0"
+rung    = 2
+summary = "A repeatable assessment whose output is rows in the findings register, never a document per subject."
+
+[requires]
+modules = ["findings"]
+
+[conflicts]
+modules = []
+
+# The dependency is the whole point, and it is declared because a repo violated
+# it: an audit with nowhere to land produces unactioned prose.
+
+[params.subject]
+description = "What gets audited, one at a time — package, service, surface, endpoint…"
+default     = "package"
+
+[params.criteria_path]
+description = """
+The criteria list, as a file the repo edits rather than a parameter. A list substituted into a
+skill body is a list nobody maintains, and criteria are the part that changes most.
+"""
+default     = "docs/audit-criteria.md"
+
+[[gates]]
+id     = "audit-output-is-rows"
+kind   = "declared"
+engine = "file-population"
+table  = "gates/audit.toml"
+tier   = "fast"
+why    = """
+hexguard produced 268 per-subject audit documents and there is still no way to say which findings
+are open. The audit prompt was good enough to run 268 times; the output form was the defect. This
+gate refuses the document tree from re-forming.
+"""
+
+[skills.assess]
+# No extensions. Read-only, and useful for a model to reach for when it notices
+# a subject has never been assessed.
+
+[detect]
+paths   = ["docs/**/audits/**/*.md", "docs/**/*-audit-*.md", "docs/**/*-readiness-*.md"]
+markers = ["rungs:begin audit"]
+
+[[detect.adopt_as]]
+kind = "audit-documents"
+note = """
+An existing per-subject audit tree is the failure this module exists to prevent, already present.
+Adopt means: leave the documents alone as history, register the criteria, and report how many
+subjects have documents with no corresponding open finding — which is the number that says how much
+of that work is currently actionable. Never bulk-convert; that would fabricate findings nobody
+verified.
+"""
+
+[provenance]
+sources  = ["hexguard", "axiom-mesh"]
+patterns = ["audit-to-register", "lifecycle-verbs"]
+incident = """
+hexguard ran /assess-package-readiness across its catalogue twice, producing 268 dated documents
+plus a global audit, a triage doc and a methodology doc — and no aggregate state. To know the
+current condition of the catalogue you read 268 files. There was also no work-item object for a
+finding to become, so the assessments could not close. axiom-mesh got this right by logging every
+confirmed defect as a stable AD-### row before any remediation was deferred.
+"""

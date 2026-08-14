@@ -1,0 +1,40 @@
+# Audit criteria
+
+What `/assess` checks, one {{subject}} at a time. **Edit this file** — the criteria are the part
+that changes most, and a list buried in a skill body is a list nobody maintains.
+
+Each criterion needs a **verdict that is checkable** rather than a matter of taste. If two people
+could assess the same subject and disagree, the criterion is not written tightly enough yet.
+
+## Criteria
+
+| # | Criterion | Passes when | Severity if failing |
+| --- | --- | --- | --- |
+| 1 | Public surface is documented | Every exported entry point has a description and an example | medium |
+| 2 | Tests cover the contract | The documented behaviour has a test, not just the implementation | high |
+| 3 | Errors are modelled | Expected failures are typed and surfaced, not swallowed | high |
+| 4 | Consumable from outside | A consumer can use it without reading its internals | medium |
+| 5 | No undeclared coupling | Dependencies are declared, not reached through | high |
+| 6 | Change is safe | A breaking change is detectable by something other than a human reading the diff | medium |
+
+<!-- Add, remove and reword freely. Six is a starting point, not a standard. -->
+
+## How a criterion becomes a finding
+
+A failing criterion becomes **one row** in the findings register:
+
+- **Sev** — from the table above
+- **What** — the criterion and the specific way this subject fails it
+- **Evidence** — the path, symbol or command that shows it. **A criterion marked failing with no
+  evidence is an opinion**, and next month nobody can tell whether it was checked
+
+Passing criteria produce **nothing**. An audit that records its passes is an audit that produces a
+document, and a document per subject is the shape this module exists to prevent.
+
+## What an audit does not do
+
+- It does not prioritise. Severity is about the problem; whether to act is a separate decision made
+  against the register.
+- It does not fix anything, and it does not open work items. A finding is the observation; a work
+  item is the decision.
+- **It does not prove a subject is good.** A subject passing six criteria has passed six criteria.

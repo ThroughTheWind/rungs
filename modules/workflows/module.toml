@@ -1,0 +1,75 @@
+[module]
+name    = "workflows"
+version = "1.0.0"
+rung    = 2
+summary = "Decision procedures: how to decompose work, whether to reuse or build, and how much planning a piece of work earns."
+
+[requires]
+modules = ["instructions"]
+
+[conflicts]
+modules = []
+
+[params.path]
+description = "Where the authority document lives"
+default     = "docs/workflows"
+
+[params.upstream_repo]
+description = """
+A sibling or upstream repository this one consumes from. Enables the extend-upstream branch of the
+reuse decision. Blank means the reuse table has three branches instead of four.
+"""
+default     = ""
+
+[params.plan_path]
+description = "Where tier-1 and tier-2 plan documents land"
+default     = "docs/plans"
+
+[[gates]]
+id     = "workflows-plan-tier-declared"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/workflows.toml"
+tier   = "fast"
+why    = """
+A plan document that does not say which tier it is cannot be checked against that tier's required
+sections, and tiering silently degrades into "write whatever felt right", which is the judgement
+call the table exists to replace.
+"""
+
+[[gates]]
+id     = "workflows-plan-sections"
+kind   = "declared"
+engine = "sections"
+table  = "gates/workflows.toml"
+tier   = "fast"
+why    = "A tier-2 proposal missing its proof-of-reuse gate is a tier-1 plan wearing a heavier label."
+
+[skills.decompose]
+# No extensions. Deciding how to break work down is exactly what a model should
+# reach for unprompted when handed something larger than one change.
+
+[detect]
+paths   = ["docs/plans/**/*.md", "docs/**/plan-*.md", "docs/.ai/backlog/plan-*.md", ".github/instructions/*workflow*.md"]
+markers = ["rungs:begin workflows"]
+
+[provenance]
+sources  = ["hexguard-templates", "hexguard", "rift-forge"]
+patterns = [
+  "reuse-decision-table",
+  "second-consumer-threshold",
+  "doc-tier-selection",
+  "per-concern-decomposition",
+  "multi-story-batching",
+  "numbered-workflow-steps",
+  "phase-checklist",
+  "lifecycle-verbs",
+  "controlled-performance-comparison",
+]
+incident = """
+hexguard-templates wrote the best decision procedure in the corpus — a nine-step workflow whose
+tier table is introduced with "Use this table instead of 'use judgment'" — and shipped it with no
+invocation surface at all. Its AGENTS.md prompts table reads, verbatim: "No custom prompts or
+agents defined yet for this repo. This table is a placeholder for future additions." The procedure
+loads only when a matching file is edited, which is after the decisions it governs have been made.
+"""

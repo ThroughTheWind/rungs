@@ -33,15 +33,10 @@ what most rules honestly are; the failure this catches is the silent third categ
 reads as mandatory and nothing checks it.
 """
 
-[[frontmatter_schema]]
-id       = "skills"
-scan     = [".claude/skills/**/SKILL.md", ".agents/skills/**/SKILL.md"]
-required = ["name", "description"]
-# The six Agent Skills spec fields. Anything else is a harness extension and must be opted into in
-# the owning module's manifest, because claude.ai uploads and the Skills API reject unknown keys
-# with a hard error.
-allowed  = ["name", "description", "license", "compatibility", "metadata", "allowed-tools"]
-extensions_allowed_from = "module.toml"
+# The skill frontmatter schema lived here and moved to the `skills` module, for the same reason
+# `ids-unique` and `generated-current` did: knowing what a SKILL.md may contain is knowledge about
+# skills, not a repo-agnostic structural fact. What `gates` contributes is the `frontmatter-schema`
+# engine that both tables run on.
 
 # ── gates-self-tests-both-directions ──────────────────────────────────────────
 #

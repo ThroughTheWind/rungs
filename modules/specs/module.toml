@@ -1,0 +1,105 @@
+[module]
+name    = "specs"
+version = "1.0.0"
+rung    = 2
+summary = "Behaviour specifications with stable feature and story ids, per-story status, a mandatory scope section, and a gate against overclaiming."
+
+[requires]
+modules = []
+
+[conflicts]
+modules = []
+
+# Orthogonal to `backlog`, and installing one does not give you the other. Specs
+# answer *what is in scope*; a backlog answers *what is happening*. hexguard-templates
+# has excellent specs and cannot say what is in flight.
+
+[params.path]
+description = "Directory holding the specs"
+default     = "docs/specs"
+
+[params.feature_format]
+description = "Feature id shape, per surface prefix"
+default     = "<PREFIX>-F##"
+
+[params.story_format]
+description = "Story id shape"
+default     = "<PREFIX>-US-###"
+
+[params.split_lines]
+description = """
+Split a spec into spec.md + stories/ only past this many lines. A threshold, not a preference —
+it is what stops structure being created ahead of content.
+"""
+default     = 600
+
+[[gates]]
+id     = "specs-status-evidence"
+kind   = "declared"
+engine = "register-schema"
+table  = "gates/specs.toml"
+tier   = "fast"
+why    = """
+A story marked done must name what closed it. "Demo is not done": an endpoint that exists to
+showcase a capability in isolation is partial with a note, never complete. A spec that overclaims
+integration is worse than no spec, because it is read as verified.
+"""
+
+[[gates]]
+id     = "specs-scope-section"
+kind   = "declared"
+engine = "sections"
+table  = "gates/specs.toml"
+tier   = "fast"
+why    = "Out-of-scope is what stops an agent silently expanding a surface while implementing an unrelated story."
+
+[[gates]]
+id     = "specs-ids-unique"
+kind   = "declared"
+engine = "id-integrity"
+table  = "gates/specs.toml"
+tier   = "fast"
+why    = "Story ids are cited from commits, plans and work items; two stories sharing one make every citation ambiguous."
+
+[[gates]]
+id     = "specs-split-threshold"
+kind   = "declared"
+engine = "file-budget"
+table  = "gates/specs.toml"
+tier   = "fast"
+why    = "A spec past the threshold is one nobody reads to the end, and its later sections are where the unverified claims collect."
+
+[detect]
+paths   = ["docs/specs/**/*.md", "docs/**/spec.md", "specs/**/*.md"]
+markers = ["rungs:begin specs"]
+
+# Authority-docs-by-topic is a different way to answer "what is true", and it is
+# not a spec tree. Never auto-adopted.
+[[detect.paradigm]]
+id      = "authority-docs"
+paths   = [".ai/context/doc_ownership.md", "docs/architecture/project_scope.md"]
+compare = "docs/research/synthesis.md#37-specs-separate-tree-or-work-item-plans"
+note    = """
+axiom-mesh routes truth by topic through a doc-ownership registry rather than by surface through
+story specs. Both answer "what is in scope"; only the spec tree carries per-story status. They
+coexist — `doc-authority` is the module for the other shape — but installing specs over an
+authority tree creates a second place to look, which is the failure that registry exists to
+prevent.
+"""
+
+[[detect.infer]]
+param   = "story_format"
+pattern = "\\b([A-Z]{2,8})-US-\\d{1,4}\\b"
+min     = 10
+scope   = ["docs/**/*.md"]
+
+[provenance]
+sources  = ["hexguard-templates", "rift-forge"]
+patterns = ["spec-ids-and-status", "mandatory-scope-section", "demo-not-done", "split-threshold", "reference-implementation-pointer", "adoption-guide"]
+incident = """
+hexguard-templates states the rule this module gates: "Some endpoints exist purely to showcase a
+package in isolation. Mark these partial with an explicit note, never complete — a spec that
+overclaims integration is worse than no spec." The rule exists because overclaiming had already
+happened, and it was enforced by review only. Its own platform spec carries the status line
+"stable, enforcement gaps noted".
+"""
