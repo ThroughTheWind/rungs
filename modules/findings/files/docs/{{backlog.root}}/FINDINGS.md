@@ -1,3 +1,6 @@
+**Authoritative for:** what has been noticed and not yet decided, and the disposition of everything closed.
+**Not authoritative for:** what to do about any of it — a finding becomes a work item before it becomes work.
+
 # Findings
 
 Things noticed while doing something else. **A finding is the observation; a work item is the

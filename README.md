@@ -1,133 +1,188 @@
 # rungs
 
-A flexible AI repository starter CLI: scaffolds a repo with a **working agentic development
-system** — agent instructions, skills, backlog/ticket management, validation gates, and CI
-wiring — composed from modules you pick, not a single opinionated template.
+**Installs and maintains a repository's agentic development system.**
 
-Its content is not invented. It is **extracted** from four repositories that were each built
-with a different agentic workflow, in different technologies, for different purposes, over
-roughly six months. What worked in them becomes a module; what hurt becomes a guardrail.
+Your agent has instructions. Do they have gates? Is your backlog's status field
+telling the truth about what actually merged? That thing you noticed last
+Tuesday — where did it go?
 
----
+rungs scaffolds the parts of a working setup — agent instructions, skills, work
+tracking, findings, decision records, validation gates — as **modules you pick**,
+then keeps checking that they still say what they said.
 
-## Source repositories
+```console
+$ rungs init . tracked
+  instructions   3 create
+  gates          1 create · 1 skill · 2 merge
+  backlog        6 create · 1 rule · 2 skill · 1 merge
+  findings       1 create · 1 skill · 1 merge
+  adr            2 create · 1 merge
+  session        2 create · 1 skill · 1 merge
 
-| Repo | Period | Scale | Workflow style | Stack |
-| --- | --- | --- | --- | --- |
-| [`axiom-mesh`](docs/research/repos/axiom-mesh.md) | 2026-03 → 04 | 73 commits, 48+ ADRs, 21 archived sessions | **Doc-authority + prompt library** (`.ai/`) | .NET 10, Postgres, Redis |
-| [`hexguard`](docs/research/repos/hexguard.md) | 2026-06 → 07 | 507 commits, ~200 packages | **Copilot instructions + phase checklists** (`.github/`) | Angular 22 + .NET monorepo |
-| [`hexguard-templates`](docs/research/repos/hexguard-templates.md) | 2026-07 | 319 commits | **Spec-first + story workflow** (`docs/specs/`) | Angular + .NET reference apps |
-| [`rift-forge`](docs/research/repos/rift-forge.md) | 2026-07 → 08 | 3236 commits, 401 branches, 69 gates, 12 skills | **Skills + mechanical gates + concurrent sessions** (`.claude/`) | .NET 10 + Angular 22 |
+  registered 18 gates from 6 module(s)
+  rendered 2 file(s) · 0 degraded → .ai/render-report.md
 
-The four are also a **chronological progression**. Read in date order they show the same
-operator learning the same lessons and paying for them each time — which is the strongest
-argument for extracting them into a starter.
-
----
-
-## The sequence
-
-This repo is being built in seven phases. Each phase gates the next.
-
-### Phase 0 — Initialize · **done**
-
-Git repo, docs skeleton, working rules for this repo, the sequence itself (this file).
-
-### Phase 1 — Extract, per repo · **done**
-
-One condensed deliverable per source repo, all on a fixed template so they can be compared
-column-by-column rather than read as four essays:
-
-- what the setup **is** (files, entry points, moving parts)
-- **what works** — with the evidence that it works
-- **what doesn't** — with the evidence that it doesn't
-- **pain points** and how they were solved, or why they weren't
-- **how to improve further**
-- **what the CLI should take** — the extraction verdict
-
-→ [`docs/research/repos/`](docs/research/repos/)
-
-### Phase 2 — Synthesize across repos · **done**
-
-Convergences (four independent repos reaching the same answer = a default), divergences
-(same problem, different answers = a choice the CLI must offer), and the failure modes all
-four hit. Plus the **maturity ladder**: which practices are worth their cost at which repo
-size — a solo spike does not want rift-forge's land protocol.
-
-→ [`docs/research/synthesis.md`](docs/research/synthesis.md) ·
-[`docs/research/pattern-catalog.md`](docs/research/pattern-catalog.md)
-
-### Phase 3 — Product definition · **done**
-
-What the CLI actually is: the scaffold model, the module boundary, the output contract, the
-upgrade story, and harness portability.
-
-Measuring the harness formats before designing for them
-([harness-landscape.md](docs/research/harness-landscape.md), 2026-08-14) overturned the Phase 2
-hypothesis. Agentic config is **four primitives**, not one, and two of them stopped needing
-rendering after the source repos were built: procedures are now an open standard (Agent Skills,
-45+ clients) and always-on context needs a one-line bridge. Only **path-scoped rules** are
-genuinely fragmented — so the CLI renders one primitive, not four.
-
-- [`docs/design/product-brief.md`](docs/design/product-brief.md) — **done**
-- [ADR-0001](docs/decisions/ADR-0001-multi-harness-rendering.md) multi-harness rendering ·
-  [ADR-0002](docs/decisions/ADR-0002-stack-and-runtime-footprint.md) stack + runtime footprint ·
-  [ADR-0003](docs/decisions/ADR-0003-module-definition-format.md) module definition format ·
-  [ADR-0005](docs/decisions/ADR-0005-self-instrumentation.md) self-instrumentation — **all accepted**
-- [ADR-0004](docs/decisions/ADR-0004-adoption-detection.md) adoption detection — **accepted**:
-  adoption is a mapping, not a migration
-
-### Phase 4 — Module catalog · **done**
-
-The ~80 patterns become **15 modules**, each with a rung, dependencies, parameters, and the
-patterns it implements. Three dependencies (`audit → findings → backlog`, `workflows → skills`,
-`doc-authority → gates`) exist because a source repo violated them and paid.
-
-→ [`docs/design/module-catalog.md`](docs/design/module-catalog.md) — the specification, with
-install profiles and the corpus expectation matrix that Phase 6 checks against.
-→ [`modules/`](modules/) — **all fifteen authored**, rung 0 through 5. Authoring them produced
-sixteen corrections to the module format itself, each applied to its source rather than noted.
-
-- [ADR-0006](docs/decisions/ADR-0006-the-name.md) the name — **accepted**: the tool is `rungs`
-  (working title `ai-cli` through 2026-08-14, which is what commits before `fc143cb` say). Taken
-  at the phase boundary because the name is an identifier in *other people's* repos — the config
-  filename and the managed merge markers — and renaming after distribution silently breaks
-  `upgrade` and divergence reporting rather than failing loudly
-
-### Phase 5 — CLI implementation
-
-Stack decision first (ADR). Then `init` (new repo), `add <module>` (retrofit an existing
-one — the harder and more valuable case), `doctor` (audit a repo against the modules it
-claims), `upgrade`.
-
-### Phase 6 — Dogfood
-
-Retrofit the four source repos from the CLI and diff against what they have by hand. A
-module that cannot reproduce the repo it was extracted from is not finished.
-
-### Phase 7 — Distribution
-
-Packaging, versioning, docs site, public template registry.
+$ rungs check
+  pass backlog-ids                        2ms   2 examined
+  FAIL backlog-merged-status              68ms
+         docs/backlog/items/WI-014-parser.md: branch feature/wi-014 is merged
+         but status is 'in_progress'
+  …
+  17 pass · 1 fail · 0 unimplemented · 0 error
+```
 
 ---
 
-## Working rules for this repo
+## Why this exists
 
-See [`CLAUDE.md`](CLAUDE.md). Short version: extraction claims carry **evidence** (a file
-path, a commit, a measured count) or they are marked as opinion. This repo's whole value is
-that its content was paid for once already.
+Every rule in here was **paid for once already**.
+
+The content is extracted from four repositories built over six months in
+different stacks — a .NET ingestion platform, a 105-package Angular monorepo, a
+set of reference apps, and a full-stack product with 3,236 commits across 401
+branches. Each solved part of this by hand. Each also failed in ways the others
+did too.
+
+So rungs does not ship a good idea about how to work. It ships **what four repos
+learned, with the incident attached**. Every module declares its provenance, and
+`doctor` quotes that incident back when a gate it installed has never fired:
+
+> `check-findings-register` has run 340 times and never fired. It exists because
+> one repo produced 268 audit reports with no register to close them into. Is
+> that still a risk here — or is this gate scoped too narrowly?
+
+The research is in [`docs/research/`](docs/research/README.md) and stands on its
+own: four repo autopsies, the [eight failure modes all of them
+hit](docs/research/synthesis.md), and a maturity ladder that prices each practice
+so you don't install rung 5 at rung 1.
+
+## Install
+
+Not published yet. For now:
+
+```bash
+git clone <this repo> && cd rungs && npm install
+node src/cli.ts --help
+```
+
+Requires **Node 22.18+** — it runs TypeScript directly, no build step. A
+published `npx rungs` is Phase 7.
+
+## What you get
+
+`rungs init . tracked` writes:
+
+```text
+AGENTS.md              # what every session reads — with a line budget that is enforced
+CLAUDE.md              # a one-line bridge: @AGENTS.md. Not a second copy
+.ai/
+  rules/               # path-scoped rules you author, rendered per harness
+  gates.toml           # every gate this repo runs
+  rungs.toml           # what is installed, and a hash of everything we wrote
+.claude/skills/        # spec-compliant Agent Skills — portable to 45+ clients
+docs/backlog/          # work items, a board, a findings register
+docs/decisions/        # ADRs, with an admission rule that keeps the directory small
+```
+
+**Nothing is overwritten, ever.** `add` on a repo that already has a backlog
+keeps yours and installs only what is missing. Files you edit afterwards are
+reported as diverged and left alone.
+
+## Commands
+
+| | |
+| --- | --- |
+| `rungs init [path] [profile]` | Scaffold — `minimal` · `tracked` · `disciplined` · `hardened` · `fleet` |
+| `rungs doctor [path]` | What does this repo already have? Works on repos that never installed anything |
+| `rungs add <module…>` | Install one module, resolving dependencies and adopting what exists |
+| `rungs check [path]` | Run the gates, record the ledger |
+| `rungs render [path]` | Re-emit path-scoped rules for each harness |
+| `rungs upgrade [path]` | Move to newer module versions, never touching what you edited |
+| `rungs eject [path]` | Materialise the engines; stop depending on rungs |
+| `rungs setup git [path]` | Install the merge drivers `.gitattributes` names |
+| `rungs modules` | List the set and audit the manifests |
+
+Add `--dry-run` to any write command.
+
+## Modules
+
+Fifteen, each carrying a **rung** — how mature a practice is — so `add` can tell
+you when you are installing above your level.
+
+| Rung | Modules |
+| --- | --- |
+| **0** any repo with an agent | `instructions` |
+| **1** more than one thing in flight | `gates` `backlog` `findings` `adr` `session` `ci` |
+| **2** repeated work of the same shape | `specs` `workflows` `skills` `audit` |
+| **3** shipping versions, external design | `release` `design-sync` |
+| **4** docs that restate each other | `doc-authority` |
+| **5** 5+ concurrent sessions | `concurrency` |
+
+`concurrency` refuses to install without `--confirm-threshold`, because below
+five simultaneous sessions every mechanism in it costs more than it returns.
+Selling rung 5 to a rung-1 repo is the most likely way this tool does harm.
+
+Full specification: [`docs/design/module-catalog.md`](docs/design/module-catalog.md).
+
+## Which agents
+
+Skills are **spec-compliant Agent Skills**, portable to Claude Code, Codex,
+Cursor, Copilot, Gemini CLI and 40+ others without translation.
+
+Only *path-scoped rules* are genuinely fragmented across harnesses, so that is
+the only thing rungs renders — into `.claude/rules/`, `.github/instructions/`
+and `.cursor/rules/`. Anything a target cannot express is **reported, never
+silently dropped**, in `.ai/render-report.md`.
+
+Reasoning: [ADR-0001](docs/decisions/ADR-0001-multi-harness-rendering.md).
+
+## Design commitments
+
+Four promises that shape everything else:
+
+- **Your repo gains no new language runtime.** rungs writes no gate scripts.
+  Generic gates are declarations run by engines the CLI provides; anything else
+  is a shell command you already own. A .NET repo with no `package.json` stays
+  that way. ([ADR-0002](docs/decisions/ADR-0002-stack-and-runtime-footprint.md))
+- **A gate with no engine blocks — it never reports green.** A registry passing
+  because most of its gates do nothing is the worst failure this tool could have.
+- **`eject` is a promise, not a courtesy.** It materialises the engines into your
+  repo and rewrites the registry to plain commands. A tool whose checks vanish
+  when you uninstall it is one nobody should adopt.
+- **Nothing is measured that needs judgement.** The gate ledger records exit
+  status and wall-clock. It never scores your workflow.
+  ([ADR-0005](docs/decisions/ADR-0005-self-instrumentation.md))
 
 ## Status
 
-**Phases 0–4 complete.** Research, synthesis, ADRs 0001–0005, and all fifteen modules authored.
+**Pre-release, v0.1.0.** Everything above runs; nothing is published.
 
-**Phase 5 in progress.** `modules`, `doctor`, `add`, `render` and `check` work. Twelve modules
-install into a fresh repo; **31 gates register and all 31 have engines** — 28 pass, 2 fail, 0
-unimplemented. Detection is verified against all four source
-repos ([detection-verification.md](docs/design/detection-verification.md)). Remaining: the twelve
-engines, then `init`, `upgrade`, `eject`.
+rungs is installed in its own repo and its gates run on every change — 20 pass,
+0 fail. Detection is [verified against all four source
+repos](docs/design/detection-verification.md). Not yet done: publishing, and
+installing into a source repo for real rather than in dry run.
 
-**Phase 5 is next, and nothing has been executed yet.** Every finding so far came from *writing*
-modules, not running them: the `[detect]` blocks are unverified claims and the gate tables
-describe engines that do not exist. The first executable milestone is `render` + `doctor` run
-against the four source repos.
+Expect module *contents* to move. The command surface is settled.
+
+## Contributing
+
+Modules are the product, and **a module is a directory that looks like what it
+emits** — markdown and TOML, no code. If you can read the repo it produces, you
+can write one: [`modules/README.md`](modules/README.md).
+
+Every module must declare `[provenance]` with a real incident behind it. A module
+nobody paid for does not ship.
+
+## Repository
+
+| | |
+| --- | --- |
+| [`docs/research/`](docs/research/README.md) | The four repo autopsies, the synthesis, the pattern catalogue |
+| [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
+| [`docs/decisions/`](docs/decisions/README.md) | ADRs |
+| [`modules/`](modules/README.md) | The fifteen modules |
+| [`src/`](src/) | The CLI, ~2,800 lines |
+
+## Licence
+
+MIT.

@@ -1,3 +1,6 @@
+**Authoritative for:** what lives in this directory and when an item leaves it.
+**Not authoritative for:** the lifecycle itself, which is the methodology one level up.
+
 # Items
 
 One file per work item: `{{id_prefix}}-###-slug.md`, from

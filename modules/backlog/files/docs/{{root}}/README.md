@@ -1,3 +1,6 @@
+**Authoritative for:** how work is proposed, decided, planned, executed and reviewed, and the meaning of each status.
+**Not authoritative for:** what any individual item contains, and what the code should look like — see the engineering guides.
+
 # Delivery methodology & backlog
 
 How work is proposed, decided, planned, executed, and reviewed here — and where it is tracked.

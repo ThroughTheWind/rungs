@@ -1,3 +1,6 @@
+**Authoritative for:** the loop many sessions share: where to branch from, when to verify, how to land, and which conflicts are the tooling’s problem.
+**Not authoritative for:** the backlog lifecycle those branches carry, and the gates the loop runs.
+
 # Concurrent sessions
 
 **Read the threshold first.** Below roughly five sessions working at once on one integration

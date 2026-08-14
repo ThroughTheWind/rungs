@@ -9,7 +9,9 @@ modules. Its content is **extracted** from four existing repos (see [README](REA
 designed from first principles. That constraint is the product: anyone can invent a backlog
 convention, and most inventions are untested.
 
-Current phase and the full sequence: [README §The sequence](README.md#the-sequence).
+Current phase and the full sequence: [docs/roadmap.md](docs/roadmap.md). What rungs *does*, for
+someone arriving at the repo, is the [README](README.md) — keep those two apart, because a README
+that doubles as a project journal serves neither reader.
 
 ## The evidence rule (MANDATORY)
 

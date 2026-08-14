@@ -1,3 +1,6 @@
+**Authoritative for:** spec conventions: ids, per-story status, the mandatory scope section, and how to propose new cross-cutting scope.
+**Not authoritative for:** the behaviour of any surface, which each spec owns, and what is currently being built, which is the backlog.
+
 # Specs
 
 What each surface is supposed to do. **Specs describe behaviour; they do not track work** — if you

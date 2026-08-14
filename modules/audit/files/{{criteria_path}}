@@ -1,3 +1,6 @@
+**Authoritative for:** what an assessment checks, and the severity of each failing criterion.
+**Not authoritative for:** whether any subject passes, which is a finding, and whether to act on it, which is a decision.
+
 # Audit criteria
 
 What `/assess` checks, one {{subject}} at a time. **Edit this file** — the criteria are the part

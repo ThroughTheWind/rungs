@@ -1,3 +1,6 @@
+**Authoritative for:** how finished items are archived and why they are never edited afterwards.
+**Not authoritative for:** the content of any archived item, which is fixed at the moment it was archived.
+
 # Archive
 
 Finished work items, moved here so [`../items/`](../items/README.md) holds only work that can still

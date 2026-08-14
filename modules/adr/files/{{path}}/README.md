@@ -1,3 +1,6 @@
+**Authoritative for:** the admission rule, the record format, and the index of decisions.
+**Not authoritative for:** the content of any decision — each record is authoritative for its own.
+
 # Decisions
 
 Architecture decision records. **Immutable**: a record is never edited to reflect a new decision —

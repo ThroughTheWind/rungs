@@ -29,7 +29,12 @@ note = "Detects restatement by vocabulary. It cannot detect a restatement that u
 [[sections]]
 id       = "scope-headers"
 scan     = ["docs/**/*.md"]
-exclude  = ["README.md", "docs/**/archive/**"]
+# A template is not a document. A scope header inside `TEMPLATE.md` would be
+# copied into every item made from it, which is both wrong and self-defeating —
+# the copies would each claim authority over the same topic. The root README is
+# exempt for axiom-mesh's original reason: it is a navigation page, and a scope
+# header there makes a worse landing page for no gain.
+exclude  = ["README.md", "docs/**/archive/**", "**/TEMPLATE.md", "**/*-TEMPLATE.md"]
 requires_opening = ["**Authoritative for:**", "**Not authoritative for:**"]
 enabled_by = "{{scope_headers}}"
 message  = "{file} does not open with both scope blocks. A reader who opened the wrong document should learn it in one line."

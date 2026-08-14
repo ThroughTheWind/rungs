@@ -1,3 +1,6 @@
+**Authoritative for:** which items exist and what state each is in, and the next free id.
+**Not authoritative for:** why any item exists or how to do it — that is the item file.
+
 # Backlog
 
 The board. One row per live work item, grouped by status. Items live in
