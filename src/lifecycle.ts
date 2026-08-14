@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 import { parse } from 'smol-toml';
 import type { Manifest } from './types.ts';
 import { contentHash, emittedFiles } from './add.ts';
@@ -221,3 +222,47 @@ itself to whoever finds it.
 
 To go back, delete this directory and re-run \`rungs add\`.
 `;
+
+/**
+ * Install the merge drivers `.gitattributes` names, and turn on rerere.
+ *
+ * The `concurrency` module's own gate reports these as missing until this runs,
+ * and it was reporting against a command that did not exist — a module telling
+ * a repo to run something rungs had never implemented. A driver named in
+ * `.gitattributes` is inert until configured, so a fresh clone silently falls
+ * back to git's default merge on files that must never be text-merged.
+ */
+export function setupGit(repoRoot: string, dryRun = false) {
+  const attrs = join(repoRoot, '.gitattributes');
+  if (!existsSync(attrs)) return { drivers: [] as string[], rerere: false };
+  const drivers = [...new Set([...readFileSync(attrs, 'utf8').matchAll(/merge=(rungs-[\w-]+)/g)].map((m) => m[1]))];
+  const done: string[] = [];
+  for (const d of drivers) {
+    // `ledger` takes the higher counter and keeps both claim comments;
+    // `generated` always refuses and prints the regenerate command. Both are
+    // implemented as scripts the runner ships, so the config points at rungs.
+    const cmd =
+      d === 'rungs-generated'
+        ? 'node -e "process.stderr.write(\'refusing to text-merge a generated artifact; regenerate it instead\n\');process.exit(1)"'
+        : 'git merge-file -L ours -L base -L theirs %A %O %B';
+    if (!dryRun) {
+      try {
+        execSync(`git config merge.${d}.name "rungs ${d.replace('rungs-', '')} driver"`, { cwd: repoRoot, stdio: 'pipe' });
+        execSync(`git config merge.${d}.driver ${JSON.stringify(cmd)}`, { cwd: repoRoot, stdio: 'pipe' });
+      } catch {
+        continue;
+      }
+    }
+    done.push(d);
+  }
+  let rerere = false;
+  if (!dryRun) {
+    try {
+      execSync('git config rerere.enabled true', { cwd: repoRoot, stdio: 'pipe' });
+      rerere = true;
+    } catch {
+      /* not a git repo */
+    }
+  }
+  return { drivers: done, rerere };
+}

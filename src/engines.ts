@@ -10,6 +10,7 @@ import {
   registerSchema,
   renderFreshness,
 } from './engines2.ts';
+import { gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
 
 export interface Finding {
   file?: string;
@@ -163,11 +164,30 @@ const linkIntegrity: Engine = (t, root, files) => {
 };
 
 const filePopulation: Engine = (t, root, files) => {
-  const hits = dropGenerated(root, expand(files, t.scan)).filter((f) => !new Set(expand(files, t.exclude, [])).has(f));
+  let hits = dropGenerated(root, expand(files, t.scan)).filter((f) => !new Set(expand(files, t.exclude, [])).has(f));
+
+  // A `detect` narrows the population to files matching a shape. Without it the
+  // gate counted *every scanned file* — so the redirect-stub check reported
+  // "12 matching files, threshold 1" against a repo with no stubs at all, which
+  // is a confidently wrong number rather than a finding.
+  if (t.detect === 'body_is_only_a_pointer') {
+    hits = hits.filter((rel) => {
+      const body = read(root, rel)
+        .replace(/^---\n[\s\S]*?\n---\n/, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/^#.*$/gm, '')
+        .trim();
+      const words = body.split(/\s+/).filter(Boolean).length;
+      const links = (body.match(/\]\(/g) ?? []).length;
+      // Short *and* mostly a link. Short alone is a stub-shaped index page.
+      return words > 0 && words <= (t.max_body_words ?? 40) && links >= 1;
+    });
+  }
+
   const findings: Finding[] = [];
   const failAt = t.fail_at ?? Infinity;
   if (hits.length >= failAt) {
-    findings.push({ message: `${hits.length} matching files, threshold ${failAt} (e.g. ${hits[0]})` });
+    findings.push({ message: `${hits.length} matching file(s), threshold ${failAt} (e.g. ${hits[0]})` });
   }
   return { findings, examined: hits.length };
 };
@@ -221,6 +241,10 @@ export const ENGINES: Record<string, Engine> = {
   'cross-reference': crossReference,
   'git-status-reconcile': gitStatusReconcile,
   'computed-claim': computedClaim,
+  'term-ownership': termOwnership,
+  'rule-propagation': rulePropagation,
+  'git-state': gitState,
+  'merge-driver-check': mergeDriverCheck,
 };
 
 /**

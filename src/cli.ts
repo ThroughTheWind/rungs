@@ -7,7 +7,7 @@ import { addModule, adoptableGates, registerGates, resolveInstallOrder, writeIns
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
-import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord } from './lifecycle.ts';
+import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import type { DetectResult, Manifest } from './types.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -154,7 +154,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   const installed: Manifest[] = [];
   const wrote = new Map<string, Set<string>>();
   for (const mod of order) {
-    if (mod.threshold?.confirm && !dryRun) {
+    if (mod.threshold?.confirm && !dryRun && !flags.has('--confirm-threshold')) {
       console.log(
         c.yellow(`  ${mod.name}: requires ${mod.threshold.minimum}+ ${mod.threshold.metric}.`) +
           c.dim(' Skipped — pass --confirm-threshold to install it.\n'),
@@ -372,6 +372,17 @@ switch (cmd) {
     process.exit(cmdUpgrade(resolve(args[0] ?? process.cwd()), flags.has('--apply')));
   case 'eject':
     process.exit(cmdEject(resolve(args[0] ?? process.cwd()), flags.has('--dry-run')));
+  case 'setup': {
+    const r = setupGit(resolve(args[1] ?? process.cwd()), flags.has('--dry-run'));
+    console.log(
+      r.drivers.length
+        ? `\n  installed ${r.drivers.length} merge driver(s): ${r.drivers.join(', ')}` +
+            (r.rerere ? c.dim(' · rerere on') : '') +
+            c.dim('\n  Declared drivers were inert until now — a fresh clone needs this once.\n')
+        : c.dim('\n  no rungs merge drivers declared in .gitattributes\n'),
+    );
+    process.exit(0);
+  }
   case 'render':
     process.exit(cmdRender(resolve(args[0] ?? process.cwd()), HARNESSES, STAMP));
   case 'add': {

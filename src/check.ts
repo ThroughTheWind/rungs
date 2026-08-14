@@ -172,6 +172,10 @@ const tableKey = (engine: string) =>
     'cross-reference': 'cross_reference',
     'git-status-reconcile': 'merged_status',
     'computed-claim': 'computed_claim',
+    'term-ownership': 'term_ownership',
+    'rule-propagation': 'rule_propagation',
+    'git-state': 'git_state',
+    'merge-driver-check': 'merge_driver_check',
   })[engine] ?? engine;
 
 /**
