@@ -1,0 +1,127 @@
+[module]
+name    = "instructions"
+version = "1.0.0"
+rung    = 0
+summary = "The agent entry point, the harness bridge, path-scoped rule sources, and the render pipeline. The one module every repo installs."
+
+[requires]
+modules = []
+
+[conflicts]
+modules = []
+
+# ── parameters ────────────────────────────────────────────────────────────────
+
+[params.project_name]
+description = "Name used in the entry document's first line"
+default     = ""            # inferred from the repo directory when blank
+
+[params.harnesses]
+description  = "Which coding agents to emit for. Drives the ADR-0001 render matrix."
+default      = ["claude", "agents-md"]
+allowed      = ["claude", "copilot", "cursor", "agents-md"]
+consumed_by  = "render"
+# `consumed_by` marks a *behavioural* parameter: it changes what the CLI does rather than being
+# substituted into a template, so it will never appear as {{harnesses}} anywhere. Without this a
+# dead-parameter lint would report it, and the obvious "fix" would be to delete the parameter that
+# decides which harnesses exist.
+
+[params.core_budget]
+description = """
+Maximum lines in AGENTS.md before `instructions-core-size` fails. 200 is Anthropic's published
+guidance: "Longer files consume more context and reduce adherence." Fragments merged by other
+modules count against it, which is deliberate — the budget is what forces content into
+path-scoped rules instead.
+"""
+default     = 200
+
+# ── gates ─────────────────────────────────────────────────────────────────────
+
+[[gates]]
+id     = "instructions-core-size"
+kind   = "declared"
+engine = "file-budget"
+table  = "gates/core.toml"
+tier   = "fast"
+why    = "rift-forge's entry document reached 1513 lines and every session read all of it, in the one repo that otherwise measured everything."
+
+[[gates]]
+id     = "instructions-render-current"
+kind   = "declared"
+engine = "render-freshness"
+table  = "gates/core.toml"
+tier   = "fast"
+why    = "A rendered rule that no longer matches its source is a rule the agent is not reading. A green check means 'not yet regenerated', never 'current'."
+
+[[gates]]
+id     = "instructions-repo-map-current"
+kind   = "declared"
+engine = "render-freshness"
+table  = "gates/core.toml"
+tier   = "fast"
+why    = "Every source repo hand-maintained a repo map and one of them grew five duplicated entries — in the file every session reads first."
+
+# A hook is a gate with a lifecycle trigger rather than a runner trigger. It is
+# registered into the harness that supports it and reported as degraded for those
+# that do not, exactly like any other ADR-0001 target.
+[[gates]]
+id      = "instructions-shell-backticks"
+kind    = "declared"
+engine  = "shell-safety"
+table   = "gates/core.toml"
+trigger = "pre-tool-use"
+matcher = "Bash|PowerShell"
+why     = """
+Inside a double-quoted shell string, backticks are command substitution, so a `node -e "…"` that
+writes documentation deletes the backticked words and leaves grammatical text behind. It exits 0.
+rift-forge measured six occurrences and six repair passes in one session, documented it, and was
+broken three more times before making it a hook — which is the whole argument for the escalation
+ladder this module ships.
+"""
+
+# ── detection (ADR-0004) ──────────────────────────────────────────────────────
+
+[detect]
+paths = [
+  "AGENTS.md",
+  "CLAUDE.md",
+  ".github/copilot-instructions.md",
+  ".cursorrules",
+  ".ai/instructions.md",
+]
+markers = ["rungs:begin instructions"]
+
+# No `detect.paradigm`: there is no competing paradigm for "the file the agent
+# reads first". Every repo either has one or does not.
+
+[[detect.infer]]
+param   = "harnesses"
+# Presence of a harness's own directory proposes adding it to the matrix.
+# Proposes only — a stale `.cursorrules` is not consent to emit Cursor rules.
+paths   = { claude = ".claude/", copilot = ".github/instructions/", cursor = ".cursor/" }
+
+# ── provenance (required, validated) ──────────────────────────────────────────
+
+[provenance]
+sources  = ["axiom-mesh", "hexguard", "hexguard-templates", "rift-forge"]
+patterns = [
+  "entry-point",
+  "agents-md-bridge",
+  "scoped-instructions",
+  "core-size-budget",
+  "validation-matrix",
+  "repo-map",
+  "narrowest-anchor-loop",
+  "negative-conventions",
+  "comms-style",
+  "shell-editing-rules",
+  "instruction-hardening",
+]
+incident = """
+All four source repos converged on a single canonical entry document, and all four put content in
+it that decayed. axiom-mesh's 350-line file had to warn four times that one of its own routing
+targets was a dead redirect. hexguard-templates' repo map grew five duplicated entries in the file
+every session reads first, in the repo whose conventions forbid restating scope. rift-forge reached
+1513 lines with no path scoping at all, while hexguard had solved that with applyTo globs a month
+earlier. Nobody had both completeness and scope.
+"""

@@ -64,7 +64,10 @@ A module ships up to six things — and **which of the six it ships is the modul
 4. **Gates** — `check:` scripts, their self-tests, and a **registry entry declaring each to the
    runner** ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md)). Gates stay dumb: exit 0
    or 1, no logging. The `gates` module owns the runner; every other module registers with it
-5. **Hooks** — P4, where the harness supports them
+5. **Hooks** — P4, where the harness supports them. **Not a separate thing to ship**: a hook is a
+   gate with a lifecycle trigger rather than a runner trigger, so it lives in the same registry
+   entry and gets the same ledger. Resolved this way while authoring `instructions`, whose
+   shell-safety guard is the only hook in the catalog
 6. **Docs** — the authority doc explaining the *why*, which the rules cite
 
 Each of the six maps to one subdirectory of the module, whose name determines what happens to the

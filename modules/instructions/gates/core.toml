@@ -1,0 +1,91 @@
+# Gate table for the `instructions` module. Data only — no script enters the repo (ADR-0002).
+
+# ── instructions-core-size ────────────────────────────────────────────────────
+#
+# Counts what is actually loaded: HTML comments are stripped by at least one harness before
+# injection, so they do not count, and neither does frontmatter.
+
+[file_budget]
+file        = "AGENTS.md"
+max_lines   = {{core_budget}}
+ignore      = ["html_comments", "frontmatter"]
+warn_at     = 0.8
+message     = """
+AGENTS.md is over its {{core_budget}}-line budget. Move the most path-specific section into
+.ai/rules/ — that is what the budget is for. Merged module fragments count toward it, so a fragment
+that has grown past ~15 lines is usually the one to look at first.
+"""
+
+# ── instructions-render-current ───────────────────────────────────────────────
+
+[[render_freshness]]
+id      = "rules"
+sources = [".ai/rules/**/*.md"]
+targets = [".claude/rules/**/*.md", ".github/instructions/**/*.instructions.md", ".cursor/rules/**/*.mdc"]
+command = "rungs render"
+# Targets are checked only for harnesses in the installed matrix; the rest are ignored rather
+# than reported missing.
+
+# ── instructions-repo-map-current ─────────────────────────────────────────────
+
+[[render_freshness]]
+id      = "repo-map"
+block   = { file = "AGENTS.md", marker = "repo-map" }
+derives = "directory-tree"
+depth   = 2
+command = "rungs render"
+
+# ── instructions-shell-backticks (hook: pre-tool-use) ─────────────────────────
+#
+# Refuses a command that would let the shell expand backticks inside a double-quoted string.
+# It permits every form the rule prescribes, and asserts BOTH directions below, because a guard
+# that also refuses its own fix is one people disable.
+
+[shell_safety]
+refuse = [
+  { pattern = "node\\s+-e\\s+\"[^\"]*`", why = "backtick inside a double-quoted -e string is command substitution" },
+  { pattern = "python\\s+-c\\s+\"[^\"]*`", why = "same trap, Python" },
+  { pattern = "<<\\s*EOF", why = "unquoted heredoc is shell-expanded; use <<'EOF'" },
+]
+permit = [
+  "script file invocation",
+  "single-quoted -e string",
+  "<<'EOF'",
+  "escaped backtick",
+]
+message = "Write the script to a file and run it. A file has no shell quoting layer, so backticks are just characters."
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+#
+# Both directions, always. A gate whose rules are currently satisfied is indistinguishable from a
+# gate that matches nothing.
+
+[[self_test]]
+gate   = "instructions-shell-backticks"
+expect = "fail"
+input  = "node -e \"fs.writeFileSync('a.md', 'see `foo`')\""
+
+[[self_test]]
+gate   = "instructions-shell-backticks"
+expect = "pass"
+input  = "node scripts/edit.mjs"
+
+[[self_test]]
+gate   = "instructions-shell-backticks"
+expect = "pass"
+input  = "cat <<'EOF' > a.md"
+
+[[self_test]]
+gate   = "instructions-shell-backticks"
+expect = "fail"
+input  = "cat <<EOF > a.md"
+
+[[self_test]]
+gate   = "instructions-core-size"
+expect = "fail"
+fixture = { file = "AGENTS.md", lines = 9999 }
+
+[[self_test]]
+gate   = "instructions-core-size"
+expect = "pass"
+fixture = { file = "AGENTS.md", lines = 10 }

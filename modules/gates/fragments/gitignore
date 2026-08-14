@@ -1,0 +1,4 @@
+# rungs:begin gates@1.0.0
+# Gate run ledger — local, machine-specific, never transmitted (ADR-0005).
+.ai/.gate-ledger.jsonl
+# rungs:end gates

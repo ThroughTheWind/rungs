@@ -1,0 +1,49 @@
+# Gate registry.
+#
+# Every gate this repo runs is declared here, and `rungs check` runs them. Modules add their own
+# entries on install — those live inside marked blocks and are regenerated; anything outside a
+# block is yours and is never touched.
+
+[runner]
+tiers          = {{tiers}}
+ledger         = {{ledger}}          # .ai/.gate-ledger.jsonl — gitignored, local, no network
+fast_budget_ms = {{fast_budget_ms}}
+
+# ── your gates ────────────────────────────────────────────────────────────────
+#
+# A `command` gate is any shell string. The runner records its exit status and wall-clock the same
+# way it records a declared gate's, whatever language it is written in — which is how an existing
+# validator gets the ledger without being rewritten.
+#
+# [[gates]]
+# id      = "build"
+# kind    = "command"
+# tier    = "full"
+# command = "dotnet build MySolution.slnx -c Release"
+# why     = "One sentence. `doctor` quotes this back when the gate has never fired."
+#
+# [[gates]]
+# id      = "doc-links"
+# kind    = "command"
+# tier    = "fast"
+# command = "pwsh ./scripts/validate-doc-links.ps1"
+# why     = "Adopted 2026-01-01; predates rungs and is owned by this repo."
+
+# ── module gates ──────────────────────────────────────────────────────────────
+# Generated. Edit the owning module's parameters, not these entries.
+
+# rungs:begin gates
+# rungs:end gates
+
+# ── notes on writing a gate ───────────────────────────────────────────────────
+#
+# 1. A gate exits 0 or 1 and prints why. It does not write to the ledger — the runner does.
+#    A gate that records its own runs can lie about them.
+# 2. Every declared gate needs self-tests asserting BOTH directions. A gate whose rules are
+#    currently satisfied looks exactly like a gate that matches nothing.
+# 3. An exemption marker is ignored unless it states a reason. An escape hatch nobody has to
+#    justify is not an escape hatch, it is an off switch.
+# 4. Match against a preceding-context negation window before refusing a phrase, or the gate will
+#    refuse the sentence that documents the fix. A guard that refuses its own fix gets disabled.
+# 5. Prefer a gate that recomputes a number over one that compares a typed number. A probe
+#    encoding a guess is a gate that is confidently wrong, which is worse than the typed value.

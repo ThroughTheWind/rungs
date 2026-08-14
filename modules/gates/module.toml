@@ -1,0 +1,143 @@
+[module]
+name    = "gates"
+version = "1.0.0"
+rung    = 1
+summary = "The gate runner, the registry every other module registers into, the run ledger, and the generic structural gate set."
+
+[requires]
+modules = ["instructions"]
+
+[conflicts]
+modules = []
+
+# ── parameters ────────────────────────────────────────────────────────────────
+
+[params.tiers]
+description = "Ordered gate tiers. The first is the one meant to run constantly."
+default     = ["fast", "full"]
+
+[params.ledger]
+description = """
+Record exit status and wall-clock per gate per run to a gitignored ledger (ADR-0005). Off means
+`doctor` cannot answer which gates never fire, and declared durations stay hand-typed.
+"""
+default     = true
+
+[params.fast_budget_ms]
+description = """
+Wall-clock the fast tier is expected to stay inside. Compared against the ledger's observed
+values, not against typed per-gate numbers — that comparison is the reason the ledger exists.
+"""
+default     = 30000
+
+# ── gates ─────────────────────────────────────────────────────────────────────
+#
+# Only genuinely repo-agnostic checks live here. Anything needing to know what a
+# document means belongs to the module that owns that document.
+
+[[gates]]
+id     = "gates-links-resolve"
+kind   = "declared"
+engine = "link-integrity"
+table  = "gates/structural.toml"
+tier   = "fast"
+why    = "A relative link that stopped resolving is the cheapest possible signal that a document moved and its citers did not."
+
+[[gates]]
+id     = "gates-paths-exist"
+kind   = "declared"
+engine = "link-integrity"
+table  = "gates/structural.toml"
+tier   = "fast"
+why    = "Instruction files name paths. hexguard's seven instruction files describe workspace registration and CI wiring across 105 packages, and nothing detected a moved path."
+
+[[gates]]
+id     = "gates-frontmatter-valid"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/structural.toml"
+tier   = "fast"
+why    = "A skill with malformed frontmatter does not fail; it silently never loads."
+
+[[gates]]
+id     = "gates-rules-declare-enforcement"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/structural.toml"
+tier   = "fast"
+why    = """
+Every rule declares `gated` or `review-only`, and a rule claiming MANDATORY with no gate behind it
+is reported. This is failure mode F1 made detectable: all four source repos wrote rules they could
+not check, and all four decayed — including inside the file that states the rule.
+"""
+
+[[gates]]
+id     = "gates-self-tests-both-directions"
+kind   = "declared"
+engine = "gate-meta"
+table  = "gates/structural.toml"
+tier   = "fast"
+why    = """
+The meta-gate. Every declared gate must carry at least one self-test expecting `fail` and one
+expecting `pass`, because a gate whose rules are currently satisfied is indistinguishable from a
+gate that matches nothing.
+"""
+
+# ── skills ────────────────────────────────────────────────────────────────────
+
+[skills.harden-rule]
+# No extensions. Escalating a broken rule is exactly the kind of thing a model
+# should be able to reach for on its own, mid-task, without being asked.
+
+# ── detection (ADR-0004) ──────────────────────────────────────────────────────
+#
+# Deliberately narrow. A repo with a folder of validation scripts has gates; it
+# does not have *this* registry, and conflating the two would let `add` believe
+# it owns scripts it has never read.
+
+[detect]
+paths   = [".ai/gates.toml"]
+markers = ["rungs:begin gates"]
+
+# Existing validators. Not a paradigm difference — a repo that has these has the
+# thing this module wraps, and they adopt cleanly as `command` gates. `add`
+# proposes registering them; it never rewrites one.
+[[detect.adopt_as]]
+kind  = "command"
+paths = [
+  ".github/scripts/check-*.mjs",
+  ".github/scripts/validate-*.mjs",
+  "scripts/validate-*.ps1",
+  "scripts/check-*.sh",
+]
+note  = """
+Registering an existing validator gives it the runner, the ledger and attribution without changing
+a line of it. This is the axiom-mesh case (8 PowerShell validators, no root package.json) and the
+rift-forge case (82 registry entries, no ledger) in one mechanism.
+"""
+
+# ── provenance (required, validated) ──────────────────────────────────────────
+
+[provenance]
+sources  = ["rift-forge", "axiom-mesh"]
+patterns = [
+  "structural-gates",
+  "gate-self-test",
+  "read-the-negation",
+  "reasoned-exemption",
+  "computed-claims",
+  "generate-derivable",
+  "enforcement-declaration",
+  "ageing-signal",
+  "tool-level-hook",
+  "instruction-hardening",
+]
+incident = """
+rift-forge's verify.mjs carries 82 gates each with a hand-typed `ms` duration measured on a single
+date, supporting a "~30s" fast-tier budget stated in an authority document. The fast tier's 73
+typed values sum to 38.4s serial; it runs concurrently, so the claim is plausible and unverifiable
+from the repo. The runner produces the true duration of all 82 on every run and discards it — the
+computed-claims failure inside the runner that enforces the other gates. Separately, its CI was red
+for 11 of 15 runs on two permanently-broken jobs, kept survivable by attribution, which is also
+what removed the pressure to fix them.
+"""

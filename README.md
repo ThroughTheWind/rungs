@@ -87,6 +87,12 @@ patterns it implements. Three dependencies (`audit → findings → backlog`, `w
 including install profiles and the corpus expectation matrix that Phase 6 checks against.
 Next: author `modules/backlog/` in full as the exemplar that proves the format.
 
+- [ADR-0006](docs/decisions/ADR-0006-the-name.md) the name — **accepted**: the tool is `rungs`
+  (working title `ai-cli` through 2026-08-14, which is what commits before `fc143cb` say). Taken
+  at the phase boundary because the name is an identifier in *other people's* repos — the config
+  filename and the managed merge markers — and renaming after distribution silently breaks
+  `upgrade` and divergence reporting rather than failing loudly
+
 ### Phase 5 — CLI implementation
 
 Stack decision first (ADR). Then `init` (new repo), `add <module>` (retrofit an existing

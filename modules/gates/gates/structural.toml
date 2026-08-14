@@ -1,0 +1,100 @@
+# Gate table for the `gates` module — the repo-agnostic structural set.
+#
+# Nothing here knows what a document *means*. Anything that does belongs to the module that owns
+# that document (ADR-0003's declared/command boundary).
+
+# ── gates-links-resolve · gates-paths-exist ───────────────────────────────────
+
+[link_integrity]
+scan       = ["**/*.md", ".ai/**/*.toml"]
+exclude    = ["node_modules/**", "**/archive/**", ".git/**"]
+check      = ["relative_markdown_links", "backticked_paths"]
+# Backticked paths are checked only when they look like paths — containing a `/` or a known
+# extension — because prose is full of `identifiers` that are not files. Under-detection is the
+# correct bias: a missed stale path is a nuisance, a false refusal on every code span is a gate
+# people delete.
+path_hint  = ["/", ".md", ".ts", ".cs", ".mjs", ".toml", ".json", ".ps1"]
+exempt     = "path-ok:"       # ignored unless it states a reason
+
+[link_integrity.notes]
+external = "not fetched — a gate that needs the network is a gate that fails on a plane"
+
+# ── gates-frontmatter-valid · gates-rules-declare-enforcement ─────────────────
+
+[[frontmatter_schema]]
+id       = "rules"
+scan     = [".ai/rules/**/*.md"]
+required = ["description", "enforcement"]
+optional = ["paths"]
+enum     = { enforcement = ["gated", "review-only"] }
+message  = """
+Every rule declares whether something enforces it. `review-only` is a legitimate answer and is
+what most rules honestly are; the failure this catches is the silent third category, where a rule
+reads as mandatory and nothing checks it.
+"""
+
+[[frontmatter_schema]]
+id       = "skills"
+scan     = [".claude/skills/**/SKILL.md", ".agents/skills/**/SKILL.md"]
+required = ["name", "description"]
+# The six Agent Skills spec fields. Anything else is a harness extension and must be opted into in
+# the owning module's manifest, because claude.ai uploads and the Skills API reject unknown keys
+# with a hard error.
+allowed  = ["name", "description", "license", "compatibility", "metadata", "allowed-tools"]
+extensions_allowed_from = "module.toml"
+
+# ── gates-self-tests-both-directions ──────────────────────────────────────────
+#
+# The meta-gate.
+
+[gate_meta]
+require_self_tests = true
+require_directions = ["pass", "fail"]
+applies_to         = "declared"    # a command gate is the repo's own; we do not audit its tests
+message            = """
+Declared gate `{id}` has no self-test expecting `{missing}`. A gate whose rules are all currently
+satisfied is indistinguishable from a gate that matches nothing, and the fail case is the half
+that proves it can still fire.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate   = "gates-links-resolve"
+expect = "fail"
+input  = "See [the plan](./does-not-exist.md)."
+
+[[self_test]]
+gate   = "gates-links-resolve"
+expect = "pass"
+input  = "See [this table](./structural.toml)."
+
+[[self_test]]
+gate   = "gates-paths-exist"
+expect = "pass"
+input  = "The `Result<T>` type wraps it."          # a code span that is not a path
+
+[[self_test]]
+gate   = "gates-rules-declare-enforcement"
+expect = "fail"
+fixture = { file = ".ai/rules/x.md", frontmatter = { description = "d", paths = ["**"] } }
+
+[[self_test]]
+gate   = "gates-rules-declare-enforcement"
+expect = "pass"
+fixture = { file = ".ai/rules/x.md", frontmatter = { description = "d", enforcement = "review-only" } }
+
+[[self_test]]
+gate   = "gates-frontmatter-valid"
+expect = "fail"
+fixture = { file = ".claude/skills/x/SKILL.md", frontmatter = { name = "x", description = "d", "argument-hint" = "y" } }
+
+[[self_test]]
+gate   = "gates-self-tests-both-directions"
+expect = "fail"
+fixture = { gate = "example", self_tests = ["pass"] }
+
+[[self_test]]
+gate   = "gates-self-tests-both-directions"
+expect = "pass"
+fixture = { gate = "example", self_tests = ["pass", "fail"] }

@@ -89,6 +89,8 @@ same disposition as `files`.)*
 The only module every repo installs. Owns [ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md)'s
 entire output surface.
 
+**Authored 2026-08-14 — [`modules/instructions/`](../../modules/instructions/).**
+
 - **params:** `harnesses` (list: `claude`, `copilot`, `cursor`, `agents-md`) · `core_budget`
   (default `200` lines — vendor guidance, see [harness-landscape §3](../research/harness-landscape.md))
 - **files:** `AGENTS.md` skeleton (identity · non-negotiables · repo map · **validation matrix** ·
@@ -109,6 +111,13 @@ entire output surface.
 
 Owns the runner, the registry, and the ledger. Every other module registers its gates here rather
 than emitting scripts ([ADR-0002](../decisions/ADR-0002-stack-and-runtime-footprint.md)).
+
+**Authored 2026-08-14 — [`modules/gates/`](../../modules/gates/).** Its own gate set was trimmed
+during authoring: `ids-unique` and `generated-current` were listed here but are *module-specific*
+(`backlog-ids`, `instructions-render-current`), and what `gates` actually contributes is the
+**engines** they run on. What it keeps is repo-agnostic — plus two that no source repo had:
+`rules-declare-enforcement` (failure mode F1 made detectable) and
+`self-tests-both-directions` (the meta-gate).
 
 - **params:** `tiers` (default `fast`, `full`) · `ledger` (default `on`)
 - **files:** `.ai/gates.toml` registry · ledger `.gitignore` entry
@@ -408,10 +417,20 @@ lacks).
    forced: ADR-0003's redundant `docs/` disposition was dropped, and `sprint-archive` /
    `backlog-spaces` were deferred out of this module because substitution-only templating cannot
    make a section optional.
-2. **`instructions` and `gates`** — the two every profile needs, and the two that own the shared
-   surfaces (`AGENTS.md`, the registry) every other module merges into.
-3. Then the rest, in rung order.
+2. ~~**`instructions` and `gates`**~~ — **done 2026-08-14**. The `tracked` profile's spine is
+   authored: the two modules that own every shared surface the others merge into.
+3. Then the rest, in rung order — starting with `findings`, which completes the
+   `audit → findings → backlog` chain.
 
-**What the exemplar did not exercise**, and therefore remains unproven: a module with more than one
-`rules/` file; a `command` gate (all three of `backlog`'s are `declared`); a `conflicts` entry; and
-the `detect.paradigm` path, which needs `axiom-mesh` in front of it to be tested honestly.
+**Still unexercised by the three authored modules**, and therefore unproven: a module with more
+than one `rules/` file; a live `command` gate (`gates` documents the kind and adopts into it, but
+ships none); a `conflicts` entry; and the `detect.paradigm` path, which needs `axiom-mesh` in front
+of it to be tested honestly.
+
+**Format findings so far, all applied to their sources rather than noted:** ADR-0003's redundant
+`docs/` disposition dropped · `sprint-archive`/`backlog-spaces` deferred out of `backlog` because
+substitution-only cannot make a section optional · hooks resolved as a gate *trigger* rather than a
+sixth thing a module ships · markers must use the target file's comment syntax · fragments count
+against the entry document's line budget · optional prose ships commented out. Six in three
+modules is a healthy rate for a format on first contact, and each was cheaper to fix now than
+after twelve more modules cited it.

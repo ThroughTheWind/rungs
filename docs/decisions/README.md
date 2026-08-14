@@ -11,10 +11,13 @@ Architecture decision records for rungs itself.
 | [0003](ADR-0003-module-definition-format.md) | Module definition format: a directory that looks like what it emits | accepted | 2026-08-14 |
 | [0004](ADR-0004-adoption-detection.md) | Adoption detection: map what exists, never migrate it | accepted | 2026-08-14 |
 | [0005](ADR-0005-self-instrumentation.md) | Self-instrumentation: the runner records what it observes, and nothing else | accepted | 2026-08-14 |
+| [0006](ADR-0006-the-name.md) | The name: `rungs`, and why a name here is an identifier rather than a brand | accepted | 2026-08-14 |
 
-> Decided out of numeric order, each because it blocked the next: 0005 set the gate-shipping
-> contract, 0002 set what a scaffolded repo may depend on, 0003 is largely 0002's consequence, and
-> 0004 turned out to need mostly what 0002 and 0003 had already settled. **Phase 3 is closed.**
+> 0001–0005 were decided out of numeric order, each because it blocked the next: 0005 set the
+> gate-shipping contract, 0002 set what a scaffolded repo may depend on, 0003 is largely 0002's
+> consequence, and 0004 turned out to need mostly what 0002 and 0003 had already settled.
+> **Phase 3 is closed.** 0006 is Phase 4, taken at the boundary because Phase 4 is where the name
+> stops being prose and starts being written into module manifests.
 
 ## Admission rule
 
