@@ -34,7 +34,7 @@ const PROFILES = [
 
 const REPOS = [
   ["axiom-mesh", "2026-03 → 04", "73 commits · 48+ ADRs", "doc authority + prompt library"],
-  ["hexguard", "2026-06 → 07", "507 commits · ~200 packages", "scoped instructions + checklists"],
+  ["hexguard", "2026-06 → 07", "507 commits · 105 packages", "scoped instructions + checklists"],
   ["hexguard-templates", "2026-07", "319 commits", "spec-first + story workflow"],
   ["rift-forge", "2026-07 → 08", "3236 commits · 401 branches", "mechanical gates + concurrency"],
 ] as const;
@@ -42,7 +42,10 @@ const REPOS = [
 const g = SITE.gates;
 ---
 
-<Base title="rungs — reinforce the repo you already have">
+<Base
+  title="rungs — reinforce the repo you already have"
+  description="rungs installs and maintains a repository's agentic development system — backlog, findings, gates, skills — as 15 composable modules extracted from four repos that already paid for the lessons. Retrofit first: npx @rungs/cli add <module>."
+>
   <section class="hero">
     <div>
       <h1>Your repo already stands.<br />Reinforce it.</h1>

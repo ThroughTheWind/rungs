@@ -15,9 +15,21 @@ const todo = RULES.filter((r) => r.status !== "done");
 // The rule this page argues from is now on the wiki, so cite it there rather than off-site.
 // createElement, not JSX: an .astro frontmatter block is TypeScript.
 const governedBy = createElement("a", { href: routeForDoc("CLAUDE.md") }, "CLAUDE.md — the evidence rule");
+
+// Admission check 6 used to hold up ADR-0006's name inventory as the model measurement. That
+// inventory was retracted in the ADR itself — `npm view` tested registration, not publishability —
+// so the check now cites it as the counter-example and measures something the command actually
+// proves. A page arguing for receipts must not carry a number its own corpus withdrew.
+const g = SITE.gates;
+const adr0006 = routeForDoc("docs/decisions/ADR-0006-the-name.md");
 ---
 
-<Base title="Contribute — rungs" width={1000}>
+<Base
+  title="Contribute — rungs"
+  description="How to author a rungs module: the six admission checks a contribution must pass, and the markdown conventions the wiki detects. Every claim carries evidence or is marked as opinion."
+  srHeading="Contribute to rungs — author a module"
+  width={1000}
+>
   <div class="sheet">
     <TitleBlock
       kicker="Contribute"
@@ -79,11 +91,11 @@ const governedBy = createElement("a", { href: routeForDoc("CLAUDE.md") }, "CLAUD
         <div class="check">
           <div class="check-t">6 · Counts carry receipts</div>
           <div class="check-b">
-            <Measurement
-              value="84 names checked; 56 taken, 28 free"
-              date="2026-08-14"
-              command="npm view <name> version"
-            /> — count, date, command, one line.
+            <Measurement value={`${g.pass} pass · ${g.fail} fail`} date={SITE.asOf} command="npx @rungs/cli check" />
+             — count, date, command, one line. And the command must test the property the claim is
+            about: <a href={adr0006}>ADR-0006</a> shipped a 28-name "available" list measured with
+            <code>npm view</code>, which proves a name is unregistered and says nothing about
+            whether it is publishable. Four of the 28 were not. State what the check proves.
           </div>
         </div>
       </div>

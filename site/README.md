@@ -57,7 +57,7 @@ npm install && npm run dev
 | --- | --- |
 | `npm run vendor` | Re-copy the design system from `../design_system/export` into `src/design-system/`. Fails loudly if the export is missing or has changed shape |
 | `npm run dev` | Astro dev server |
-| `npm run build` | Static build to `dist/`. Does **not** vendor |
+| `npm run build` | Static build to `dist/`, then precompress. Does **not** vendor |
 | `npm run preview` | Serve the built output locally |
 | `npm start` | Production static server (`sirv`) — what Railway runs |
 | `npm run check` | `astro check` + the link gate |
@@ -75,6 +75,17 @@ Its `RULES` export is the honest inventory of what runs and what does not, and t
 page reads that export rather than restating it, so the page cannot advertise a rule the build
 does not run. **Nine of eleven rules run today**; `measurement` and `title-block` are declared
 `not implemented` and render as such.
+
+## SEO and delivery
+
+| Concern | How |
+| --- | --- |
+| Descriptions | Derived per page from each document's own opening prose (`docDescription` in [`src/lib/wiki.ts`](src/lib/wiki.ts)). ADRs prefer their **Decision** section — the default opens with Context, so ADR-0006 described itself as *"ai-cli was a Phase 0 working title"*, which names the rejected option. All 34 are distinct |
+| Canonical + sitemap | `@astrojs/sitemap` emits `sitemap-index.xml`; [`src/pages/robots.txt.ts`](src/pages/robots.txt.ts) is a route, not a static file, so both follow `Astro.site` |
+| Origin | `PUBLIC_SITE_URL` overrides the default in [`astro.config.mjs`](astro.config.mjs). **Set it on Railway** until the custom domain is attached, or every canonical tag and sitemap entry names a host that is not serving the page |
+| Social | Open Graph + Twitter `summary`, text-only. No `og:image`: the repo ships no logo, and ADR-0006's mark is the name set in type — a generated card would be an asset nobody designed |
+| Headings | `/wiki/` and `/contribute/` had **no `<h1>`** at all, because their visible title is a `TitleBlock`, which renders a `div`. The layout's `srHeading` prop emits a screen-reader-only one. Upstream fix is a heading-level prop on `TitleBlock` |
+| Compression | [`scripts/precompress.mjs`](scripts/precompress.mjs) writes `.br` and `.gz` siblings after every build; `sirv --gzip --brotli` serves them. Measured 2026-08-15: **840 kB → 214 kB brotli (75% off)**, and the pattern catalog goes 57 kB → 9.9 kB on the wire |
 
 ## Deploying to Railway
 
@@ -109,4 +120,5 @@ this one, not inside it.
 | Site status numbers are typed | `src/site.config.ts` centralises them with an `asOf` date. Should come from `npx @rungs/cli check --json` |
 | `overflow-wrap` is fixed at the page, not in the system | The corpus contains unbreakable tokens (`proposed→accepted/rejected/…→done`, pattern-catalog §B) that overflow a stacked table cell by 138px at 375px. Patched in `[...slug].astro`; it belongs in the export's `tokens/base.css`, so it needs to go back to the design system rather than live here |
 | Only one build gate | `check:links` runs. The next one is "no rendered number without a date" — the site states that rule and does not yet check it |
-| Responses are not compressed | `sirv`'s `--gzip/--brotli` only serve precompressed files, and Astro emits none, so the flags are currently no-ops. On a corpus this text-heavy that is the cheapest remaining win — precompress in the build step, or terminate compression at the edge |
+| No `og:image` | Deliberate — see the SEO table. If a card is ever wanted it should be typographic, generated from the wordmark, not a stock graphic |
+| `TitleBlock` cannot render a heading | So two pages carry a visually-hidden `<h1>` duplicating a visible title. Belongs in the design system as an `as`/`level` prop, alongside the `overflow-wrap` fix owed back to it |

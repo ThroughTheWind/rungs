@@ -1,7 +1,6 @@
 ---
 import { getCollection, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
-import { SITE } from "../../site.config";
 import { TitleBlock, Callout } from "../../design-system/components/index.js";
 import { docTitle, shelf, SHELVES, SHELF_ORDER } from "../../lib/wiki";
 import { sourceFor } from "../../lib/source-map.mjs";
@@ -32,9 +31,19 @@ const grouped = SHELF_ORDER.map((s) => ({
   label: SHELVES[s],
   docs: entries.filter((e) => e.shelf === s).sort((a, b) => a.id.localeCompare(b.id)),
 })).filter((g) => g.docs.length);
+
+// "Built" is the build, not a measurement. It read `site.config`'s `asOf` — a hand-typed date that
+// only moves when someone remembers — so the registry claimed a freshness nobody had checked. Astro
+// frontmatter runs at build time, so this is the one date on the site that can simply be taken.
+const builtOn = new Date().toISOString().slice(0, 10);
 ---
 
-<Base title="Wiki — rungs" width={1100}>
+<Base
+  title="Wiki — rungs"
+  description={`The rungs corpus published in full: ${entries.length} documents across research, design, decisions and the backlog, rendered from the repository's own markdown.`}
+  srHeading="rungs wiki — documentation"
+  width={1100}
+>
   <div class="sheet">
     <TitleBlock
       kicker="Wiki"
@@ -42,7 +51,7 @@ const grouped = SHELF_ORDER.map((s) => ({
       fields={[
         { label: "Corpus", value: "docs/ · rendered from plain markdown" },
         { label: "Documents", value: String(entries.length + (root ? 1 : 0)) },
-        { label: "Built", value: SITE.asOf },
+        { label: "Built", value: builtOn },
       ]}
     />
 

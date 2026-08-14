@@ -15,14 +15,15 @@ export const SITE = {
   repo: "https://github.com/ThroughTheWind/rungs",
 
   /** The date every measurement below was taken. Absolute, never relative. */
-  asOf: "2026-08-14",
+  asOf: "2026-08-15",
 
   phase: {
-    label: "Phase 5 in progress",
-    detail: "Phases 0–4 complete · research, synthesis, ADRs 0001–0006, all fifteen modules authored",
+    label: "Phase 6 in progress",
+    detail:
+      "Phases 0–5 complete · research, synthesis, ADRs 0001–0006, fifteen modules, the CLI. Phase 6: detection verified against all four source repos; a real install into one is outstanding.",
   },
 
-  /** From `rungs check` on 2026-08-14: "20 pass · 0 fail · 0 unimplemented · 0 error". */
+  /** From `rungs check` on 2026-08-15: "20 pass · 0 fail · 0 unimplemented · 0 error". */
   gates: { registered: 20, withEngines: 20, pass: 20, fail: 0, unimplemented: 0 },
 
   /** ADR-0006's open consequence. It is on the site because it is unresolved, not despite it. */

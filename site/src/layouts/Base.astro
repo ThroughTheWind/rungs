@@ -7,11 +7,19 @@ interface Props {
   description?: string;
   /** Constrains the main column. Wiki articles run wider than prose-only pages. */
   width?: number;
+  /**
+   * Accessible page heading for pages whose visible title is a `TitleBlock`, which renders a div.
+   * Set it and the layout emits a screen-reader-only `<h1>`; otherwise the page supplies its own.
+   */
+  srHeading?: string;
 }
 
-const { title, description = SITE.tagline, width = 1060 } = Astro.props;
+const { title, description = SITE.tagline, width = 1060, srHeading } = Astro.props;
 const here = Astro.url.pathname;
 const isHere = (href: string) => here === href || (href !== "/" && here.startsWith(href));
+
+const origin = Astro.site ?? new URL("https://rungscli.com");
+const canonical = new URL(here, origin);
 ---
 
 <!doctype html>
@@ -21,7 +29,19 @@ const isHere = (href: string) => here === href || (href !== "/" && here.startsWi
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={new URL(here, Astro.site ?? "https://rungscli.com")} />
+    <link rel="canonical" href={canonical} />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
+
+    {/* No image: the repo ships no logo and ADR-0006's mark is the name set in type. A generated
+        OG card would be an asset nobody designed, so the tags stay text-only. */}
+    <meta property="og:type" content={here === "/" ? "website" : "article"} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     {/* Applied before first paint: a theme that flashes is a theme that was applied too late. */}
     <script is:inline>
       (function () {
@@ -60,6 +80,7 @@ const isHere = (href: string) => here === href || (href !== "/" && here.startsWi
     </nav>
 
     <main id="main" style={`max-width:${width}px`}>
+      {srHeading && <h1 class="sr-only">{srHeading}</h1>}
       <slot />
     </main>
 
@@ -92,6 +113,20 @@ const isHere = (href: string) => here === href || (href !== "/" && here.startsWi
     </script>
 
     <style>
+      /* The visible title on these pages is a TitleBlock, which renders a div — so the document
+         had no h1 at all. Upstream fix is a heading-level prop on TitleBlock; until the design
+         system carries one, the heading exists for assistive tech and crawlers only. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
       .skip {
         position: absolute;
         left: -9999px;

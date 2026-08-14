@@ -10,7 +10,7 @@
   "scripts": {
     "vendor": "node scripts/vendor-design-system.mjs",
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/precompress.mjs",
     "preview": "astro preview",
     "start": "sirv dist --host 0.0.0.0 --port ${PORT:-4321} --etag --gzip --brotli --single false",
     "check": "astro check && npm run check:links",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
     "@astrojs/react": "^4.4.0",
+    "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/source-serif-4": "^5.2.5",
     "@fontsource/barlow": "^5.2.5",
     "@fontsource/barlow-semi-condensed": "^5.2.5",

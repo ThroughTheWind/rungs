@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { getCollection, render } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import { TitleBlock } from "../../design-system/components/index.js";
-import { docTitle, shelf, SHELVES } from "../../lib/wiki";
+import { docTitle, docDescription, shelf, SHELVES } from "../../lib/wiki";
 import { sourceFor } from "../../lib/source-map.mjs";
 import { SITE } from "../../site.config";
 
@@ -30,6 +30,10 @@ const sourceLink = source
   ? createElement("a", { href: `${SITE.repo}/blob/main/${source}` }, source)
   : "unmapped";
 
+// Each document describes itself; the site tagline told a search result nothing about which of
+// 34 pages it had found. Falls back only when the document opens with no usable prose.
+const description = docDescription(doc) ?? `${title} — from the rungs corpus, at docs/${doc.id}.`;
+
 // The README's H1 is the product name, so the default would read "rungs — rungs wiki".
 const pageTitle =
   title.toLowerCase() === SITE.name ? `${SITE.name} — ${(SHELVES[s] ?? s).toLowerCase()}` : `${title} — rungs wiki`;
@@ -44,7 +48,7 @@ const fields = [
 ];
 ---
 
-<Base title={pageTitle} width={1100}>
+<Base title={pageTitle} description={description} width={1100}>
   <div class="sheet">
     <TitleBlock kicker={`Wiki · ${SHELVES[s] ?? s}`} title={title} fields={fields} />
 
