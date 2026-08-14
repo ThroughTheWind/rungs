@@ -1,3 +1,10 @@
+---
+id: ADR-0004
+title: "Adoption detection: map what exists, never migrate it"
+status: accepted
+date: 2026-08-14
+---
+
 # ADR-0004 — Adoption detection: map what exists, never migrate it
 
 - **Status:** accepted

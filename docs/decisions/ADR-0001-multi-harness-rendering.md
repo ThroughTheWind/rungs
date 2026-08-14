@@ -1,3 +1,10 @@
+---
+id: ADR-0001
+title: "Multi-harness rendering: render only what is fragmented"
+status: accepted
+date: 2026-08-14
+---
+
 # ADR-0001 — Multi-harness rendering: render only what is fragmented
 
 - **Status:** accepted

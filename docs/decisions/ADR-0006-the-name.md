@@ -1,3 +1,10 @@
+---
+id: ADR-0006
+title: "The name: `rungs`, and why a name here is an identifier rather than a brand"
+status: accepted
+date: 2026-08-14
+---
+
 # ADR-0006 — The name: `rungs`, and why a name here is an identifier rather than a brand
 
 - **Status:** accepted

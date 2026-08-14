@@ -1,0 +1,40 @@
+# Installed by `rungs`. Edit parameters here and re-run `rungs render`.
+
+[repo]
+harnesses = ["claude","agents-md"]
+installed = "2026-08-14"
+
+[modules.instructions]
+version = "1.0.0"
+state   = "managed"
+params  = { project_name = "", harnesses = ["claude","agents-md"], core_budget = 200 }
+
+[modules.gates]
+version = "1.0.0"
+state   = "managed"
+params  = { tiers = ["fast","full"], ledger = true, fast_budget_ms = 30000 }
+
+[modules.backlog]
+version = "1.0.0"
+state   = "managed"
+params  = { id_prefix = "WI", root = "backlog", integration_branch = "main", branch_prefix = "feature" }
+
+[modules.findings]
+version = "1.0.0"
+state   = "managed"
+params  = { id_prefix = "F", path = "docs/backlog/FINDINGS.md" }
+
+[modules.adr]
+version = "1.0.0"
+state   = "managed"
+params  = { path = "docs/decisions", id_prefix = "ADR" }
+
+[modules.session]
+version = "1.0.0"
+state   = "managed"
+params  = { path = ".ai/session.md", archive = ".ai/archive" }
+
+[modules.skills]
+version = "1.0.0"
+state   = "managed"
+params  = { dir = ".claude/skills" }

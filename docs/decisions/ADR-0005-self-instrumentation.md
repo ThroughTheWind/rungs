@@ -1,3 +1,10 @@
+---
+id: ADR-0005
+title: "Self-instrumentation: the runner records what it observes, and nothing else"
+status: accepted
+date: 2026-08-14
+---
+
 # ADR-0005 — Self-instrumentation: the runner records what it observes, and nothing else
 
 - **Status:** accepted (narrowed from the original proposal)

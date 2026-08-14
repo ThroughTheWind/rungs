@@ -1,3 +1,10 @@
+---
+id: ADR-0002
+title: "Implementation stack, and the runtime footprint of a scaffolded repo"
+status: accepted
+date: 2026-08-14
+---
+
 # ADR-0002 — Implementation stack, and the runtime footprint of a scaffolded repo
 
 - **Status:** accepted

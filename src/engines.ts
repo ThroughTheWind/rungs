@@ -146,8 +146,13 @@ const linkIntegrity: Engine = (t, root, files) => {
   let examined = 0;
   for (const rel of scan) {
     if (excluded.has(rel)) continue;
-    examined++;
     const text = read(root, rel);
+    // A file with unsubstituted placeholders is a **template**, and its links
+    // resolve only once installed. Found by running this against the rungs repo
+    // itself, where `modules/*/fragments/AGENTS.md` was reported for a broken
+    // link to `{{path}}/README.md` — a path that is not meant to exist here.
+    if (/\{\{[a-z_.]+\}\}/.test(text)) continue;
+    examined++;
     if (/path-ok:\s*\S/.test(text)) continue;
     for (const m of text.matchAll(/\]\((?!https?:|#|mailto:)([^)\s#]+)/g)) {
       const target = resolve(root, dirname(rel), decodeURIComponent(m[1]));

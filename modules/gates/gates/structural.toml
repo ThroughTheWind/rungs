@@ -7,7 +7,12 @@
 
 [link_integrity]
 scan       = ["**/*.md", ".ai/**/*.toml"]
-exclude    = ["node_modules/**", "**/archive/**", ".git/**"]
+# `modules/**` is a rungs module source tree, not repo content: a fragment's
+# links are relative to the file it merges *into*, not to where it is authored,
+# so checking them where they sit reports every one as broken. Costs a consumer
+# repo nothing — it has no `modules/` — and was found by running this against
+# the rungs repo itself.
+exclude    = ["node_modules/**", "**/archive/**", ".git/**", "modules/*/fragments/**", "modules/*/files/**"]
 check      = ["relative_markdown_links", "backticked_paths"]
 # Backticked paths are checked only when they look like paths — containing a `/` or a known
 # extension — because prose is full of `identifiers` that are not files. Under-detection is the

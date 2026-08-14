@@ -1,3 +1,10 @@
+---
+id: ADR-0003
+title: "Module definition format: a directory that looks like what it emits"
+status: accepted
+date: 2026-08-14
+---
+
 # ADR-0003 — Module definition format: a directory that looks like what it emits
 
 - **Status:** accepted
