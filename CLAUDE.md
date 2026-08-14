@@ -29,6 +29,15 @@ name the date and the command that produced it. `rift-forge` learned this the ex
 seven of eleven population claims in a document its press kit quoted were false, because every
 change that moved the number left the sentence alone.
 
+Second corollary: **a command is evidence only for the property it tests.** Naming the command is
+not enough when it measures something *adjacent* to the claim — a number with a command beside it
+reads as verified, which is exactly what lets it propagate. So state what the check proves, not
+just what it ran. [ADR-0006](docs/decisions/ADR-0006-the-name.md) shipped an inventory of 28
+"available" package names built from `npm view`, which proves a name is **unregistered** and says
+nothing about whether it is **publishable**; at least four entries were unpublishable, and the
+document already contained the entry that disproved its own headline. Where the claim and the check
+diverge, the divergence is the finding — put it next to the number.
+
 ## Extraction discipline
 
 1. **Read the source before summarizing it.** A source repo's own summary of its practice is
