@@ -1,0 +1,12 @@
+/* rungs — spacing, borders, shadows, motion. Square corners; hard offset shadows; near-zero motion. */
+:root{
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px; --space-7:48px; --space-8:64px;
+  --radius-0:0; --radius-chip:0; /* drafting: nothing is rounded */
+  --shadow-sheet:4px 4px 0 rgba(36,33,26,.10);
+  --shadow-sheet-hover:5px 5px 0 rgba(36,33,26,.14);
+  --shadow-none:none;
+  --ease:linear; /* @kind other */
+  --dur:120ms; /* @kind other */
+  --target-min:44px;
+}
+[data-theme="dark"]{ --shadow-sheet:4px 4px 0 rgba(0,0,0,.35); --shadow-sheet-hover:5px 5px 0 rgba(0,0,0,.45); }

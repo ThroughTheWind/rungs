@@ -1,0 +1,319 @@
+---
+import Base from "../layouts/Base.astro";
+import { SITE } from "../site.config";
+import { Button, Callout, Console, Measurement, ModuleCard } from "../design-system/components/index.js";
+
+// TODO (`generate-derivable`): read these from `modules/*/module.toml` and
+// `docs/design/module-catalog.md` §4 at build time. Hand-listed inventories go stale — that is
+// the whole argument of CLAUDE.md's evidence rule, and this file is currently a counter-example.
+const MODULES = [
+  ["instructions", 0, [], "The entry point, the bridge, path-scoped rules, and the render pipeline"],
+  ["gates", 1, ["instructions"], "The runner, the registry, the ledger, and the structural gate set"],
+  ["backlog", 1, ["instructions"], "Work items with ids, a lifecycle, and a board"],
+  ["findings", 1, ["backlog"], "The register for what is noticed before it is decided"],
+  ["adr", 1, [], "Decision records, with an admission rule"],
+  ["session", 1, [], "Handoff state across sessions"],
+  ["ci", 1, ["gates"], "Matrix workflows, and a proliferation check"],
+  ["specs", 2, [], "Behaviour specs with story ids and honest status"],
+  ["workflows", 2, ["instructions"], "Decision procedures — reuse, tiering, decomposition"],
+  ["skills", 2, ["instructions"], "Skill-authoring discipline, and the gates that hold it"],
+  ["audit", 2, ["findings"], "An audit procedure whose output is rows, not documents"],
+  ["release", 3, ["backlog", "ci"], "Candidate/release lines, and the release procedure"],
+  ["design-sync", 3, ["backlog", "skills"], "An external design authority, synced two ways"],
+  ["doc-authority", 4, ["gates"], "Topic ownership, and rule propagation across surfaces"],
+  ["concurrency", 5, ["backlog", "gates", "ci"], "Many sessions on one integration branch"],
+] as const;
+
+const PROFILES = [
+  ["minimal", 0, "instructions", "any repo with an agent"],
+  ["tracked", 1, "+ gates · backlog · findings · adr · session", "more than one work item in flight"],
+  ["disciplined", 2, "+ ci · specs · workflows · skills · audit", "repeated work of the same shape"],
+  ["hardened", 3, "+ release · doc-authority", "rules broken at least once"],
+  ["fleet", 5, "+ concurrency · design-sync", "5+ concurrent sessions"],
+] as const;
+
+const REPOS = [
+  ["axiom-mesh", "2026-03 → 04", "73 commits · 48+ ADRs", "doc authority + prompt library"],
+  ["hexguard", "2026-06 → 07", "507 commits · ~200 packages", "scoped instructions + checklists"],
+  ["hexguard-templates", "2026-07", "319 commits", "spec-first + story workflow"],
+  ["rift-forge", "2026-07 → 08", "3236 commits · 401 branches", "mechanical gates + concurrency"],
+] as const;
+
+const g = SITE.gates;
+---
+
+<Base title="rungs — reinforce the repo you already have">
+  <section class="hero">
+    <div>
+      <h1>Your repo already stands.<br />Reinforce it.</h1>
+      <p class="lede">
+        rungs installs and maintains a repository's agentic development system — backlog, findings,
+        gates, skills — composed from modules extracted from four repos that already paid for the
+        lessons.
+      </p>
+      <p class="sub">Retrofit first: <code>npx rungs add &lt;module&gt;</code>, then <code>rungs doctor</code>.</p>
+      <div class="cta">
+        <Button href="#modules">Browse the 15 modules</Button>
+        <Button variant="ghost" href="#extracted">How the content was extracted</Button>
+      </div>
+    </div>
+    <div>
+      <Console
+        date={SITE.asOf}
+        source="npx rungs add"
+        lines={[
+          { type: "cmd", text: "npx rungs add concurrency" },
+          { type: "out", text: "  concurrency is rung 5 (~5+ concurrent sessions)." },
+          { type: "warn", text: "  This repo shows 1 active session." },
+          { type: "dim", text: "  Install anyway? [y/N]" },
+        ]}
+      />
+      <p class="cap">The rung check: modules state their threshold before installing above your level.</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <span class="lab">Status · stated, not softened</span>
+    <div class="status">
+      <Measurement
+        value={`${g.registered} gates register, all ${g.withEngines} have engines`}
+        date={SITE.asOf}
+        command="npx rungs check"
+      />
+      <span class="mono">{g.pass} pass</span>
+      <span class="mono bad">{g.fail} fail</span>
+      <span class="mono dim">{g.unimplemented} unimplemented · {SITE.phase.label}</span>
+    </div>
+  </section>
+
+  <section class="sec" id="extracted">
+    <span class="lab">Extracted, not invented</span>
+    <div class="grid4">
+      {
+        REPOS.map(([name, period, scale, style]) => (
+          <div class="repo">
+            <div class="repo-n">{name}</div>
+            <div class="repo-m">{period} · {scale}</div>
+            <div class="repo-w">{style}</div>
+          </div>
+        ))
+      }
+    </div>
+    <p class="body">
+      Read in date order they are one operator learning the same lessons four times. What worked
+      became a module; what hurt became a guardrail. No repo has all four stages — that gap is the
+      product.
+    </p>
+  </section>
+
+  <section class="sec">
+    <span class="lab">Install profiles · a progression, not tiers</span>
+    <div class="profiles">
+      {
+        PROFILES.map(([name, rung, mods, forWhat]) => (
+          <div class="profile">
+            <div class="profile-hatch" style={`background:var(--hatch-r${rung})`}></div>
+            <div class="profile-n">{name}</div>
+            <div class="profile-m">{mods}</div>
+            <div class="profile-f">{forWhat}</div>
+          </div>
+        ))
+      }
+    </div>
+    <p class="cap">
+      tracked is the rung two of the four source repos never reached — and both paid the same price.
+    </p>
+  </section>
+
+  <section class="sec" id="modules">
+    <span class="lab">The 15 modules · rung stated, dependencies refused if unmet</span>
+    <div class="grid3">
+      {MODULES.map(([name, rung, deps, blurb]) => <ModuleCard name={name} rung={rung} deps={[...deps]} blurb={blurb} />)}
+    </div>
+    <div class="mt">
+      <Callout kind="note">
+        Three dependency chains exist because a source repo violated them and paid:
+        <code>audit → findings → backlog</code> (268 unactioned audit reports) ·
+        <code>workflows → skills</code> (an uninvocable 9-step procedure) ·
+        <code>doc-authority → gates</code> (non-negotiables that decayed in place).
+      </Callout>
+    </div>
+  </section>
+
+  <section class="sec">
+    <span class="lab">doctor · the research, made detectable</span>
+    <Console
+      date={SITE.asOf}
+      source="npx rungs doctor"
+      lines={[
+        { type: "cmd", text: "npx rungs doctor" },
+        { type: "out", text: "  you have an audit skill and no findings register" },
+        { type: "out", text: "  this rule says MANDATORY and has no gate" },
+        { type: "out", text: "  14 near-identical release workflows" },
+      ]}
+    />
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding: 56px 0 48px;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 48px;
+    align-items: start;
+  }
+  h1 {
+    font: 700 46px/1.05 var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+  .lede {
+    font: 400 17.5px/1.6 var(--font-serif);
+    margin-top: 18px;
+    max-width: 46ch;
+  }
+  .sub {
+    font: 400 14px/1.6 var(--font-mono);
+    color: var(--text-muted);
+    margin-top: 12px;
+  }
+  .cta {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .cap {
+    font: italic 400 12.5px/1.5 var(--font-serif);
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .sec {
+    padding: 48px 0;
+    border-top: 1px solid var(--line);
+  }
+  .lab {
+    font: 600 10px var(--font-label);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 16px;
+  }
+  .status {
+    display: flex;
+    gap: 24px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .mono {
+    font: 500 14px var(--font-mono);
+  }
+  .bad {
+    color: var(--redline);
+  }
+  .dim {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .grid4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .repo {
+    border: 1px solid var(--line);
+    background: var(--surface-card);
+    padding: 12px 14px;
+  }
+  .repo-n {
+    font: 500 13.5px var(--font-mono);
+  }
+  .repo-m {
+    font: 400 11px var(--font-mono);
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .repo-w {
+    font: 400 12.5px/1.45 var(--font-serif);
+    color: var(--ink-2);
+    margin-top: 8px;
+  }
+  .body {
+    font: 400 14.5px/1.6 var(--font-serif);
+    color: var(--ink-2);
+    margin-top: 16px;
+    max-width: 72ch;
+  }
+  .profiles {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border: 1px solid var(--ink);
+    background: var(--surface-card);
+  }
+  .profile {
+    padding: 14px 14px 12px;
+    border-left: 1px solid var(--ink);
+  }
+  .profile:first-child {
+    border-left: 0;
+  }
+  .profile-hatch {
+    height: 8px;
+    border: 1px solid var(--ink);
+    margin-bottom: 10px;
+  }
+  .profile-n {
+    font: 700 15px var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .profile-m {
+    font: 400 11px/1.5 var(--font-mono);
+    color: var(--text-muted);
+    margin: 6px 0;
+  }
+  .profile-f {
+    font: italic 400 12px/1.4 var(--font-serif);
+    color: var(--ink-2);
+  }
+  .mt {
+    margin-top: 16px;
+  }
+  @media (max-width: 900px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 32px;
+      padding-top: 36px;
+    }
+    h1 {
+      font-size: 34px;
+    }
+    .grid4,
+    .grid3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .profiles {
+      grid-template-columns: 1fr;
+    }
+    .profile {
+      border-left: 0;
+      border-top: 1px solid var(--ink);
+    }
+    .profile:first-child {
+      border-top: 0;
+    }
+  }
+  @media (max-width: 560px) {
+    .grid4,
+    .grid3 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

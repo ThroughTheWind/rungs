@@ -1,0 +1,24 @@
+/* rungs — base element styles. Deliberately covers plain-markdown output (§5): headings, tables,
+   blockquotes, code render correctly with NO wrapper components. */
+body{margin:0;background:var(--bg-page);color:var(--text-body);font:400 var(--text-base)/var(--leading-body) var(--font-serif);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-display);line-height:var(--leading-tight);letter-spacing:var(--track-display);margin:0}
+h1{font-size:var(--text-3xl);font-weight:700;text-transform:uppercase}
+h2{font-size:var(--text-xl);font-weight:700;text-transform:uppercase}
+h3{font-size:var(--text-base);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+p{margin:0;max-width:var(--measure);text-wrap:pretty}
+a{color:var(--color-link);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;transition:color var(--dur) var(--ease)}
+a:hover{color:var(--color-link-hover)}
+a:focus-visible,button:focus-visible{outline:var(--focus-ring);outline-offset:2px}
+code,kbd{font:500 .88em var(--font-mono);background:var(--surface-tint);padding:1px 4px}
+pre{margin:0;background:var(--surface-pit);color:var(--text-pit);font:400 var(--text-md)/1.7 var(--font-mono);padding:var(--space-4) var(--space-5);overflow-x:auto}
+pre code{background:transparent;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;font-size:var(--text-md);font-family:var(--font-serif)}
+th{font:600 var(--text-2xs) var(--font-label);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-muted);text-align:left;padding:7px 10px;border-bottom:1px solid var(--ink);background:var(--surface-tint)}
+td{padding:9px 10px;border-bottom:var(--border-hairline);vertical-align:top}
+blockquote{margin:0;padding:2px 0 2px var(--space-4);border-left:2px solid var(--line);color:var(--text-muted)}
+hr{border:0;border-top:var(--border-hairline);margin:var(--space-5) 0}
+::selection{background:var(--stamp);color:var(--sheet)}
+.u-label{font:600 var(--text-2xs)/1 var(--font-label);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-muted)}
+.u-mono{font-family:var(--font-mono)}
+.u-opinion{color:var(--text-opinion);font-style:italic}
+.u-sheet{background:var(--surface-card);border:var(--border-sheet);box-shadow:var(--shadow-sheet)}

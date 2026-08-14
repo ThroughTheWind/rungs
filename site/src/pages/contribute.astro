@@ -1,0 +1,223 @@
+---
+import Base from "../layouts/Base.astro";
+import { SITE } from "../site.config";
+import { Button, Callout, Claim, EnforcementTag, Measurement, SourceMark, TitleBlock } from "../design-system/components/index.js";
+import { RULES } from "../plugins/rehype-rungs.mjs";
+
+// The mapping table is read from the plugin itself, so the page cannot advertise a rule the
+// build does not run. A hand-kept copy of this table would be the exact failure the site argues
+// against — the difference between a rule and a rule that is checked.
+const done = RULES.filter((r) => r.status === "done");
+const todo = RULES.filter((r) => r.status !== "done");
+---
+
+<Base title="Contribute — rungs" width={1000}>
+  <div class="sheet">
+    <TitleBlock
+      kicker="Contribute"
+      title="Author a module"
+      fields={[
+        { label: "Governed by", value: "CLAUDE.md — the evidence rule" },
+        { label: "Updated", value: SITE.asOf },
+      ]}
+    />
+
+    <section class="intro">
+      <p class="lede">
+        Everything here was paid for once already. A contribution is admitted when it carries its
+        receipts: <Claim kind="evidence" cite="CLAUDE.md">
+          every claim is evidenced — a file path, a commit, a measured count, or a quoted rule — or
+          it is visibly marked as opinion.
+        </Claim>
+      </p>
+    </section>
+
+    <section class="sec">
+      <span class="lab">Admission checks · all must hold</span>
+      <div class="checks">
+        <div class="check">
+          <div class="check-t">1 · A module is a unit</div>
+          <div class="check-b">
+            It can be installed, checked, and removed as a unit. It owns files, and it owns the
+            rules about those files.
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-t">2 · Rules ship their checker</div>
+          <div class="check-b">
+            Every generated rule is tagged <EnforcementTag state="gated" /> or
+            <EnforcementTag state="review-only" /> — no silent third category.
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-t">3 · Procedures ship their entry point</div>
+          <div class="check-b">
+            A workflow with no invocation surface does not run. The skill lands in the same change
+            as the doc.
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-t">4 · Patterns name their sources</div>
+          <div class="check-b">
+            "Four repos converge" is checkable only if each pattern says which:
+            <SourceMark sources={["HG", "HT"]} /> — or states its counter-example.
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-t">5 · Costs are stated</div>
+          <div class="check-b">
+            Every practice names what it costs to run. A pattern without its cost gets recommended
+            to repos that cannot afford it.
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-t">6 · Counts carry receipts</div>
+          <div class="check-b">
+            <Measurement
+              value="84 names checked; 56 taken, 28 free"
+              date="2026-08-14"
+              command="npm view <name> version"
+            /> — count, date, command, one line.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <span class="lab">Markdown → component mapping · the wiki renders plain markdown</span>
+      <p class="body">
+        Write plain markdown. Every rule below detects a convention the corpus already uses; none
+        of them need an author-side wrapper. The table is read from
+        <code>src/plugins/rehype-rungs.mjs</code> at build time.
+      </p>
+      <table class="map">
+        <thead>
+          <tr><th>rule</th><th>detected by</th><th>state</th></tr>
+        </thead>
+        <tbody>
+          {
+            done.map((r) => (
+              <tr>
+                <td class="map-id">{r.id}</td>
+                <td class="map-d">{r.detects}</td>
+                <td><EnforcementTag state="gated" /></td>
+              </tr>
+            ))
+          }
+          {
+            todo.map((r) => (
+              <tr class="is-todo">
+                <td class="map-id">{r.id}</td>
+                <td class="map-d">{r.detects}</td>
+                <td><span class="rgs-enf rgs-enf-undeclared">not implemented</span></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <div class="mt">
+        <Callout kind="gap" refId="mapping">
+          Two things cannot be inferred from markdown: whether an unmarked prose sentence is
+          evidenced (only measurements are mechanically detectable), and the capture date of a
+          console fence. Both render their loud states rather than a confident default —
+          {done.length} of {RULES.length} rules run today.
+        </Callout>
+      </div>
+    </section>
+
+    <section class="sec actions">
+      <Button href={`${SITE.repo}/blob/main/docs/decisions/ADR-0003-module-definition-format.md`}>
+        Read the module format (ADR-0003)
+      </Button>
+      <Button variant="secondary" href={`${SITE.repo}/issues/new`}>Submit a pattern</Button>
+      <span class="note">
+        Abandoned practices are findings, not omissions — record retirements with their reason.
+      </span>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .sheet {
+    padding: 40px 0 64px;
+  }
+  .intro {
+    padding: 32px 0 4px;
+  }
+  .lede {
+    font: 400 16.5px/1.6 var(--font-serif);
+    max-width: 68ch;
+  }
+  .sec {
+    padding: 36px 0;
+    border-top: 1px solid var(--line);
+  }
+  .lab {
+    font: 600 10px var(--font-label);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 12px;
+  }
+  .body {
+    font: 400 14.5px/1.6 var(--font-serif);
+    color: var(--ink-2);
+    margin-bottom: 14px;
+    max-width: 72ch;
+  }
+  .checks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .check {
+    border: 1px solid var(--line);
+    background: var(--surface-card);
+    padding: 12px 14px;
+  }
+  .check-t {
+    font: 600 13px var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .check-b {
+    font: 400 13.5px/1.6 var(--font-serif);
+    color: var(--ink-2);
+  }
+  .map {
+    background: var(--surface-card);
+    border: 1px solid var(--ink);
+  }
+  .map-id {
+    font: 500 12.5px var(--font-mono);
+    white-space: nowrap;
+  }
+  .map-d {
+    font: 400 13px/1.5 var(--font-serif);
+    color: var(--ink-2);
+  }
+  .is-todo .map-id,
+  .is-todo .map-d {
+    color: var(--text-muted);
+  }
+  .mt {
+    margin-top: 14px;
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .note {
+    font: italic 400 13px var(--font-serif);
+    color: var(--text-muted);
+  }
+  @media (max-width: 700px) {
+    .checks {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

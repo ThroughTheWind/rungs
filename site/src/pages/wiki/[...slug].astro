@@ -1,0 +1,164 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import { TitleBlock } from "../../design-system/components/index.js";
+import { docTitle, shelf, SHELVES } from "../../lib/wiki";
+
+export async function getStaticPaths() {
+  const docs = await getCollection("wiki");
+  return docs
+    // The empty id is docs/README.md; /wiki/ is owned by index.astro, which renders it.
+    .filter((d) => d.id !== "")
+    .map((d) => ({ params: { slug: d.id }, props: { doc: d } }));
+}
+
+const { doc } = Astro.props;
+const { Content, headings } = await render(doc);
+
+const title = docTitle(doc, headings);
+const s = shelf(doc.id);
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const fields = [
+  { label: "Shelf", value: SHELVES[s] ?? s },
+  { label: "Source", value: `docs/${doc.id}.md` },
+  ...(doc.data.status ? [{ label: "Status", value: doc.data.status }] : []),
+  ...(doc.data.date
+    ? [{ label: "Dated", value: typeof doc.data.date === "string" ? doc.data.date : doc.data.date.toISOString().slice(0, 10) }]
+    : []),
+];
+---
+
+<Base title={`${title} — rungs wiki`} width={1100}>
+  <div class="sheet">
+    <TitleBlock kicker={`Wiki · ${SHELVES[s] ?? s}`} title={title} fields={fields} />
+
+    <div class="cols">
+      <article class="prose">
+        <Content />
+      </article>
+
+      {
+        toc.length > 1 && (
+          <aside class="aside">
+            <span class="aside-lab">On this sheet</span>
+            <nav class="toc">
+              {toc.map((h) => (
+                <a href={`#${h.slug}`} class:list={["toc-l", `d${h.depth}`]}>
+                  {h.text}
+                </a>
+              ))}
+            </nav>
+          </aside>
+        )
+      }
+    </div>
+  </div>
+</Base>
+
+<style>
+  .sheet {
+    padding: 40px 0 64px;
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 40px;
+    margin-top: 28px;
+    align-items: start;
+  }
+  .aside {
+    position: sticky;
+    top: 24px;
+    border: 1px solid var(--line);
+    background: var(--surface-card);
+    padding: 12px 14px;
+  }
+  .aside-lab {
+    font: 600 10px var(--font-label);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .toc {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .toc-l {
+    font: 400 12.5px/1.35 var(--font-serif);
+    text-decoration: none;
+    color: var(--text-muted);
+    border-left: 2px solid transparent;
+    padding-left: 8px;
+  }
+  .toc-l:hover {
+    color: var(--ink);
+    border-left-color: var(--redline);
+  }
+  .toc-l.d3 {
+    padding-left: 18px;
+    font-size: 12px;
+  }
+
+  /* Long-form defaults. tokens/base.css already styles every plain-markdown element; this only
+     sets the rhythm between them, which is a page concern rather than a token concern. */
+  .prose :global(h2) {
+    margin: 36px 0 12px;
+  }
+  .prose :global(h3) {
+    margin: 26px 0 8px;
+  }
+  .prose :global(p),
+  .prose :global(ul),
+  .prose :global(ol),
+  .prose :global(blockquote),
+  .prose :global(table),
+  .prose :global(pre),
+  .prose :global(.rgs-console),
+  .prose :global(.rgs-callout) {
+    margin: 14px 0;
+  }
+  .prose :global(li) {
+    margin: 6px 0;
+    max-width: var(--measure);
+  }
+  /* Wide prose tables scroll inside their own box rather than the page. PatternTable is excluded
+     deliberately: it has its own <=560px rule that stacks into cards, and a `display` override
+     here outranks that media query and leaves it half-stacked. */
+  .prose :global(table:not(.rgs-pt)) {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  /* `anywhere`, not `break-word`: only `anywhere` reduces min-content width, which is what lets a
+     stacked table cell shrink to the viewport. The corpus contains unbreakable tokens with no
+     spaces — `proposed→accepted/rejected/…→done` in pattern-catalog §B is 513px on its own. */
+  .prose :global(code),
+  .prose :global(td),
+  .prose :global(p),
+  .prose :global(li) {
+    overflow-wrap: anywhere;
+  }
+  .prose :global(h2 code),
+  .prose :global(h3 code) {
+    text-transform: none;
+    background: transparent;
+    padding: 0;
+  }
+
+  @media (max-width: 900px) {
+    /* minmax(0,…), not 1fr — a bare 1fr track has min-width:auto and cannot shrink below its
+       widest child, which is how a single long table drags the whole page into a sideways scroll. */
+    .cols {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 24px;
+    }
+    .aside {
+      position: static;
+      order: -1;
+    }
+  }
+</style>

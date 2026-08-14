@@ -1,0 +1,17 @@
+/* rungs — webfonts, self-hosted via Fontsource.
+   DEVIATION from design_system/export/tokens/fonts.css, which @imports Google Fonts.
+   Reason: docs/design/web-design-system-prompt.md §8 forbids a CDN dependency; the export's
+   readme flags this file as the one to change. Families, weights and italics are unchanged. */
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow/700.css";
+@import "@fontsource/barlow/400-italic.css";
+@import "@fontsource/barlow-semi-condensed/500.css";
+@import "@fontsource/barlow-semi-condensed/600.css";
+@import "@fontsource-variable/source-serif-4/index.css";
+@import "@fontsource-variable/source-serif-4/wght-italic.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/400-italic.css";

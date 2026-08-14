@@ -1,0 +1,33 @@
+/* rungs — color tokens. Light ("as-built", primary) + dark ("blueprint"). Every background explicit. */
+:root{
+  /* base — paper & ink */
+  --paper:#F6F4ED; --sheet:#FDFCF6; --hatch:#EFE9DA; --line:#D9D3C3;
+  --ink:#24211A; --ink-2:#4A463C; --muted:#6F695B; --pencil:#94897A;
+  /* semantic inks */
+  --stamp:#2F5570; --stamp-strong:#24435A; --redline:#C2401F; --redline-strong:#A23317;
+  --redline-tint:rgba(194,64,31,.06); --stamp-tint:rgba(47,85,112,.07);
+  /* aliases */
+  --bg-page:var(--paper); --surface-card:var(--sheet); --surface-tint:var(--hatch);
+  --surface-pit:#1D1B15; --text-pit:#EFE9DA; --text-pit-dim:#8D8776;
+  --text-body:var(--ink); --text-muted:var(--muted); --text-opinion:var(--pencil);
+  --color-evidence:var(--stamp); --color-missing:var(--redline); --color-link:var(--stamp); --color-link-hover:var(--redline);
+  --border-hairline:1px solid var(--line); --border-sheet:1px solid var(--ink); --border-redline:2px solid var(--redline);
+  --focus-ring:2px solid var(--stamp);
+  /* rung ramp — hatch density = cost. Recolors with --ink per theme. */
+  --hatch-r0:linear-gradient(transparent,transparent); /* @kind other */
+  --hatch-r1:repeating-linear-gradient(45deg,transparent 0 11px,var(--ink) 11px 12px);
+  --hatch-r2:repeating-linear-gradient(45deg,transparent 0 7px,var(--ink) 7px 8px);
+  --hatch-r3:repeating-linear-gradient(45deg,transparent 0 4px,var(--ink) 4px 5px);
+  --hatch-r4:repeating-linear-gradient(45deg,var(--ink) 0 3px,transparent 3px 5px);
+  --hatch-r5:linear-gradient(var(--ink),var(--ink));
+}
+[data-theme="dark"]{
+  --paper:#1B222C; --sheet:#212A36; --hatch:#2A3442; --line:#3A4656;
+  --ink:#E8E4D8; --ink-2:#C9C4B4; --muted:#97A0AD; --pencil:#8E96A3;
+  --stamp:#8FB4D4; --stamp-strong:#AECDE8; --redline:#E06239; --redline-strong:#EE7E58;
+  --redline-tint:rgba(224,98,57,.12); --stamp-tint:rgba(143,180,212,.10);
+  --surface-pit:#141A22; --text-pit:#E8E4D8; --text-pit-dim:#7D8794;
+  --bg-page:var(--paper); --surface-card:var(--sheet); --surface-tint:var(--hatch);
+  --text-body:var(--ink); --text-muted:var(--muted); --text-opinion:var(--pencil);
+  --color-evidence:var(--stamp); --color-missing:var(--redline); --color-link:var(--stamp); --color-link-hover:var(--redline);
+}

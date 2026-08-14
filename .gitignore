@@ -4,6 +4,7 @@ build/
 out/
 coverage/
 *.tsbuildinfo
+.astro/
 
 .DS_Store
 Thumbs.db
@@ -22,6 +23,10 @@ Thumbs.db
 
 .tmp/
 .scratch/
+
+# Design-system export — regenerable tool output, not the site's source.
+# The site vendors what it needs into a tracked path; see docs/design/web-design-system-prompt.md.
+design_system/export/
 
 # rungs:begin gates@1.0.0
 # Gate run ledger — local, machine-specific, never transmitted (ADR-0005).
