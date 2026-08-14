@@ -67,6 +67,9 @@ A module ships up to six things — and **which of the six it ships is the modul
 5. **Hooks** — P4, where the harness supports them
 6. **Docs** — the authority doc explaining the *why*, which the rules cite
 
+Each of the six maps to one subdirectory of the module, whose name determines what happens to the
+files in it — [ADR-0003](../decisions/ADR-0003-module-definition-format.md) is the authority.
+
 **Not a module:** anything that is one file with no rules attached (that is a template), anything
 requiring a runtime service, and anything specific to one language or framework. The corpus is
 Angular + .NET + Node, and everything extracted from it was workflow, not stack — the modules stay
@@ -160,20 +163,24 @@ somewhere — never silent divergence, and never forced convergence either.
   Agent Skills ecosystem, not here.
 - **No telemetry to us.** §9's instrumentation question is about a repo measuring *itself*.
 
-## 9. Open decisions → the next ADRs
+## 9. Decisions
 
-Ordered by what blocks Phase 4.
+All Phase 3 decisions except adoption detection are settled. **Phase 4 is unblocked.**
 
-| # | Decision | Leaning |
+| # | Decision | Outcome |
 | --- | --- | --- |
-| **0002** | **Implementation stack.** | Node/TypeScript. `npx ai-cli` is the lowest-friction install, all four source repos already run pnpm, and the gates being generated are `.mjs` in three of them |
-| **0003** | **Module definition format.** How a module declares files, deps, rung, cost, and rules. Must be authorable by hand, since the module set is the product | TOML manifest + a file tree, over a programmatic API |
-| **0004** | **Adoption detection.** How `add` recognizes a hand-built equivalent well enough to adopt rather than overwrite. Hardest unsolved piece; the four repos are the test set | — |
-| ~~0005~~ | **Self-instrumentation** — [**decided 2026-08-14**](../decisions/ADR-0005-self-instrumentation.md) | The runner records what it directly observes (exit status, wall-clock, per gate); `doctor` asks two questions with provenance attached; rework rate, instruction attribution, aggregation, and any health score are refused permanently |
+| [0001](../decisions/ADR-0001-multi-harness-rendering.md) | Multi-harness rendering | Render only path-scoped rules; skills and `AGENTS.md` are authored native; `CLAUDE.md` is an import bridge; degradation is reported |
+| [0002](../decisions/ADR-0002-stack-and-runtime-footprint.md) | Stack + runtime footprint | CLI is TypeScript on Node via `npx`. **A scaffolded repo acquires no new language runtime** — no emitted gate scripts. `ai-cli eject` is the promised exit |
+| [0003](../decisions/ADR-0003-module-definition-format.md) | Module definition format | A directory that looks like what it emits + a TOML manifest. Disposition by subdirectory; substitution-only templating; managed merge blocks; `[provenance]` required |
+| **0004** | **Adoption detection** — how `add` recognizes a hand-built equivalent well enough to adopt rather than overwrite. **The remaining open decision**, and the hardest; the four source repos are the test set | open |
+| [0005](../decisions/ADR-0005-self-instrumentation.md) | Self-instrumentation | Runner records exit status and wall-clock per gate; `doctor` asks two questions with provenance attached; rework rate, attribution, aggregation and any health score refused permanently |
 
-**0005 was argued first** because it changes the gate-shipping module contract — gates are declared
-to a runner registry, not dropped as scripts — and Phase 4 could not specify modules without it.
+**They were decided out of numeric order**, each because it blocked the next: 0005 set the
+gate-shipping contract, 0002 set what a scaffolded repo may depend on, and 0003 is largely 0002's
+consequence. 0004 is last because `command` gates and the module manifest — both settled above —
+turn out to be most of what it needs.
 
-Arguing it also found that [synthesis §6](../research/synthesis.md) was wrong: it bundled one
-tractable problem with two unknowable ones, and it undersold the corpus's measurement discipline.
-The real gap is **persistence**, not measurement. §6 has been amended.
+Two Phase 2 claims were found wrong while arguing these and have been **amended in place** rather
+than left to be cited: [synthesis §3.1](../research/synthesis.md) overstated the rendering problem,
+and [§6](../research/synthesis.md) bundled one tractable measurement problem with two unknowable
+ones. The real gap there is **persistence**, not measurement.

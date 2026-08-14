@@ -70,11 +70,11 @@ rendering after the source repos were built: procedures are now an open standard
 genuinely fragmented — so the CLI renders one primitive, not four.
 
 - [`docs/design/product-brief.md`](docs/design/product-brief.md) — **done**
-- [ADR-0001 — multi-harness rendering](docs/decisions/ADR-0001-multi-harness-rendering.md) — **accepted**
-- [ADR-0005 — self-instrumentation](docs/decisions/ADR-0005-self-instrumentation.md) — **accepted**
-  (argued out of order: it sets the gate-shipping module contract)
-- ADRs 0002–0004 (stack · module format · adoption detection) — open,
-  listed in the brief §9
+- [ADR-0001](docs/decisions/ADR-0001-multi-harness-rendering.md) multi-harness rendering ·
+  [ADR-0002](docs/decisions/ADR-0002-stack-and-runtime-footprint.md) stack + runtime footprint ·
+  [ADR-0003](docs/decisions/ADR-0003-module-definition-format.md) module definition format ·
+  [ADR-0005](docs/decisions/ADR-0005-self-instrumentation.md) self-instrumentation — **all accepted**
+- **ADR-0004 (adoption detection) is the one still open**, and Phase 4 does not block on it
 
 ### Phase 4 — Module catalog
 
@@ -107,5 +107,8 @@ that its content was paid for once already.
 
 ## Status
 
-Phase 3 in progress: the product brief, ADR-0001 (multi-harness rendering) and ADR-0005
-(self-instrumentation) are done; ADRs 0002–0004 are open. Phase 4 is blocked on ADR-0003.
+Phase 3 substantially complete: the product brief and ADRs 0001, 0002, 0003 and 0005 are
+accepted. ADR-0004 (adoption detection) remains open and does not block Phase 4.
+
+**Phase 4 (module catalog) is unblocked** — the module format is settled, so the ~80 patterns
+in the catalog can now be written as modules.
