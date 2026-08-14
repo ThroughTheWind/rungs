@@ -12,7 +12,7 @@ description: >-
 
 # Execute a work item
 
-**Authority:** [`docs/{{root}}/README.md`](../../docs/{{root}}/README.md). Read it once per
+**Authority:** [`docs/{{root}}/README.md`](../../../docs/{{root}}/README.md). Read it once per
 session before the first item; this skill is the execution form, not the reasoning.
 
 ## 0. Establish the item

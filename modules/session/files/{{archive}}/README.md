@@ -1,7 +1,7 @@
 # Session archive
 
 Closed sessions, one file each, newest first in the index generated into
-[`{{path}}`](../../{{path}}).
+[`{{path}}`](../session.md).
 
 ## Naming
 

@@ -1,0 +1,10 @@
+# Archive
+
+Finished work items, moved here so [`../items/`](../items/README.md) holds only work that can still
+change.
+
+Move them with `rungs backlog archive`, never by hand — it recomputes every link repo-wide, and
+archived ids stay indexed so citations to them keep resolving and the ids stay permanently spent.
+
+**Never edit an archived item.** If archived work turns out to be wrong, that is a new item. The
+value of an archived record is that it says what was decided at the time.

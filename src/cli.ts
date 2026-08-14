@@ -6,6 +6,7 @@ import { detect, scanRepo } from './detect.ts';
 import { addModule, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
+import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
 import type { DetectResult, Manifest } from './types.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -170,6 +171,62 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
   return 0;
 }
 
+function cmdCheck(root: string, tier: string | undefined, stamp: string) {
+  const runs = runGates(root, tier);
+  if (!runs.length) {
+    console.log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
+    return 1;
+  }
+  appendLedger(root, runs, stamp);
+
+  console.log(c.bold(`\nrungs check — ${root}${tier ? ` (${tier} tier)` : ''}\n`));
+  const mark = { pass: c.green('pass'), fail: c.red('FAIL'), unimplemented: c.yellow('unimpl'), error: c.red('error') };
+  for (const r of runs) {
+    console.log(
+      `  ${mark[r.status]} ${r.id.padEnd(34)} ${c.dim(`${r.ms}ms`)}` +
+        (r.examined ? c.dim(`  ${r.examined} examined`) : ''),
+    );
+    for (const f of r.findings.slice(0, 4)) {
+      console.log(`         ${c.dim(f.file ? `${f.file}: ` : '')}${f.message}`);
+    }
+    if (r.findings.length > 4) console.log(c.dim(`         …and ${r.findings.length - 4} more`));
+  }
+
+  const n = (s: string) => runs.filter((r) => r.status === s).length;
+  console.log(
+    `\n  ${c.green(`${n('pass')} pass`)} · ${c.red(`${n('fail')} fail`)} · ` +
+      `${c.yellow(`${n('unimplemented')} unimplemented`)} · ${n('error')} error` +
+      c.dim(`  (${runs.reduce((t, r) => t + r.ms, 0)}ms total)`),
+  );
+
+  if (n('unimplemented')) {
+    console.log(
+      c.yellow('\n  Unimplemented gates are not passes.') +
+        c.dim(' A registry reporting green because most of its\n  gates do nothing is the worst failure this tool could have, so they block.'),
+    );
+  }
+
+  const { gates } = loadRegistry(root);
+  const q = ledgerQuestions(root, gates);
+  if (q.neverFired.length || q.alwaysFires.length) {
+    console.log(c.bold(`\n  Ledger questions ${c.dim(`(${q.runs} recorded runs)`)}`));
+    for (const g of q.neverFired.slice(0, 3)) {
+      console.log(`    ${c.cyan(g.id)} has never fired. ${c.dim(firstSentence(g.why ?? ''))}`);
+      console.log(c.dim('      Is that still a risk here, or is the gate scoped too narrowly?'));
+    }
+    for (const g of q.alwaysFires.slice(0, 3)) {
+      console.log(`    ${c.cyan(g.id)} fails ${g.rate}. ${c.dim('Red by default is a gate people learn to bypass.')}`);
+    }
+    console.log(
+      c.dim('\n    These are questions, not verdicts. The ledger records whether a gate ran'),
+    );
+    console.log(c.dim('    and whether it fired — never whether it is valuable. Gates invoked'));
+    console.log(c.dim('    directly, and CI runs, are not counted.'));
+  }
+  console.log();
+  return n('fail') + n('unimplemented') + n('error') > 0 ? 1 : 0;
+}
+
 const [, , cmd, ...rest] = process.argv;
 const flags = new Set(rest.filter((r) => r.startsWith('--')));
 const args = rest.filter((r) => !r.startsWith('--'));
@@ -185,6 +242,10 @@ switch (cmd) {
     process.exit(cmdModules());
   case 'doctor':
     process.exit(cmdDoctor(args[0] ?? process.cwd()));
+  case 'check': {
+    const tier = args[1] ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
+    process.exit(cmdCheck(resolve(args[0] ?? process.cwd()), tier, STAMP));
+  }
   case 'render':
     process.exit(cmdRender(resolve(args[0] ?? process.cwd()), HARNESSES, STAMP));
   case 'add': {

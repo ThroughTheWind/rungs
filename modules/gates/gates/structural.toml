@@ -24,6 +24,7 @@ external = "not fetched — a gate that needs the network is a gate that fails o
 [[frontmatter_schema]]
 id       = "rules"
 scan     = [".ai/rules/**/*.md"]
+exclude  = [".ai/rules/README.md"]
 required = ["description", "enforcement"]
 optional = ["paths"]
 enum     = { enforcement = ["gated", "review-only"] }
