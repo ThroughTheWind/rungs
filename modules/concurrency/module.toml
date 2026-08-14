@@ -68,8 +68,16 @@ diff. The driver refuses and prints the regenerate command instead.
 """
 
 [detect]
-paths   = [".gitattributes", ".git/rungs-land.lock"]
-markers = ["rungs:begin concurrency"]
+# `.gitattributes` was in this list and is a near-universal file — it reported
+# axiom-mesh, a repo with 29 branches and no land protocol at all, as having
+# concurrency tooling. A signature that matches nearly every repo is not a
+# signature. What is actually distinctive is a declared merge driver.
+paths        = [".git/rungs-land.lock"]
+# A custom merge driver declaration is what actually discriminates: 21 of them
+# in the one repo of the four that runs a land protocol, and none in the other
+# three. The file itself is near-universal, so it is scanned rather than counted.
+marker_paths = [".gitattributes"]
+markers      = ["rungs:begin concurrency", "merge="]
 
 [[detect.paradigm]]
 id      = "trunk-based"

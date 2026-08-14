@@ -115,10 +115,18 @@ unit and install only the missing gates, install items alongside, or skip.
 # no backlog; they are spec story ids.
 [[detect.infer]]
 param   = "id_prefix"
-pattern = "\\b([A-Z]{1,6})-\\d{1,4}\\b"
+# The lookbehind is load-bearing and was added after a real false positive:
+# `\b([A-Z]{1,6})-\d` matches `US-110` inside `FOUND-US-110`, because `-` to `U`
+# is a word boundary. On hexguard-templates that proposed `US` — a spec story
+# id — as the backlog prefix, which is precisely the failure ADR-0004 was
+# written about, arriving through the inference path instead of the presence one.
+pattern = "(?<![A-Za-z0-9-])([A-Z]{1,6})-\\d{1,4}\\b"
 min     = 20
 scope   = ["docs/**/*.md"]
 exclude = ["docs/specs/**", "docs/decisions/**", "docs/adr/**"]
+# Encodings, hashes and standards share the id shape. On hexguard the top
+# proposal was `UTF` at 32 matches, from `UTF-8`.
+exclude_values = ["UTF", "SHA", "ISO", "RFC", "MD", "AES", "RSA", "HTTP", "IPV", "X"]
 
 # ── provenance (required, validated) ──────────────────────────────────────────
 

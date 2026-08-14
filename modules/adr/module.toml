@@ -43,7 +43,10 @@ admission rule exists to keep those out, and this gate is what makes the rule mo
 """
 
 [detect]
-paths   = ["docs/adr/**/*.md", "docs/decisions/**/*.md", "docs/**/ADR-*.md", "doc/adr/**/*.md"]
+# `docs/**/decisions/**` rather than `docs/decisions/**`: hexguard keeps four
+# numbered workflow decisions in `docs/.ai/decisions/` and the narrower glob
+# missed them entirely. Found by running this against the corpus, not by reading.
+paths   = ["docs/**/adr/**/*.md", "docs/**/decisions/**/*.md", "docs/**/ADR-*.md", "doc/adr/**/*.md"]
 markers = ["rungs:begin adr"]
 
 [[detect.infer]]

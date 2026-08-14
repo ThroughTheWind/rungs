@@ -87,11 +87,13 @@ authority tree creates a second place to look, which is the failure that registr
 prevent.
 """
 
-[[detect.infer]]
-param   = "story_format"
-pattern = "\\b([A-Z]{2,8})-US-\\d{1,4}\\b"
-min     = 10
-scope   = ["docs/**/*.md"]
+# An inference rule was declared here and removed after running it. It matched
+# `[A-Z]{2,8}-US-\d` and proposed `AUTH` for `story_format`, whose value is a
+# *shape* (`<PREFIX>-US-###`) — so it proposed a prefix for a parameter that
+# wants a pattern, and a repo with several surfaces has several prefixes by
+# design. Nothing in this module is inferable without judgement, so it infers
+# nothing. That is a legitimate answer, and a knob wired to a wrong value is
+# worse than no knob.
 
 [provenance]
 sources  = ["hexguard-templates", "rift-forge"]

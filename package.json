@@ -1,0 +1,30 @@
+{
+  "name": "rungs",
+  "version": "0.1.0",
+  "description": "Installs and maintains a repository's agentic development system, composed from modules.",
+  "type": "module",
+  "bin": {
+    "rungs": "./src/cli.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "rungs": "node src/cli.ts",
+    "test": "node --test test/"
+  },
+  "files": [
+    "src",
+    "modules"
+  ],
+  "keywords": [
+    "agents",
+    "claude-code",
+    "agent-skills",
+    "scaffolding"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "smol-toml": "^1.8.0"
+  }
+}

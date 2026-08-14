@@ -74,10 +74,18 @@ do not merge them, and do not add a third.
 """
 
 [[detect.infer]]
-param   = "id_prefix"
-pattern = "\\b([A-Z]{1,6})-\\d{1,4}\\b"
-min     = 10
-scope   = ["docs/**/FINDINGS.md", "docs/governance/*.md"]
+param       = "id_prefix"
+# The register's own marker settles this. Counting raw ids proposed the
+# *backlog's* prefix on a real repo, because a findings register cites work
+# items far more often than it defines its own ids — 787 to 722 in one case.
+# Matches both `NEXT-ID: F-303` and the per-kind form `NEXT-F: F-303` that a
+# real repo turned out to use — assuming one marker spelling is how an anchor
+# silently falls back to the frequency count it was written to override.
+anchor      = "NEXT-(?:ID|[A-Z]{1,6}):\\s*([A-Z]{1,6})-\\d"
+anchor_name = "the register's NEXT-* marker"
+pattern     = "^\\|\\s*\\[?([A-Z]{1,6})-\\d{1,4}"
+min         = 10
+scope       = ["docs/**/FINDINGS.md", "docs/governance/*.md"]
 
 # ── provenance (required, validated) ──────────────────────────────────────────
 

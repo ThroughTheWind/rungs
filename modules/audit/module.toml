@@ -41,7 +41,13 @@ gate refuses the document tree from re-forming.
 # a subject has never been assessed.
 
 [detect]
-paths   = ["docs/**/audits/**/*.md", "docs/**/*-audit-*.md", "docs/**/*-readiness-*.md"]
+# A dedicated audits directory only. The first draft also matched
+# `docs/**/*-audit-*.md` and `*-readiness-*` anywhere, and on a real repo it hit
+# `WI-108-lol-mechanics-fidelity-audit-epic.md` and a launch-readiness epic —
+# work items, not audit documents. Under-detection is the correct bias: a repo
+# with scattered audit files gets a second directory it can see, while a false
+# positive would have the CLI believe it owns somebody's backlog.
+paths   = ["docs/**/audits/**/*.md", "docs/**/audit/**/*.md"]
 markers = ["rungs:begin audit"]
 
 [[detect.adopt_as]]
