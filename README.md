@@ -58,22 +58,23 @@ so you don't install rung 5 at rung 1.
 
 ## Install
 
-Not published yet. For now:
-
 ```bash
-git clone <this repo> && cd rungs && npm install
-node src/cli.ts --help
+npx @rungs/cli doctor
 ```
 
 Requires **Node 22.18+** — it runs TypeScript directly, no build step.
 
-Published as **`@rungs/cli`** — the unscoped name `rungs` is unpublishable, being
-one edit away from both `rung` and `runjs`, which npm's typosquat filter refuses.
-The tool, the command and everything it writes are still `rungs`; only the
-package identifier differs:
+Published as **`@rungs/cli`**, not `rungs`: the unscoped name is unpublishable,
+being one edit from both `rung` and `runjs`, which npm's typosquat filter
+refuses. The tool, the command, and everything it writes are still `rungs` —
+only the package identifier differs. After a global install the command is
+plain `rungs`.
+
+From source:
 
 ```bash
-npx @rungs/cli doctor
+git clone https://github.com/ThroughTheWind/rungs && cd rungs && npm install
+node src/cli.ts --help
 ```
 
 ## What you get
@@ -163,12 +164,13 @@ Four promises that shape everything else:
 
 ## Status
 
-**Pre-release, v0.1.0.** Everything above runs; nothing is published.
+**Pre-release, v0.1.1** — published as
+[`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli).
 
 rungs is installed in its own repo and its gates run on every change — 20 pass,
-0 fail. Detection is [verified against all four source
-repos](docs/design/detection-verification.md). Not yet done: publishing, and
-installing into a source repo for real rather than in dry run.
+0 fail (`rungs check`, 2026-08-14). Detection is [verified against all four
+source repos](docs/design/detection-verification.md). Not yet done: installing
+into a source repo for real rather than in dry run.
 
 Expect module *contents* to move. The command surface is settled.
 
