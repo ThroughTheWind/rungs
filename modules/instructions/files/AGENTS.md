@@ -11,12 +11,6 @@ procedure belongs in a skill. Both load only when relevant, and this file has a 
 
 <!-- One paragraph: what the project does, for whom, and the one property that must not break. -->
 
-## Repo map
-
-<!-- rungs:begin repo-map -->
-<!-- Generated. Run `rungs render` after moving directories. -->
-<!-- rungs:end repo-map -->
-
 ## Validation matrix
 
 **Run the narrowest validation that covers what you touched**, then the standard gates. Running

@@ -145,7 +145,22 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     return 1;
   }
   const pulled = order.filter((m) => !names.includes(m.name));
-  const params = resolveParams(mods);
+
+  // `--set module.param=value`. Without it the first real install into a repo
+  // that already had a backlog would have created a second one beside it —
+  // `docs/backlog/` next to `docs/.ai/backlog/` — which is the "two places to
+  // look" failure this whole tool is against, arriving through the installer.
+  const overrides: Record<string, Record<string, unknown>> = {};
+  for (const raw of rest.filter((r) => r.startsWith('--set='))) {
+    const [key, ...rhs] = raw.slice('--set='.length).split('=');
+    const [modName, param] = key.split('.');
+    if (!modName || !param) continue;
+    (overrides[modName] ??= {})[param] = rhs.join('=');
+  }
+  const params = resolveParams(mods, overrides);
+  for (const [m, vals] of Object.entries(overrides)) {
+    for (const [k, v] of Object.entries(vals)) console.log(c.dim(`  set ${m}.${k} = ${v}`));
+  }
   const skillsDir = harnesses.includes('claude') ? '.claude/skills' : '.agents/skills';
 
   console.log(c.bold(`\nrungs add ${names.join(' ')} → ${root}${dryRun ? c.yellow('  (dry run)') : ''}\n`));
@@ -348,6 +363,7 @@ function cmdEject(root: string, dryRun: boolean) {
 const [, , cmd, ...rest] = process.argv;
 const flags = new Set(rest.filter((r) => r.startsWith('--')));
 const args = rest.filter((r) => !r.startsWith('--'));
+//  carries a value, so it is neither a bare flag nor a positional.
 // Dates come from the caller, never from inside a render: a timestamp baked
 // into generated output makes every run a diff.
 const STAMP = process.env.RUNGS_DATE ?? new Date().toISOString().slice(0, 10);

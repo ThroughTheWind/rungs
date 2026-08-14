@@ -21,7 +21,7 @@ const isHere = (href: string) => here === href || (href !== "/" && here.startsWi
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={new URL(here, Astro.site ?? "https://rungs.dev")} />
+    <link rel="canonical" href={new URL(here, Astro.site ?? "https://rungscli.com")} />
     {/* Applied before first paint: a theme that flashes is a theme that was applied too late. */}
     <script is:inline>
       (function () {

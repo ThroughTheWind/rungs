@@ -33,17 +33,25 @@ export function resolveParams(mods: Manifest[], overrides: Params = {}): Params 
     out[m.name] = {};
     for (const [k, spec] of Object.entries(m.params)) out[m.name][k] = spec.default;
   }
-  // A default may itself reference another module's parameter, e.g. findings'
-  // register living at `docs/{{backlog.root}}/FINDINGS.md`. Resolve after all
-  // defaults are in place, and only one level — a chain would be a template
-  // language arriving through the back door.
+
+  // **Overrides go on before cross-module references resolve.** They were
+  // applied last, which meant a default referencing another module's parameter
+  // had already baked in that module's *default* — so installing into hexguard
+  // with `--set backlog.root=.ai/backlog` put the findings register at
+  // `docs/.ai/backlog/FINDINGS.md` and left every link to it pointing at
+  // `docs/backlog/FINDINGS.md`. The gate caught it on the first real install;
+  // nothing in a scratch repo could have, because nothing there overrides.
+  for (const [mod, vals] of Object.entries(overrides)) {
+    out[mod] = { ...(out[mod] ?? {}), ...vals };
+  }
+
+  // A default may reference another module's parameter, e.g. findings' register
+  // living at `docs/{{backlog.root}}/FINDINGS.md`. One level only — a chain
+  // would be a template language arriving through the back door.
   for (const m of mods) {
     for (const [k, v] of Object.entries(out[m.name])) {
       if (typeof v === 'string' && v.includes('{{')) out[m.name][k] = substitute(v, m.name, out);
     }
-  }
-  for (const [mod, vals] of Object.entries(overrides)) {
-    out[mod] = { ...(out[mod] ?? {}), ...vals };
   }
   return out;
 }

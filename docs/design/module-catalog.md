@@ -123,7 +123,7 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 - **files:** `.ai/gates.toml` registry · ledger `.gitignore` entry
 - **gates:** the structural set, all `declared` — `links-resolve` · `ids-unique` ·
   `required-sections` · `referenced-paths-exist` · `frontmatter-valid` · `generated-current`
-- **cost:** near-zero to run; the runner is invoked as `npx rungs check`
+- **cost:** near-zero to run; the runner is invoked as `npx @rungs/cli check`
 - **implements:** `structural-gates` `gate-self-test` `read-the-negation` `reasoned-exemption`
   `computed-claims` `generate-derivable` `enforcement-declaration` `ageing-signal` `tool-level-hook`
 - **provenance:** `rift-forge` — 42 `check:` gates with 27 self-tests, and 82 registry entries with
@@ -207,7 +207,7 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 **Rung 1 · deps: `gates`**
 
 - **params:** `provider` (default `github`) · `trigger` (`push` | `land`)
-- **files:** one workflow calling `npx rungs check`, **matrix over packages** where relevant
+- **files:** one workflow calling `npx @rungs/cli check`, **matrix over packages** where relevant
 - **gates:** `workflow-proliferation` (declared — near-identical workflow files over a threshold)
 - **cost:** CI minutes; the `land` trigger option exists because they are billed
 - **implements:** `matrix-not-per-item-ci` `workflow-proliferation-check` `ci-at-land-time`

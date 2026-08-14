@@ -68,6 +68,6 @@ later becomes a service, it belongs beside this one, not inside it.
 | `measurement` and `title-block` mapping rules | Both need a prose regex with a false-positive budget; a rule that mis-fires on real sentences is worse than one that does not run |
 | Console fences render the loud undated caption | Markdown fences carry no capture date. Fix is a remark plugin carrying fence meta (` ```console date=2026-08-14 `) into hast |
 | Module and profile lists on the landing page are hand-listed | Should be derived from `modules/*/module.toml`. Marked `generate-derivable` in `src/pages/index.astro` |
-| Site status numbers are typed | `src/site.config.ts` centralises them with an `asOf` date. Should come from `npx rungs check --json` |
+| Site status numbers are typed | `src/site.config.ts` centralises them with an `asOf` date. Should come from `npx @rungs/cli check --json` |
 | `overflow-wrap` is fixed at the page, not in the system | The corpus contains unbreakable tokens (`proposed→accepted/rejected/…→done`, pattern-catalog §B) that overflow a stacked table cell by 138px at 375px. Patched in `[...slug].astro`; it belongs in the export's `tokens/base.css`, so it needs to go back to the design system rather than live here |
 | Only one build gate | `check:links` runs. The next one is "no rendered number without a date" — the site states that rule and does not yet check it |

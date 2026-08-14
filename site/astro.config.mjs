@@ -8,7 +8,7 @@ import { rehypeRungs } from "./src/plugins/rehype-rungs.mjs";
 const REPO_ROOT = new URL("../", import.meta.url).pathname;
 
 export default defineConfig({
-  site: "https://rungs.dev",
+  site: "https://rungscli.com",
   output: "static",
   integrations: [react()],
   markdown: {

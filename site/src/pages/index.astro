@@ -51,7 +51,7 @@ const g = SITE.gates;
         gates, skills — composed from modules extracted from four repos that already paid for the
         lessons.
       </p>
-      <p class="sub">Retrofit first: <code>npx rungs add &lt;module&gt;</code>, then <code>rungs doctor</code>.</p>
+      <p class="sub">Retrofit first: <code>npx @rungs/cli add &lt;module&gt;</code>, then <code>rungs doctor</code>.</p>
       <div class="cta">
         <Button href="#modules">Browse the 15 modules</Button>
         <Button variant="ghost" href="#extracted">How the content was extracted</Button>
@@ -60,9 +60,9 @@ const g = SITE.gates;
     <div>
       <Console
         date={SITE.asOf}
-        source="npx rungs add"
+        source="npx @rungs/cli add"
         lines={[
-          { type: "cmd", text: "npx rungs add concurrency" },
+          { type: "cmd", text: "npx @rungs/cli add concurrency" },
           { type: "out", text: "  concurrency is rung 5 (~5+ concurrent sessions)." },
           { type: "warn", text: "  This repo shows 1 active session." },
           { type: "dim", text: "  Install anyway? [y/N]" },
@@ -78,7 +78,7 @@ const g = SITE.gates;
       <Measurement
         value={`${g.registered} gates register, all ${g.withEngines} have engines`}
         date={SITE.asOf}
-        command="npx rungs check"
+        command="npx @rungs/cli check"
       />
       <span class="mono">{g.pass} pass</span>
       <span class="mono bad">{g.fail} fail</span>
@@ -144,9 +144,9 @@ const g = SITE.gates;
     <span class="lab">doctor · the research, made detectable</span>
     <Console
       date={SITE.asOf}
-      source="npx rungs doctor"
+      source="npx @rungs/cli doctor"
       lines={[
-        { type: "cmd", text: "npx rungs doctor" },
+        { type: "cmd", text: "npx @rungs/cli doctor" },
         { type: "out", text: "  you have an audit skill and no findings register" },
         { type: "out", text: "  this rule says MANDATORY and has no gate" },
         { type: "out", text: "  14 near-identical release workflows" },

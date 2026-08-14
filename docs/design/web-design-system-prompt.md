@@ -32,7 +32,7 @@ Three surfaces, one system. They share tokens and components; they do not share 
 
 1. **Landing** — for a developer with a repo that already exists who has hit one of the eight
    failure modes and wants the fix without inventing it (brief §2). Retrofit is the primary case,
-   not `init`. The page has to make `npx rungs add <module>` and `rungs doctor` legible in about
+   not `init`. The page has to make `npx @rungs/cli add <module>` and `rungs doctor` legible in about
    twenty seconds.
 2. **Wiki** — the research corpus and the module reference, published. Long-form, table-dense,
    heavily cross-linked, and written under the one-definition-per-concept rule: the pattern
@@ -102,7 +102,7 @@ finding, and it carries a measurement:
 landing page's best demo and probably its hero:
 
 ```console
-$ npx rungs add concurrency
+$ npx @rungs/cli add concurrency
   concurrency is rung 5 (~5+ concurrent sessions).
   This repo shows 1 active session. Install anyway? [y/N]
 ```
@@ -177,7 +177,10 @@ playful and not corporate.
 - No number without a date, anywhere, including the landing page.
 - Do not make rung 5 aspirational, and do not use a green→red ramp; higher is not worse, it is
   more expensive.
-- Do not hide the 2 failing gates, the unclaimed npm name, or Phase 5's incompleteness.
+- Do not hide what is unresolved. As of 2026-08-14 that is the marker-prefix coupling
+  ([ADR-0006](../decisions/ADR-0006-the-name.md)'s open follow-up) and Phase 5's incompleteness —
+  **name the open items rather than a count**, because this line previously read "the 2 failing
+  gates, the unclaimed npm name" and both had ceased to be true without the sentence moving.
 - Do not restate a pattern's definition on a page that should cite it — including in a hero.
 
 ---
