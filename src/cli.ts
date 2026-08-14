@@ -58,9 +58,21 @@ function cmdDoctor(target: string) {
   console.log(c.bold(`\nrungs doctor — ${root}\n`));
 
   const files = scanRepo(root);
-  console.log(c.dim(`  scanned ${files.length} files\n`));
+  const record = readRecord(root);
+  console.log(
+    c.dim(`  scanned ${files.length} files`) +
+      (record ? c.dim(` · installed ${Object.keys(record.modules).length} module(s)`) : c.dim(' · not a rungs repo')) +
+      '\n',
+  );
 
-  const results = mods.map((m) => detect(m, root, files));
+  const params = resolveParams(mods, Object.fromEntries(
+    Object.entries(record?.modules ?? {}).flatMap(([n, e]) => (e.params ? [[n, e.params]] : [])),
+  ));
+  const skillsDir = record?.harnesses.includes('claude') === false ? '.agents/skills' : '.claude/skills';
+  const results = mods.map((m) => {
+    const installed = record?.modules[m.name];
+    return detect(m, root, files, installed ? { ...installed, skillsDir, params_all: params } : undefined);
+  });
   const byState = (s: DetectResult['state']) => results.filter((r) => r.state === s);
 
   for (const r of results) {
@@ -71,6 +83,21 @@ function cmdDoctor(target: string) {
       continue;
     }
     console.log(line);
+    if (r.ours) {
+      const parts = [`v${r.ours.version}`, `${r.ours.current.length} current`];
+      if (r.ours.stale.length) parts.push(c.cyan(`${r.ours.stale.length} stale`));
+      if (r.ours.missing.length) parts.push(c.yellow(`${r.ours.missing.length} missing`));
+      if (r.ours.kept.length) parts.push(c.dim(`${r.ours.kept.length} kept (yours from the start)`));
+      console.log(c.dim(`      ${parts.join(' · ')}`));
+      for (const f of r.ours.diverged.slice(0, 3)) {
+        console.log(`      ${c.yellow('diverged')} ${f} ${c.dim('— yours, never overwritten')}`);
+      }
+      if (r.ours.diverged.length > 3) console.log(c.dim(`      …and ${r.ours.diverged.length - 3} more`));
+      if (r.ours.stale.length || r.ours.missing.length) {
+        console.log(c.dim('      run `rungs upgrade --apply`'));
+      }
+      continue;
+    }
     for (const p of r.matchedPaths.slice(0, 2)) {
       console.log(c.dim(`      ${p.count}× ${p.pattern}  e.g. ${p.sample[0]}`));
     }
@@ -90,8 +117,11 @@ function cmdDoctor(target: string) {
     }
   }
 
+  const ours = byState('ours-current').length + byState('ours-diverged').length;
   console.log(
-    `\n  ${byState('theirs').length} present · ${byState('paradigm').length} different paradigm · ${byState('absent').length} absent\n`,
+    `\n  ${ours ? `${ours} installed (${byState('ours-diverged').length} diverged) · ` : ''}` +
+      `${byState('theirs').length} present · ${byState('paradigm').length} different paradigm · ` +
+      `${byState('absent').length} absent\n`,
   );
 
   // ADR-0005: state what this does not cover, every time. A green read is not
@@ -122,6 +152,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   if (pulled.length) console.log(c.dim(`  pulled in by dependency: ${pulled.map((m) => m.name).join(', ')}\n`));
 
   const installed: Manifest[] = [];
+  const wrote = new Map<string, Set<string>>();
   for (const mod of order) {
     if (mod.threshold?.confirm && !dryRun) {
       console.log(
@@ -132,6 +163,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     }
     const actions = addModule(mod, root, params, { dryRun, skillsDir });
     installed.push(mod);
+    wrote.set(mod.name, new Set(actions.filter((a) => a.disposition !== 'skip-exists' && a.disposition !== 'merge' && a.disposition !== 'gate').map((a) => a.target)));
     const counts = new Map<string, number>();
     for (const a of actions) counts.set(a.disposition, (counts.get(a.disposition) ?? 0) + 1);
     console.log(`  ${c.bold(mod.name.padEnd(14))} ${[...counts].map(([k, v]) => `${v} ${k}`).join(' · ')}`);
@@ -163,7 +195,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   }
 
   if (!dryRun) {
-    writeInstallRecord(root, order, params, harnesses, stamp, skillsDir);
+    writeInstallRecord(root, order, params, harnesses, stamp, skillsDir, wrote);
     const entries = render(root, harnesses);
     writeReport(root, entries, harnesses, stamp);
     console.log(

@@ -20,7 +20,7 @@ export const PROFILES: Record<string, string[]> = {
 
 export interface InstallRecord {
   harnesses: string[];
-  modules: Record<string, { version: string; params?: Record<string, unknown>; hashes?: Record<string, string> }>;
+  modules: Record<string, { version: string; params?: Record<string, unknown>; hashes?: Record<string, string>; kept?: { files: string[] } }>;
 }
 
 export function readRecord(repoRoot: string): InstallRecord | null {
@@ -64,7 +64,9 @@ export function planUpgrade(repoRoot: string, mods: Manifest[], record: InstallR
     if (!installed) continue;
     const emitted = emittedFiles(mod, params, skillsDir);
     const files: UpgradeItem['files'] = [];
+    const kept = new Set(installed.kept?.files ?? []);
     for (const [rel, wouldEmit] of emitted) {
+      if (kept.has(rel)) continue;   // never ours; upgrade does not touch it
       const full = join(repoRoot, rel);
       if (!existsSync(full)) {
         files.push({ rel, state: 'missing' });

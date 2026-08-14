@@ -1,7 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DetectResult, Manifest } from './types.ts';
 import { matchAny, walk } from './glob.ts';
+import { contentHash, emittedFiles } from './add.ts';
+import type { Params } from './substitute.ts';
 
 const SAMPLE = 3;
 
@@ -15,7 +17,7 @@ const SAMPLE = 3;
  * creates something visible in git, while a false positive makes the CLI
  * believe wrong things about a repo and act on that belief later.
  */
-export function detect(mod: Manifest, repoRoot: string, files: string[]): DetectResult {
+export function detect(mod: Manifest, repoRoot: string, files: string[], installed?: InstalledModule): DetectResult {
   const result: DetectResult = {
     module: mod.name,
     state: 'absent',
@@ -24,6 +26,17 @@ export function detect(mod: Manifest, repoRoot: string, files: string[]): Detect
     proposals: [],
     adoptable: [],
   };
+
+  // A module the repo installed is answered from the record, not from
+  // signatures. Signatures exist to recognise somebody *else's* structure;
+  // running them over our own would report a healthy install as "theirs" and
+  // lose the one thing the record knows and detection cannot — which files we
+  // wrote, and whether they still say what we wrote.
+  if (installed) {
+    result.ours = ownedState(mod, repoRoot, installed);
+    result.state = result.ours.diverged.length ? 'ours-diverged' : 'ours-current';
+    return result;
+  }
 
   for (const pattern of mod.detect.paths ?? []) {
     const hits = matchAny(files, pattern);
@@ -179,4 +192,55 @@ function infer(mod: Manifest, repoRoot: string, files: string[]) {
 
 export function scanRepo(repoRoot: string): string[] {
   return walk(repoRoot);
+}
+
+export interface InstalledModule {
+  version: string;
+  params?: Record<string, unknown>;
+  hashes?: Record<string, string>;
+  kept?: { files: string[] };
+  skillsDir?: string;
+  params_all?: Params;
+}
+
+/**
+ * The state of files this repo installed from a module.
+ *
+ * Three comparisons, and each answers a different question:
+ *
+ *   absent from disk            → missing, an upgrade restores it
+ *   matches what we'd emit now  → current
+ *   matches the recorded hash   → stale; ours to replace on upgrade
+ *   matches neither             → diverged; theirs, and never touched
+ */
+export function ownedState(mod: Manifest, repoRoot: string, installed: InstalledModule) {
+  const params = installed.params_all ?? {};
+  const emitted = emittedFiles(mod, params, installed.skillsDir ?? '.claude/skills');
+  const kept = new Set(installed.kept?.files ?? []);
+  const out = {
+    version: installed.version,
+    current: [] as string[],
+    stale: [] as string[],
+    diverged: [] as string[],
+    missing: [] as string[],
+    kept: [] as string[],
+  };
+  for (const [rel, wouldEmit] of emitted) {
+    // A file that already existed at install was never ours. Calling it
+    // "diverged" implies the user broke something they never touched.
+    if (kept.has(rel)) {
+      out.kept.push(rel);
+      continue;
+    }
+    const full = join(repoRoot, rel);
+    if (!existsSync(full)) {
+      out.missing.push(rel);
+      continue;
+    }
+    const onDisk = contentHash(readFileSync(full, 'utf8'));
+    if (onDisk === contentHash(wouldEmit)) out.current.push(rel);
+    else if (installed.hashes?.[rel] && onDisk === installed.hashes[rel]) out.stale.push(rel);
+    else out.diverged.push(rel);
+  }
+  return out;
 }

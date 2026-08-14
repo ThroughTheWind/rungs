@@ -103,6 +103,8 @@ export interface DetectResult {
   paradigm?: { id: string; note?: string; compare?: string; matched: string[] };
   /** Parameters detection *proposes*. Never used to conclude presence. */
   proposals: { param: string; value: string; evidence: string }[];
+  /** Set when the repo installed this module: what we wrote, and whether it still says so. */
+  ours?: { version: string; current: string[]; stale: string[]; diverged: string[]; missing: string[]; kept: string[] };
   /** Existing artifacts that would adopt as `command` gates or similar. */
   adoptable: { kind: string; count: number; sample: string[]; note?: string }[];
 }

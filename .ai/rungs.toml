@@ -29,6 +29,9 @@ version = "1.0.0"
 state   = "managed"
 params  = { path = "docs/decisions", id_prefix = "ADR" }
 
+[modules.adr.kept]
+files = ["docs/decisions/README.md"]
+
 [modules.session]
 version = "1.0.0"
 state   = "managed"

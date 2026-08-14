@@ -258,6 +258,8 @@ export function writeInstallRecord(
   harnesses: string[],
   stamp: string,
   skillsDir = '.claude/skills',
+  /** Per module, the files rungs actually created — as opposed to kept. */
+  wroteByModule?: Map<string, Set<string>>,
 ) {
   const lines = [
     '# Installed by `rungs`. Edit parameters here and re-run `rungs render`.',
@@ -275,11 +277,20 @@ export function writeInstallRecord(
     if (Object.keys(p).length) {
       lines.push(`params  = { ${Object.entries(p).map(([k, v]) => `${k} = ${JSON.stringify(v ?? '')}`).join(', ')} }`);
     }
+    // Only files rungs actually **wrote** get a hash. A file that already
+    // existed was kept, and hashing it with our content would later read as a
+    // divergence the user caused — implying they broke something they never
+    // touched. Kept files are listed separately and stay theirs forever.
     const emitted = emittedFiles(m, params, skillsDir);
-    const owned = [...emitted].filter(([rel]) => existsSync(join(repoRoot, rel)));
-    if (owned.length) {
+    const created = [...emitted].filter(([rel]) => (wroteByModule?.get(m.name)?.has(rel) ?? existsSync(join(repoRoot, rel))));
+    const kept = [...emitted].filter(([rel]) => !created.some(([c]) => c === rel) && existsSync(join(repoRoot, rel)));
+    if (created.length) {
       lines.push(`[modules.${m.name}.hashes]`);
-      for (const [rel, content] of owned) lines.push(`"${rel}" = "${contentHash(content)}"`);
+      for (const [rel, content] of created) lines.push(`"${rel}" = "${contentHash(content)}"`);
+    }
+    if (kept.length) {
+      lines.push('', `[modules.${m.name}]`.replace(']', '.kept]'));
+      lines.push(`files = ${JSON.stringify(kept.map(([rel]) => rel))}`);
     }
     lines.push('');
   }
