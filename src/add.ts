@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
 import type { Manifest } from './types.ts';
 import { matchAny, walk } from './glob.ts';
 import { markers, mergeBlock, substitute, type Params } from './substitute.ts';
@@ -208,9 +209,60 @@ export function resolveInstallOrder(requested: string[], all: Manifest[]): { ord
   return { order, missing };
 }
 
-export function writeInstallRecord(repoRoot: string, mods: Manifest[], params: Params, harnesses: string[], stamp: string) {
+/**
+ * Content hash of what a module emitted, recorded at install.
+ *
+ * Without it `upgrade` cannot tell a file the user edited from one an older
+ * module version wrote — and those want opposite treatment: the first is a
+ * decision to respect, the second is the thing upgrade exists to replace.
+ * It is also what makes ADR-0004's `ours-current` and `ours-diverged` states
+ * decidable at all.
+ */
+export const contentHash = (s: string) => createHash('sha256').update(s.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
+
+/**
+ * Files a module owns **outright** — not the shared ones it merges into.
+ *
+ * `AGENTS.md` and `.ai/gates.toml` are co-owned: a module creates them and then
+ * every other module merges a block in, so their content differs from what any
+ * single module emitted the moment the second module installs. Hashing them
+ * reported both as diverged on a completely untouched repo. A file carrying
+ * managed blocks is never whole-file upgraded — its **blocks** are, through the
+ * merge path.
+ */
+const SHARED = new Set(['AGENTS.md', 'CLAUDE.md', '.gitignore', '.gitattributes', '.ai/gates.toml']);
+
+export function emittedFiles(mod: Manifest, params: Params, skillsDir = '.claude/skills'): Map<string, string> {
+  const out = new Map<string, string>();
+  const sub = (t: string) => substitute(t, mod.name, params);
+  for (const [dir, prefix] of [
+    ['files', ''],
+    ['rules', '.ai/rules/'],
+    ['skills', `${skillsDir}/`],
+  ] as const) {
+    const base = join(mod.dir, dir);
+    if (!existsSync(base)) continue;
+    for (const rel of walk(base)) {
+      const target = sub(prefix + rel).split('\\').join('/');
+      if (SHARED.has(target)) continue;
+      out.set(target, sub(readFileSync(join(base, rel), 'utf8')));
+    }
+  }
+  return out;
+}
+
+export function writeInstallRecord(
+  repoRoot: string,
+  mods: Manifest[],
+  params: Params,
+  harnesses: string[],
+  stamp: string,
+  skillsDir = '.claude/skills',
+) {
   const lines = [
     '# Installed by `rungs`. Edit parameters here and re-run `rungs render`.',
+    '# Hashes are what rungs emitted; a file whose hash no longer matches is a',
+    '# divergence rungs reports and never overwrites.',
     '',
     '[repo]',
     `harnesses = ${JSON.stringify(harnesses)}`,
@@ -222,6 +274,12 @@ export function writeInstallRecord(repoRoot: string, mods: Manifest[], params: P
     const p = params[m.name] ?? {};
     if (Object.keys(p).length) {
       lines.push(`params  = { ${Object.entries(p).map(([k, v]) => `${k} = ${JSON.stringify(v ?? '')}`).join(', ')} }`);
+    }
+    const emitted = emittedFiles(m, params, skillsDir);
+    const owned = [...emitted].filter(([rel]) => existsSync(join(repoRoot, rel)));
+    if (owned.length) {
+      lines.push(`[modules.${m.name}.hashes]`);
+      for (const [rel, content] of owned) lines.push(`"${rel}" = "${contentHash(content)}"`);
     }
     lines.push('');
   }

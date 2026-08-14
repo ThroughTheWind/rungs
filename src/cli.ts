@@ -7,6 +7,7 @@ import { addModule, adoptableGates, registerGates, resolveInstallOrder, writeIns
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
+import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord } from './lifecycle.ts';
 import type { DetectResult, Manifest } from './types.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -162,7 +163,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   }
 
   if (!dryRun) {
-    writeInstallRecord(root, order, params, harnesses, stamp);
+    writeInstallRecord(root, order, params, harnesses, stamp, skillsDir);
     const entries = render(root, harnesses);
     writeReport(root, entries, harnesses, stamp);
     console.log(
@@ -243,6 +244,75 @@ function cmdCheck(root: string, tier: string | undefined, stamp: string) {
   return n('fail') + n('unimplemented') + n('error') > 0 ? 1 : 0;
 }
 
+function cmdInit(root: string, profile: string, dryRun: boolean, harnesses: Harness[], stamp: string) {
+  if (readRecord(root)) {
+    console.log(
+      c.yellow('\n  this repo is already initialised.') +
+        c.dim(' Use `rungs add <module>` to install more, or `rungs upgrade`.\n'),
+    );
+    return 1;
+  }
+  const names = PROFILES[profile];
+  if (!names) {
+    console.log(c.red(`\n  unknown profile '${profile}'.`) + c.dim(` Known: ${Object.keys(PROFILES).join(', ')}\n`));
+    return 1;
+  }
+  console.log(c.dim(`\n  profile '${profile}' — ${names.length} modules`));
+  return cmdAdd(names, root, dryRun, harnesses, stamp);
+}
+
+function cmdUpgrade(root: string, apply: boolean) {
+  const record = readRecord(root);
+  if (!record) {
+    console.log(c.yellow('\n  not a rungs repo — nothing to upgrade.\n'));
+    return 1;
+  }
+  const mods = loadAllModules(MODULES);
+  const plan = planUpgrade(root, mods, record);
+  console.log(c.bold(`\nrungs upgrade — ${root}${apply ? '' : c.yellow('  (preview)')}\n`));
+
+  let stale = 0;
+  let diverged = 0;
+  for (const item of plan) {
+    const counts = item.files.reduce<Record<string, number>>((a, f) => ({ ...a, [f.state]: (a[f.state] ?? 0) + 1 }), {});
+    stale += (counts.stale ?? 0) + (counts.missing ?? 0);
+    diverged += counts.diverged ?? 0;
+    const moved = item.from === item.to ? c.dim(item.to) : `${item.from} → ${c.bold(item.to)}`;
+    console.log(`  ${item.module.padEnd(14)} ${moved}  ${c.dim(Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(' · '))}`);
+    for (const f of item.files.filter((x) => x.state === 'diverged')) {
+      console.log(`      ${c.yellow('diverged')} ${f.rel} ${c.dim('— yours, left alone')}`);
+    }
+  }
+
+  if (apply && stale) {
+    const written = applyUpgrade(root, mods, record, plan);
+    console.log(c.green(`\n  updated ${written} file(s)`));
+  }
+  console.log(
+    `\n  ${stale} to update · ${diverged} diverged\n` +
+      c.dim('  Divergence is a decision, not an error: a file you edited is never overwritten.\n') +
+      (apply ? '' : c.dim('  Run with --apply to write.\n')),
+  );
+  return 0;
+}
+
+function cmdEject(root: string, dryRun: boolean) {
+  if (!readRecord(root)) {
+    console.log(c.yellow('\n  not a rungs repo — nothing to eject.\n'));
+    return 1;
+  }
+  const result = eject(root, loadAllModules(MODULES), dryRun);
+  console.log(c.bold(`\nrungs eject — ${root}${dryRun ? c.yellow('  (dry run)') : ''}\n`));
+  for (const a of result.actions.slice(0, 6)) console.log(c.dim(`  ${a}`));
+  if (result.actions.length > 6) console.log(c.dim(`  …and ${result.actions.length - 6} more`));
+  console.log(
+    `\n  ${result.gates} declared gate(s) rewritten as commands.` +
+      c.dim('\n  This repo no longer needs rungs installed to run its checks.\n') +
+      c.dim('  Engine fixes stop arriving with a version bump — these files are yours now.\n'),
+  );
+  return 0;
+}
+
 const [, , cmd, ...rest] = process.argv;
 const flags = new Set(rest.filter((r) => r.startsWith('--')));
 const args = rest.filter((r) => !r.startsWith('--'));
@@ -262,6 +332,14 @@ switch (cmd) {
     const tier = args[1] ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
     process.exit(cmdCheck(resolve(args[0] ?? process.cwd()), tier, STAMP));
   }
+  case 'init': {
+    const profile = args[1] ?? 'tracked';
+    process.exit(cmdInit(resolve(args[0] ?? process.cwd()), profile, flags.has('--dry-run'), HARNESSES, STAMP));
+  }
+  case 'upgrade':
+    process.exit(cmdUpgrade(resolve(args[0] ?? process.cwd()), flags.has('--apply')));
+  case 'eject':
+    process.exit(cmdEject(resolve(args[0] ?? process.cwd()), flags.has('--dry-run')));
   case 'render':
     process.exit(cmdRender(resolve(args[0] ?? process.cwd()), HARNESSES, STAMP));
   case 'add': {
@@ -273,15 +351,18 @@ switch (cmd) {
     console.log(`
 ${c.bold('rungs')} — installs and maintains a repository's agentic development system
 
-  ${c.bold('rungs modules')}                    list the module set and audit the manifests
-  ${c.bold('rungs doctor')} [path]              detect what a repo already has
-  ${c.bold('rungs add')} <module…> [--into p]   install modules, resolving dependencies
+  ${c.bold('rungs init')} [path] [profile]      scaffold a repo — minimal · tracked · disciplined · hardened · fleet
+  ${c.bold('rungs doctor')} [path]              detect what a repo already has, installed or not
+  ${c.bold('rungs add')} <module…> [--into p]   install modules, resolving dependencies and adopting what exists
+  ${c.bold('rungs check')} [path] [tier]        run the registered gates and record the ledger
   ${c.bold('rungs render')} [path]              re-emit path-scoped rules per harness
+  ${c.bold('rungs upgrade')} [path]             move to newer module versions, never touching what you edited
+  ${c.bold('rungs eject')} [path]               materialise the engines; stop depending on rungs
+  ${c.bold('rungs modules')}                    list the module set and audit the manifests
 
   ${c.dim('--dry-run   report what would happen, write nothing')}
+  ${c.dim('--apply     upgrade only: write the changes')}
   ${c.dim('--copilot   also emit Copilot instruction files')}
-
-${c.dim('  Not yet implemented: check, init, upgrade, eject.')}
 `);
     process.exit(cmd ? 1 : 0);
 }
