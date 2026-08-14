@@ -165,20 +165,20 @@ somewhere — never silent divergence, and never forced convergence either.
 
 ## 9. Decisions
 
-All Phase 3 decisions except adoption detection are settled. **Phase 4 is unblocked.**
+**Phase 3 is closed.** All five decisions are accepted.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
 | [0001](../decisions/ADR-0001-multi-harness-rendering.md) | Multi-harness rendering | Render only path-scoped rules; skills and `AGENTS.md` are authored native; `CLAUDE.md` is an import bridge; degradation is reported |
 | [0002](../decisions/ADR-0002-stack-and-runtime-footprint.md) | Stack + runtime footprint | CLI is TypeScript on Node via `npx`. **A scaffolded repo acquires no new language runtime** — no emitted gate scripts. `ai-cli eject` is the promised exit |
 | [0003](../decisions/ADR-0003-module-definition-format.md) | Module definition format | A directory that looks like what it emits + a TOML manifest. Disposition by subdirectory; substitution-only templating; managed merge blocks; `[provenance]` required |
-| **0004** | **Adoption detection** — how `add` recognizes a hand-built equivalent well enough to adopt rather than overwrite. **The remaining open decision**, and the hardest; the four source repos are the test set | open |
+| [0004](../decisions/ADR-0004-adoption-detection.md) | Adoption detection | **Adoption is a mapping, not a migration** — `add` records where a repo's equivalent lives and never rewrites it. Six per-artifact states, two safe unattended, no `--force`. Presence decided by paths; params only *proposed* by id inference. Signatures biased toward false negatives |
 | [0005](../decisions/ADR-0005-self-instrumentation.md) | Self-instrumentation | Runner records exit status and wall-clock per gate; `doctor` asks two questions with provenance attached; rework rate, attribution, aggregation and any health score refused permanently |
 
 **They were decided out of numeric order**, each because it blocked the next: 0005 set the
 gate-shipping contract, 0002 set what a scaffolded repo may depend on, and 0003 is largely 0002's
-consequence. 0004 is last because `command` gates and the module manifest — both settled above —
-turn out to be most of what it needs.
+consequence. 0004 came last because `command` gates and the module manifest — both settled above —
+turned out to be most of what it needed.
 
 Two Phase 2 claims were found wrong while arguing these and have been **amended in place** rather
 than left to be cited: [synthesis §3.1](../research/synthesis.md) overstated the rendering problem,

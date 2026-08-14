@@ -57,7 +57,7 @@ size — a solo spike does not want rift-forge's land protocol.
 → [`docs/research/synthesis.md`](docs/research/synthesis.md) ·
 [`docs/research/pattern-catalog.md`](docs/research/pattern-catalog.md)
 
-### Phase 3 — Product definition · **in progress**
+### Phase 3 — Product definition · **done**
 
 What the CLI actually is: the scaffold model, the module boundary, the output contract, the
 upgrade story, and harness portability.
@@ -74,13 +74,18 @@ genuinely fragmented — so the CLI renders one primitive, not four.
   [ADR-0002](docs/decisions/ADR-0002-stack-and-runtime-footprint.md) stack + runtime footprint ·
   [ADR-0003](docs/decisions/ADR-0003-module-definition-format.md) module definition format ·
   [ADR-0005](docs/decisions/ADR-0005-self-instrumentation.md) self-instrumentation — **all accepted**
-- **ADR-0004 (adoption detection) is the one still open**, and Phase 4 does not block on it
+- [ADR-0004](docs/decisions/ADR-0004-adoption-detection.md) adoption detection — **accepted**:
+  adoption is a mapping, not a migration
 
-### Phase 4 — Module catalog
+### Phase 4 — Module catalog · **in progress**
 
-Turn the pattern catalog into a specified module set with dependencies and conflicts —
-`backlog`, `findings`, `adr`, `specs`, `gates`, `skills`, `concurrency`, `release`, `ci`,
-`design-sync`. Each module: what it generates, what it requires, what it costs to run.
+The ~80 patterns become **15 modules**, each with a rung, dependencies, parameters, and the
+patterns it implements. Three dependencies (`audit → findings → backlog`, `workflows → skills`,
+`doc-authority → gates`) exist because a source repo violated them and paid.
+
+→ [`docs/design/module-catalog.md`](docs/design/module-catalog.md) — **the set is specified**,
+including install profiles and the corpus expectation matrix that Phase 6 checks against.
+Next: author `modules/backlog/` in full as the exemplar that proves the format.
 
 ### Phase 5 — CLI implementation
 
@@ -107,8 +112,8 @@ that its content was paid for once already.
 
 ## Status
 
-Phase 3 substantially complete: the product brief and ADRs 0001, 0002, 0003 and 0005 are
-accepted. ADR-0004 (adoption detection) remains open and does not block Phase 4.
+**Phase 3 closed** — product brief + ADRs 0001–0005 all accepted.
 
-**Phase 4 (module catalog) is unblocked** — the module format is settled, so the ~80 patterns
-in the catalog can now be written as modules.
+**Phase 4 in progress** — the 15-module set is specified in
+[`module-catalog.md`](docs/design/module-catalog.md). Remaining: author the modules themselves,
+starting with `backlog` as the format exemplar.
