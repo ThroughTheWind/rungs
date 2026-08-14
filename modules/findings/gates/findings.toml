@@ -1,0 +1,56 @@
+# Gate table for the `findings` module.
+
+# ── findings-ids ──────────────────────────────────────────────────────────────
+
+[kinds.finding]
+format  = "{{id_prefix}}-\\d{1,4}"
+marker  = { file = "{{path}}", pattern = "NEXT-ID: ({{id_prefix}}-\\d{1,4})" }
+sources = ["{{path}}"]
+
+[citations]
+roots      = ["docs", "AGENTS.md", "CLAUDE.md", ".ai"]
+extensions = [".md", ".toml"]
+
+# ── findings-disposition-has-reason ───────────────────────────────────────────
+
+[register_schema]
+file          = "{{path}}"
+table         = "Closed"
+required_cols = ["Id", "What", "Disposition", "Reason"]
+enum          = { Disposition = ["promoted", "fixed", "dismissed"] }
+non_empty     = ["Reason"]
+min_words     = { Reason = 4 }
+message       = """
+Finding {id} is closed as `{disposition}` with no reason. A dismissal without a reason is the
+observation being recorded again next month by someone who cannot tell it was already considered.
+"""
+
+# The Open table's evidence column is checked for presence, not for quality — a gate cannot judge
+# whether evidence is good, and one that tried would be the confidently-wrong probe.
+[register_schema.open]
+table     = "Open"
+non_empty = ["Sev", "Pri", "What", "Evidence"]
+enum      = { Sev = ["high", "medium", "low"], Pri = ["now", "next", "someday"] }
+placeholder_ok = ["none — hunch", "unknown"]
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "findings-disposition-has-reason"
+expect  = "fail"
+fixture = { table = "Closed", row = { Id = "{{id_prefix}}-001", What = "x", Disposition = "dismissed", Reason = "" } }
+
+[[self_test]]
+gate    = "findings-disposition-has-reason"
+expect  = "pass"
+fixture = { table = "Closed", row = { Id = "{{id_prefix}}-001", What = "x", Disposition = "dismissed", Reason = "the mapper already handles this case" } }
+
+[[self_test]]
+gate    = "findings-disposition-has-reason"
+expect  = "fail"
+fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "critical", Pri = "now", What = "x", Evidence = "y" } }
+
+[[self_test]]
+gate    = "findings-disposition-has-reason"
+expect  = "pass"
+fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "high", Pri = "now", What = "x", Evidence = "none — hunch" } }

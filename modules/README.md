@@ -9,10 +9,13 @@ specified in [module-catalog.md](../docs/design/module-catalog.md).
 | [`instructions`](instructions/) | 0 | **authored** — owns `AGENTS.md`, the bridge, `.ai/rules/` |
 | [`gates`](gates/) | 1 | **authored** — owns the runner, registry and ledger |
 | [`backlog`](backlog/) | 1 | **authored** — the format exemplar |
-| *(12 more)* | 0–5 | specified in the catalog, not authored |
+| [`findings`](findings/) | 1 | **authored** — completes `audit → findings → backlog` |
+| [`adr`](adr/) | 1 | **authored** |
+| [`session`](session/) | 1 | **authored** |
+| *(9 more)* | 2–5 | specified in the catalog, not authored |
 
-The three authored modules are the `tracked` profile's spine: `instructions` and `gates` own every
-shared surface the others merge into, so authoring them first is what makes the rest additive.
+**The `tracked` profile is complete.** `instructions` and `gates` own every shared surface the
+others merge into, which is what makes the rest additive; the remaining nine are all rung 2+.
 
 ## Anatomy
 
@@ -60,7 +63,19 @@ whether its guard has ever actually fired.
 8. **A fragment counts against the entry document's line budget.** Keep one under ~15 lines. The
    budget is shared, and a module that spends 40 lines of it is taking them from the repo's own
    content.
-9. **Genuinely optional prose ships commented out, with the reason** — substitution-only templating
+9b. **A parameter may reference a declared dependency's parameters** as `{{<module>.<param>}}` —
+   `findings` places its register at `docs/{{backlog.root}}/FINDINGS.md` so it lands next to the
+   backlog it feeds. Only declared dependencies; anything else is an undeclared coupling.
+9c. **A path parameter may contain separators**, so one parameter places a whole subtree —
+   `files/{{path}}/README.md` with `path = "docs/decisions"`. A second "leaf" parameter is never
+   needed, and adding one was caught and reverted during authoring.
+9d. **A parameter whose value means "do nothing" is the absence of the module.** `session` was
+   specified with `mode = file | board`, where `board` created no files at all. That is not a
+   mode; it is not installing `session`. Dropped.
+9e. **Audit parameters across modules, not within one.** `adr` declared `id_width` that nothing
+   consumed — a knob wired to nothing, invisible until every module was compared at once.
+
+10. **Genuinely optional prose ships commented out, with the reason** — substitution-only templating
    has no other way to offer a choice, and a commented block is a decision the installer makes once
    in their editor. Claude Code strips HTML comments before injection, so an unaccepted block costs
    the agent nothing while staying visible to the human. `instructions`' communication-style block

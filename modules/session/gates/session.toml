@@ -1,0 +1,63 @@
+# Gate table for the `session` module.
+
+# ── session-sections-present ──────────────────────────────────────────────────
+#
+# Presence, not content. A gate cannot judge whether a resume point is useful, and one that tried
+# would be the confidently-wrong probe. An empty section under its heading is allowed — an honest
+# "nothing in progress" is a real answer, and demanding prose would produce filler.
+
+[sections]
+file     = "{{path}}"
+required = [
+  "Current objective",
+  "In progress",
+  "Resume from",
+  "Up next",
+  "Active constraints — do not reopen",
+  "Working assumptions",
+  "Open questions",
+]
+non_empty = false
+message   = """
+{file} is missing `{section}`. The fixed section list is the point: a handoff that drops
+"Active constraints" is one where the next session reopens a settled question.
+"""
+
+# ── session-archive-named ─────────────────────────────────────────────────────
+
+[filename_schema]
+scan    = ["{{archive}}/*.md"]
+exclude = ["{{archive}}/README.md"]
+pattern = "^\\d{4}-\\d{2}-\\d{2}_session-\\d+_[a-z0-9-]+\\.md$"
+message = """
+`{file}` does not name what closed and what came next. Use
+YYYY-MM-DD_session-NN_<what-closed>-and-<what-is-next>.md — the filename is what makes the
+directory scannable without opening anything.
+"""
+
+# ── self-tests ────────────────────────────────────────────────────────────────
+
+[[self_test]]
+gate    = "session-sections-present"
+expect  = "fail"
+fixture = { sections = ["Current objective", "In progress", "Resume from"] }
+
+[[self_test]]
+gate    = "session-sections-present"
+expect  = "pass"
+fixture = { sections = ["Current objective", "In progress", "Resume from", "Up next", "Active constraints — do not reopen", "Working assumptions", "Open questions"] }
+
+[[self_test]]
+gate   = "session-archive-named"
+expect = "fail"
+input  = "{{archive}}/session-4.md"
+
+[[self_test]]
+gate   = "session-archive-named"
+expect = "pass"
+input  = "{{archive}}/2026-08-14_session-04_storage-closeout-and-api-handoff.md"
+
+[[self_test]]
+gate   = "session-archive-named"
+expect = "pass"
+input  = "{{archive}}/README.md"

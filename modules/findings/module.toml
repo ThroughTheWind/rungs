@@ -1,0 +1,92 @@
+[module]
+name    = "findings"
+version = "1.0.0"
+rung    = 1
+summary = "A register for what is noticed before it is decided, with a triage path into work items."
+
+[requires]
+modules = ["backlog"]
+
+[conflicts]
+modules = []
+
+# ── parameters ────────────────────────────────────────────────────────────────
+
+[params.id_prefix]
+description = "Prefix for finding ids, e.g. F-012"
+default     = "F"
+pattern     = "^[A-Z]{1,6}$"
+
+[params.path]
+description = """
+Where the register lives. Defaults next to the backlog it feeds — a module may reference a
+declared dependency's parameters as {{<module>.<param>}}.
+"""
+default     = "docs/{{backlog.root}}/FINDINGS.md"
+
+# ── gates ─────────────────────────────────────────────────────────────────────
+
+[[gates]]
+id     = "findings-ids"
+kind   = "declared"
+engine = "id-integrity"
+table  = "gates/findings.toml"
+tier   = "fast"
+why    = "Two findings sharing an id are one finding as far as every citation is concerned."
+
+[[gates]]
+id     = "findings-disposition-has-reason"
+kind   = "declared"
+engine = "register-schema"
+table  = "gates/findings.toml"
+tier   = "fast"
+why    = """
+A finding closed without a written reason is indistinguishable from one nobody looked at, and it
+is the same observation the next session will record again. The reason is what the register is for.
+"""
+
+# ── skills ────────────────────────────────────────────────────────────────────
+
+[skills.record-finding]
+# No extensions. Recording an out-of-scope observation mid-task is exactly what a
+# model should reach for on its own — the whole value is that it costs nothing.
+
+# ── detection (ADR-0004) ──────────────────────────────────────────────────────
+
+[detect]
+paths = [
+  "docs/**/FINDINGS.md",
+  "docs/**/findings/**/*.md",
+  "docs/governance/implementation_defects.md",
+  "docs/governance/design_flaws.md",
+]
+markers = ["rungs:begin findings"]
+
+# Two registers split by kind, rather than one with a `kind` column. Not a
+# different paradigm — the same function, more ceremony — so it adopts, and
+# `add` says which register it mapped to what.
+[[detect.adopt_as]]
+kind = "split-registers"
+note = """
+axiom-mesh separates AD-### (code diverges from the standard) from DF-### (the standard itself is
+missing or contradictory). Different resolvers, and the split is defensible at scale. Adopt both;
+do not merge them, and do not add a third.
+"""
+
+[[detect.infer]]
+param   = "id_prefix"
+pattern = "\\b([A-Z]{1,6})-\\d{1,4}\\b"
+min     = 10
+scope   = ["docs/**/FINDINGS.md", "docs/governance/*.md"]
+
+# ── provenance (required, validated) ──────────────────────────────────────────
+
+[provenance]
+sources  = ["rift-forge", "axiom-mesh"]
+patterns = ["findings-log", "record-without-derailing", "finding-promotion", "audit-to-register", "inline-gap-callout"]
+incident = """
+hexguard ran a good audit prompt 268 times and produced 268 documents, because no register existed
+to hold rows and no work-item object existed to close them into. There is still no way to say which
+of those findings are open. rift-forge, which has the register, reached 91 findings precisely
+because recording one costs almost nothing — that cost is the design, not a side effect.
+"""

@@ -419,18 +419,24 @@ lacks).
    make a section optional.
 2. ~~**`instructions` and `gates`**~~ — **done 2026-08-14**. The `tracked` profile's spine is
    authored: the two modules that own every shared surface the others merge into.
-3. Then the rest, in rung order — starting with `findings`, which completes the
-   `audit → findings → backlog` chain.
+3. ~~Then `findings`, `adr`, `session`~~ — **done 2026-08-14. The `tracked` profile is complete**:
+   six modules, every rung-0 and rung-1 module in the catalog.
+4. Then rung 2 — `specs`, `workflows`, `skills`, `audit`, `ci`.
 
 **Still unexercised by the three authored modules**, and therefore unproven: a module with more
 than one `rules/` file; a live `command` gate (`gates` documents the kind and adopts into it, but
 ships none); a `conflicts` entry; and the `detect.paradigm` path, which needs `axiom-mesh` in front
 of it to be tested honestly.
 
-**Format findings so far, all applied to their sources rather than noted:** ADR-0003's redundant
-`docs/` disposition dropped · `sprint-archive`/`backlog-spaces` deferred out of `backlog` because
-substitution-only cannot make a section optional · hooks resolved as a gate *trigger* rather than a
-sixth thing a module ships · markers must use the target file's comment syntax · fragments count
-against the entry document's line budget · optional prose ships commented out. Six in three
-modules is a healthy rate for a format on first contact, and each was cheaper to fix now than
-after twelve more modules cited it.
+**Format findings so far — eleven across six modules, all applied to their sources rather than
+noted.** ADR-0003's redundant `docs/` disposition dropped · `sprint-archive`/`backlog-spaces`
+deferred because substitution-only cannot make a section optional · hooks resolved as a gate
+*trigger*, not a sixth thing a module ships · markers use the target file's comment syntax ·
+fragments count against the entry document's line budget · optional prose ships commented out ·
+substitution vs. behavioural parameters (`consumed_by`) · cross-module parameter references for
+declared dependencies · a path parameter may contain separators · a parameter meaning "do nothing"
+is the absence of the module · and one dead parameter caught only by auditing all six at once.
+
+The rate is falling — six findings in the first three modules, five in the next three, and the
+last batch were refinements rather than corrections. Each was cheaper now than after nine more
+modules had cited it.

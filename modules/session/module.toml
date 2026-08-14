@@ -1,0 +1,72 @@
+[module]
+name    = "session"
+version = "1.0.0"
+rung    = 1
+summary = "A handoff document carrying state between sessions: resume point, active constraints, and a dated archive."
+
+[requires]
+modules = []
+
+[conflicts]
+modules = []
+
+# A `mode = file | board` parameter was specified in the catalog and dropped on
+# authoring. "Board mode" meant deriving session state from the backlog and
+# creating no file — which is not a mode, it is **not installing this module**.
+# A parameter whose value is "do nothing" is the absence of the module, and
+# substitution-only templating cannot express it anyway.
+
+[params.path]
+description = "The live handoff document"
+default     = ".ai/session.md"
+
+[params.archive]
+description = "Where closed sessions are kept"
+default     = ".ai/archive"
+
+[[gates]]
+id     = "session-sections-present"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/session.toml"
+tier   = "fast"
+why    = """
+The sections are the value. A handoff missing "Active constraints" is one where the next session
+reopens a settled question, which is the specific failure this document exists to prevent.
+"""
+
+[[gates]]
+id     = "session-archive-named"
+kind   = "declared"
+engine = "filename-schema"
+table  = "gates/session.toml"
+tier   = "fast"
+why    = "An archive whose filenames do not say what closed and what came next is a folder nobody opens."
+
+[skills.close-session]
+extensions = { disable-model-invocation = true }
+extension_note = """
+Closing a session archives the live document and rewrites it. A model should not decide the session
+is over. Opting in costs packaging for claude.ai uploads and the Skills API; it stays portable to
+every skills-compatible CLI.
+"""
+
+[detect]
+paths = [
+  ".ai/session.md",
+  ".ai/context/session.md",
+  "docs/**/session.md",
+  ".ai/context/archive/**/*.md",
+]
+markers = ["rungs:begin session"]
+
+[provenance]
+sources  = ["axiom-mesh"]
+patterns = ["session-handoff", "settled-decisions-lock", "dated-session-archive"]
+incident = """
+axiom-mesh kept 21 dated handoff notes and a live session document with fixed sections, and its
+resume state is genuinely readable cold — the only repo of the four where a new session can start
+without reconstructing context from git. The section that earns its keep is "Active constraints /
+decisions since last archive", whose wording is a standing instruction not to reopen settled
+questions: "do not reopen helper ownership, topology, host-boundary … unless explicitly re-planned."
+"""

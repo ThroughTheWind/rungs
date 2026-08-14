@@ -1,0 +1,64 @@
+[module]
+name    = "adr"
+version = "1.0.0"
+rung    = 1
+summary = "Numbered, immutable decision records, with an admission rule that keeps the directory from becoming a second documentation tree."
+
+[requires]
+modules = []
+
+[conflicts]
+modules = []
+
+[params.path]
+description = "Directory holding the records"
+default     = "docs/decisions"
+
+[params.id_prefix]
+description = "Record id prefix"
+default     = "ADR"
+
+# An `id_width` parameter was declared here and removed by the cross-module audit: nothing consumed
+# it. The template hardcodes the width in its example id and the index gate globs `{{id_prefix}}-*`,
+# so it was a knob wired to nothing. It comes back when an id-claiming command needs it, marked
+# `consumed_by`, and not before.
+
+[[gates]]
+id     = "adr-index-current"
+kind   = "declared"
+engine = "render-freshness"
+table  = "gates/adr.toml"
+tier   = "fast"
+why    = "An index that has stopped listing every record is a routing table that silently drops decisions."
+
+[[gates]]
+id     = "adr-required-fields"
+kind   = "declared"
+engine = "frontmatter-schema"
+table  = "gates/adr.toml"
+tier   = "fast"
+why    = """
+A record with no alternatives section is a description of what was done, not a decision. The
+admission rule exists to keep those out, and this gate is what makes the rule more than advice.
+"""
+
+[detect]
+paths   = ["docs/adr/**/*.md", "docs/decisions/**/*.md", "docs/**/ADR-*.md", "doc/adr/**/*.md"]
+markers = ["rungs:begin adr"]
+
+[[detect.infer]]
+param   = "id_prefix"
+pattern = "\\b(ADR|DEC|RFC)-\\d{3,4}\\b"
+min     = 3
+scope   = ["docs/**/*.md"]
+
+[provenance]
+sources  = ["axiom-mesh", "rift-forge", "hexguard"]
+patterns = ["adr-record", "adr-admission-rule"]
+incident = """
+axiom-mesh reached 48 ADRs and they stayed navigable, because a five-criterion admission rule was
+applied before creation and routed most candidate decisions into the authoritative doc that already
+owned the topic. Without that gate an ADR directory becomes a second, unindexed documentation tree
+whose entries contradict the first. hexguard has the opposite shape: four numbered workflow
+decisions, no admission rule, and no way to tell what else should have been one.
+"""
