@@ -2,7 +2,7 @@
 
 > **Measured 2026-08-14** from vendor documentation. This is a fast-moving surface; every claim
 > below is dated and sourced. **Authoritative for:** what each harness reads and which frontmatter
-> fields it accepts. **Not authoritative for:** what ai-cli does about it — that is
+> fields it accepts. **Not authoritative for:** what rungs does about it — that is
 > [ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md).
 
 The four source repos in [`repos/`](repos/) were built between 2026-03 and 2026-08 and **do not
@@ -119,7 +119,7 @@ Notes that matter for rendering:
 ## 5. P4 — Enforcement hooks
 
 Claude Code: `.claude/settings.json` with `PreToolUse` (and other lifecycle events) running shell
-commands, plus `permissions.deny` for hard blocks. The vendor states the distinction ai-cli's
+commands, plus `permissions.deny` for hard blocks. The vendor states the distinction rungs'
 [`enforcement-declaration`](pattern-catalog.md) pattern depends on:
 
 > *"Claude treats them as context, not enforced configuration. To block an action regardless of
@@ -129,7 +129,7 @@ No cross-vendor equivalent is documented. `rift-forge`'s shell-backtick guard is
 
 ## 6. Migration surfaces already shipped by vendors
 
-Relevant because they set expectations for what ai-cli's own retrofit path should look like:
+Relevant because they set expectations for what rungs' own retrofit path should look like:
 
 - Claude Code `/init` reads `.cursor/rules/`, `.cursorrules`, `.github/copilot-instructions.md`;
   with `CLAUDE_CODE_NEW_INIT=1` also `AGENTS.md`, `.devin/rules/`, `.windsurf/rules/`,

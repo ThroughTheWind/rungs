@@ -44,7 +44,7 @@ Added to the ADR-0003 manifest:
 [detect]
 # Presence is decided by these, and only these.
 paths   = ["docs/*/items/**", "docs/*/BACKLOG.md", "docs/*/TEMPLATE.md"]
-markers = ["ai-cli:begin backlog"]
+markers = ["rungs:begin backlog"]
 
 # A different system serving the same function. Never auto-adopted.
 [[detect.paradigm]]
@@ -91,9 +91,9 @@ the ledger, and a module-level verdict would be wrong for both.
 | # | State | How it is recognized | `add` does |
 | --- | --- | --- | --- |
 | 1 | **Absent** | No `paths`, no `markers`, no paradigm match | **Create.** Safe, unattended |
-| 2 | **Ours, current** | `ai-cli.toml` records it; content hash matches | **Upgrade or no-op.** Safe, unattended |
+| 2 | **Ours, current** | `rungs.toml` records it; content hash matches | **Upgrade or no-op.** Safe, unattended |
 | 3 | **Ours, diverged** | Recorded; hash differs | **Report and leave alone.** Divergence is a decision ([brief §7](../design/product-brief.md)) |
-| 4 | **Theirs, equivalent** | `paths` matched, possibly at other locations/params | **Adopt**: record their paths and params in `ai-cli.toml` as overrides; install only the genuinely missing parts |
+| 4 | **Theirs, equivalent** | `paths` matched, possibly at other locations/params | **Adopt**: record their paths and params in `rungs.toml` as overrides; install only the genuinely missing parts |
 | 5 | **Theirs, different paradigm** | `detect.paradigm` matched | **Refuse to act.** Print the comparison from the research and the three real options |
 | 6 | **Unknown** | Something at the target path matching nothing | **Stop and ask.** Never write |
 
@@ -165,7 +165,7 @@ here is the same shape — **when a signature is uncertain, it must fail to matc
 
 - **`add` is chattier than a scaffolder.** Accepted — the alternative is a tool nobody runs twice.
 - **Partial installs produce mixed-ownership repos**, some artifacts managed and some adopted.
-  `ai-cli.toml` is the record and `doctor` prints the split.
+  `rungs.toml` is the record and `doctor` prints the split.
 - **Signature maintenance.** Each module carries a `[detect]` block that must stay true as
   conventions drift; the corpus test set is what keeps it honest.
 - **Under-detection is chosen, so some adoptable structures will be missed** and a near-duplicate
@@ -198,7 +198,7 @@ superset and a gap for the same module, so a single verdict is wrong in one dire
    test set rather than loosening the rule.
 2. **Under-detection produces duplicates in practice**, repeatedly, on structures a human calls
    obvious → the bias may need per-module tuning; it does not get inverted.
-3. **Users start hand-editing `ai-cli.toml` mappings** → the adopt flow is not expressive enough;
+3. **Users start hand-editing `rungs.toml` mappings** → the adopt flow is not expressive enough;
    extend the mapping schema, not the automation.
 
 ## Admission check

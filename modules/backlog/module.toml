@@ -1,0 +1,142 @@
+[module]
+name    = "backlog"
+version = "1.0.0"
+rung    = 1
+summary = "Work items with stable ids, an eight-status lifecycle, a board, and the three gates that keep the bookkeeping honest."
+
+[requires]
+modules = ["instructions"]
+
+[conflicts]
+modules = []
+
+# ── parameters ────────────────────────────────────────────────────────────────
+# Only things that substitute cleanly into prose and paths are parameters.
+# The eight-status lifecycle is deliberately NOT one: a status set cannot be
+# substituted into a table, a state diagram and a gate without a template
+# language, and ADR-0003 chose not to have one. A repo that wants different
+# statuses edits the file, and `add` records the divergence (ADR-0004 state 3).
+
+[params.id_prefix]
+description = "Prefix for work-item ids, e.g. WI-042"
+default     = "WI"
+pattern     = "^[A-Z]{1,6}$"
+
+[params.root]
+description = "Directory under docs/ that holds the backlog"
+default     = "backlog"
+
+[params.integration_branch]
+description = "Branch that item branches are cut from and merged back into"
+default     = "main"
+
+[params.branch_prefix]
+description = "Prefix for a feature item's branch"
+default     = "feature"
+
+# ── gates ─────────────────────────────────────────────────────────────────────
+# All three are `declared`: a CLI engine plus the table below. No script is
+# written into the repo (ADR-0002).
+
+[[gates]]
+id     = "backlog-ids"
+kind   = "declared"
+engine = "id-integrity"
+table  = "gates/ids.toml"
+tier   = "fast"
+why    = "An id claimed twice is two items the board shows as one."
+
+[[gates]]
+id     = "backlog-stale-blocker"
+kind   = "declared"
+engine = "id-integrity"
+table  = "gates/ids.toml"
+tier   = "fast"
+why    = """
+A document saying it is blocked on finished work reads as a live constraint, and the next session
+plans around a wall that came down months ago. rift-forge measured 95% of 474 rows naming a
+finished item as next owner, then found those routes quoted in a code comment as evidence.
+"""
+
+[[gates]]
+id     = "backlog-merged-status"
+kind   = "declared"
+engine = "git-status-reconcile"
+table  = "gates/ids.toml"
+tier   = "fast"
+why    = """
+An item whose branch is merged cannot still be on its way to review. Measured 2026-08-13 in
+rift-forge: 37 items sat at `review` with their code already landed, and one sat `in_progress`
+for eight days after its own merge.
+"""
+
+# ── skills ────────────────────────────────────────────────────────────────────
+# SKILL.md files stay restricted to the six Agent Skills spec fields (ADR-0001).
+# Claude Code extensions are opted into here, per skill, with the cost stated.
+
+[skills.work-item]
+extensions = { disable-model-invocation = true }
+extension_note = """
+`work-item` creates branches and merges. A model should not decide on its own that now is the
+moment. Opting in means this skill no longer packages for claude.ai uploads or the Skills API,
+which reject non-spec keys with a hard error; it remains portable to every skills-compatible CLI.
+"""
+
+[skills.backlog-summary]
+# No extensions. Read-only, and useful for a model to reach for unprompted.
+
+# ── detection (ADR-0004) ──────────────────────────────────────────────────────
+# Presence is decided by `paths` and `markers` only. Biased toward false
+# negatives: when uncertain, fail to match.
+
+[detect]
+paths = [
+  "docs/*/items/**/*.md",
+  "docs/*/BACKLOG.md",
+  "docs/*/TEMPLATE.md",
+  "docs/.ai/backlog/**/*.md",
+]
+markers = ["rungs:begin backlog"]
+
+# A different system serving the same function. Never auto-adopted; `add` prints
+# the comparison and stops (ADR-0004 state 5).
+[[detect.paradigm]]
+id      = "milestones"
+paths   = ["docs/**/milestones/index.md", ".ai/context/session.md"]
+compare = "docs/research/synthesis.md#33-unit-of-work"
+note    = """
+Milestones (`M##-T#`) suit long sequenced programmes; work items suit continuous flow. They can
+coexist — a milestone overlay sits on top of items. Three real options: adopt milestones as the
+unit and install only the missing gates, install items alongside, or skip.
+"""
+
+# Proposes a parameter once presence is already established. Never concludes
+# presence — hexguard-templates has 207 well-formed `FOUND-US-###` matches and
+# no backlog; they are spec story ids.
+[[detect.infer]]
+param   = "id_prefix"
+pattern = "\\b([A-Z]{1,6})-\\d{1,4}\\b"
+min     = 20
+scope   = ["docs/**/*.md"]
+exclude = ["docs/specs/**", "docs/decisions/**", "docs/adr/**"]
+
+# ── provenance (required, validated) ──────────────────────────────────────────
+
+[provenance]
+sources  = ["rift-forge", "axiom-mesh"]
+patterns = [
+  "work-item-lifecycle",
+  "item-template-required-fields",
+  "branch-per-item",
+  "planning-rides-trunk",
+  "scope-discipline",
+  "epics-and-subitems",
+  "bookkeeping-gates",
+]
+incident = """
+Two of the four source repos had no unit of work at all, and both show the same consequence:
+hexguard produced 268 audit reports that could not become anything, because no object existed for
+a finding to turn into; hexguard-templates cannot say what is in flight. rift-forge, which has the
+object, needed two gates to keep its status fields honest — 37 items were found claiming `review`
+with their code already on the integration branch.
+"""

@@ -61,7 +61,7 @@ workflow works." It is "stop typing numbers the machine already has."
 ### 2. Instrumentation substitutes for provenance, and only a CLI needs it
 
 `rift-forge`'s operator does not need a ledger to decide whether to keep `check:boundary-claims` —
-they remember the incident. **ai-cli ships gates into repos where nobody remembers, because there
+they remember the incident. **rungs ships gates into repos where nobody remembers, because there
 was no incident.** The provenance lives in this repo's research, not in the user's head.
 
 So a generated system has an obligation a hand-built one does not: it must be able to tell its
@@ -137,8 +137,8 @@ The generated runner appends one line per gate per run to a gitignored ledger
 That is the whole schema. Every field is something the runner observes directly; none requires
 interpretation.
 
-**The first consumer is the typed-number problem.** `ai-cli doctor` compares observed durations
-against the registry's declared budget and reports drift — and `ai-cli render` can write the
+**The first consumer is the typed-number problem.** `rungs doctor` compares observed durations
+against the registry's declared budget and reports drift — and `rungs render` can write the
 observed value back, making the durations computed rather than typed. This is
 [`computed-claims`](../research/pattern-catalog.md) applied to the runner's own registry, which is
 the one place in the corpus it was never applied.

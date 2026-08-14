@@ -1,4 +1,4 @@
-# ai-cli
+# rungs
 
 A flexible AI repository starter CLI: scaffolds a repo with a **working agentic development
 system** — agent instructions, skills, backlog/ticket management, validation gates, and CI

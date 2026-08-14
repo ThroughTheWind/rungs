@@ -9,7 +9,7 @@
 
 ## Context
 
-ai-cli generates agentic configuration for repositories whose owners use different coding agents —
+rungs generates agentic configuration for repositories whose owners use different coding agents —
 the four source repos alone span Claude Code, GitHub Copilot, and the `AGENTS.md` ecosystem.
 [synthesis §3.1](../research/synthesis.md) recorded the working hypothesis: *author once in a
 neutral source, emit every requested rendering, gate that they agree.*
@@ -106,7 +106,7 @@ textual merge of two renderings is refused rather than silently interleaved.
 
 ### Degradation is explicit and reported
 
-When a target cannot express a source construct, ai-cli **degrades and says so**. It never drops
+When a target cannot express a source construct, rungs **degrades and says so**. It never drops
 silently, and it never refuses the whole render for one unmappable field.
 
 | Case | Behaviour |
@@ -132,7 +132,7 @@ selected harness set, with one canonical directory and no mirroring:
 - **`claude` not in the set → `.agents/skills/`.** The neutral direction.
 - Overridable. If the ecosystem converges — most likely Cursor retiring its `.claude/` legacy
   support, or Claude Code adding `.agents/` — relocation is a `git mv` plus a config change,
-  because the file contents are spec-pure either way. That relocation is `ai-cli upgrade`'s job.
+  because the file contents are spec-pure either way. That relocation is `rungs upgrade`'s job.
 
 **Mirroring into a second directory is explicitly rejected** for now: it doubles the review surface
 for every skill, and on Windows it cannot be a symlink.

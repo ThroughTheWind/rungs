@@ -1,4 +1,4 @@
-# AGENTS.md — ai-cli
+# AGENTS.md — rungs
 
 Entry point for agents that read the open `AGENTS.md` standard (Codex and others).
 

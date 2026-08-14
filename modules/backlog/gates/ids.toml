@@ -1,0 +1,85 @@
+# Gate table for the `backlog` module.
+#
+# Consumed by two engines the CLI provides — `id-integrity` and `git-status-reconcile`. No script
+# is written into the repo (ADR-0002). Everything here is data; anything that would need an
+# expression belongs in a `command` gate instead (ADR-0003 revisit trigger 3).
+
+# ── backlog-ids ───────────────────────────────────────────────────────────────
+
+[kinds.item]
+format  = "{{id_prefix}}-\\d{1,4}"
+marker  = { file = "docs/{{root}}/BACKLOG.md", pattern = "NEXT-ID: ({{id_prefix}}-\\d{1,4})" }
+sources = ["docs/{{root}}/items/**/*.md", "docs/{{root}}/archive/**/*.md"]
+# The archive is indexed so archived ids still resolve and stay permanently spent.
+
+[citations]
+# Where a reference to an id may appear, and must resolve.
+roots      = ["docs", "AGENTS.md", "CLAUDE.md", ".ai"]
+extensions = [".md", ".toml"]
+
+# ── backlog-stale-blocker ─────────────────────────────────────────────────────
+#
+# Refuses a document claiming it waits on work that has finished.
+#
+# The vocabulary is deliberately narrow, and that was measured: rift-forge's first draft matched
+# `until {{id_prefix}}-###` and hit 29 lines that were almost all true history in the repo's own
+# voice. `until` and `once … lands` were dropped, and past tense is a record rather than a claim.
+
+[stale_blocker]
+phrases = [
+  "blocked on",
+  "blocked by",
+  "waiting on",
+  "waiting for",
+  "pending",
+]
+# Checked against a preceding-context window, so a sentence explaining a retired claim is not
+# itself refused — a guard that also refuses its own fix is one people disable.
+negation_window = 60
+past_tense_ok   = ["was blocked on", "were blocked on", "had been blocked on", "used to be blocked"]
+exempt_marker   = "owner-ok:"          # ignored unless it states a reason
+scope_exclude   = ["docs/{{root}}/archive/**"]
+
+# ── backlog-merged-status ─────────────────────────────────────────────────────
+#
+# One-directional by design: a merged branch with a pre-review status is always wrong; an unmerged
+# branch at any status is not. The gate can only see items whose branch still exists, so deleting a
+# branch immediately after merge costs you the check — which is why the methodology says to delete
+# it *on* merge, after the status moves.
+
+[merged_status]
+branch_field        = "branch"
+status_field        = "status"
+pre_review_statuses = ["proposed", "accepted", "planned", "in_progress"]
+integration_branch  = "{{integration_branch}}"
+exempt_marker       = "branch-merged-ok:"   # ignored unless it states a reason
+
+# ── self-test ─────────────────────────────────────────────────────────────────
+#
+# A gate whose rules are all currently satisfied is indistinguishable from a gate that matches
+# nothing, so each engine runs these fixtures and asserts BOTH directions.
+
+[[self_test]]
+gate   = "backlog-stale-blocker"
+expect = "fail"
+input  = "The mapper is blocked on {{id_prefix}}-001, which is done."
+
+[[self_test]]
+gate   = "backlog-stale-blocker"
+expect = "pass"
+input  = "The mapper was blocked on {{id_prefix}}-001 until it landed."
+
+[[self_test]]
+gate   = "backlog-stale-blocker"
+expect = "pass"
+input  = "Do not write that a doc is blocked on finished work. <!-- owner-ok: quotes the retired rule to explain it -->"
+
+[[self_test]]
+gate   = "backlog-merged-status"
+expect = "fail"
+input  = "status: in_progress, branch merged into {{integration_branch}}"
+
+[[self_test]]
+gate   = "backlog-merged-status"
+expect = "pass"
+input  = "status: in_progress, branch not merged"

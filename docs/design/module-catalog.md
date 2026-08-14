@@ -79,7 +79,8 @@ graph TD
 
 Each entry: **rung · deps · conflicts · params · ships · cost · provenance**. `ships` uses
 ADR-0003's dispositions — `files` (create) · `rules` (render) · `skills` (copy) · `fragments`
-(merge) · `gates` (declare) · `docs`.
+(merge) · `gates` (declare). *(A sixth, `docs`, was dropped from ADR-0003 on first use — it had the
+same disposition as `files`.)*
 
 ### `instructions`
 
@@ -91,7 +92,7 @@ entire output surface.
 - **params:** `harnesses` (list: `claude`, `copilot`, `cursor`, `agents-md`) · `core_budget`
   (default `200` lines — vendor guidance, see [harness-landscape §3](../research/harness-landscape.md))
 - **files:** `AGENTS.md` skeleton (identity · non-negotiables · repo map · **validation matrix** ·
-  routing) · `CLAUDE.md` bridge · `.ai/ai-cli.toml` · `.ai/rules/` scaffold
+  routing) · `CLAUDE.md` bridge · `.ai/rungs.toml` · `.ai/rules/` scaffold
 - **fragments:** owns `AGENTS.md` and `.gitignore` — every other module merges into them
 - **gates:** `core-size` (declared — core over budget) · `render-current` (declared —
   `generate-derivable`) · `repo-map-current` (declared) · `shell-backticks` (**hook**, Claude only)
@@ -113,7 +114,7 @@ than emitting scripts ([ADR-0002](../decisions/ADR-0002-stack-and-runtime-footpr
 - **files:** `.ai/gates.toml` registry · ledger `.gitignore` entry
 - **gates:** the structural set, all `declared` — `links-resolve` · `ids-unique` ·
   `required-sections` · `referenced-paths-exist` · `frontmatter-valid` · `generated-current`
-- **cost:** near-zero to run; the runner is invoked as `npx ai-cli check`
+- **cost:** near-zero to run; the runner is invoked as `npx rungs check`
 - **implements:** `structural-gates` `gate-self-test` `read-the-negation` `reasoned-exemption`
   `computed-claims` `generate-derivable` `enforcement-declaration` `ageing-signal` `tool-level-hook`
 - **provenance:** `rift-forge` — 42 `check:` gates with 27 self-tests, and 82 registry entries with
@@ -127,8 +128,10 @@ than emitting scripts ([ADR-0002](../decisions/ADR-0002-stack-and-runtime-footpr
 
 **Rung 1 · deps: `instructions` · conflicts: none**
 
-- **params:** `id_prefix` (default `WI`) · `root` (default `backlog`) · `statuses` (default the
-  8-status set) · `branch_prefixes`
+**Authored 2026-08-14 — [`modules/backlog/`](../../modules/backlog/) is the format exemplar.**
+
+- **params:** `id_prefix` (default `WI`) · `root` (default `backlog`) · `integration_branch`
+  (default `main`) · `branch_prefix` (default `feature`)
 - **files:** `docs/{{root}}/README.md` (the methodology) · `BACKLOG.md` board · `TEMPLATE.md` ·
   `items/`
 - **skills:** `work-item` (execute one end to end) · `backlog-summary` (per-category open items,
@@ -139,8 +142,15 @@ than emitting scripts ([ADR-0002](../decisions/ADR-0002-stack-and-runtime-footpr
   one-directional — *a merged branch cannot still be awaiting review*)
 - **cost:** one file per unit of work; a status field to keep true
 - **implements:** `work-item-lifecycle` `item-template-required-fields` `branch-per-item`
-  `planning-rides-trunk` `scope-discipline` `epics-and-subitems` `sprint-archive` `backlog-spaces`
-  `bookkeeping-gates`
+  `planning-rides-trunk` `scope-discipline` `epics-and-subitems` `bookkeeping-gates`
+
+> **`sprint-archive` and `backlog-spaces` were listed here and are deferred**, found while
+> authoring. Both are *optional* sections of the methodology, and ADR-0003 has no conditionals —
+> so shipping them here would put sprint ceremony in front of every repo that installs a backlog.
+> The evidence says defer: **none of the four source repos started with sprints and only one ended
+> with them** (`rift-forge`, at 4 sprints against 543 archived items). What `backlog` keeps is
+> plain **archive-on-demand**, since a container outgrowing itself is a rung-1 problem. Sprints
+> become a rung-2 `sprints` module when a repo needs them.
 - **provenance:** `rift-forge` — 102 live + 543 archived items; the two bookkeeping gates caught
   **37 items** at `review` with code already landed, and one `in_progress` **eight days** past its
   own merge
@@ -188,7 +198,7 @@ than emitting scripts ([ADR-0002](../decisions/ADR-0002-stack-and-runtime-footpr
 **Rung 1 · deps: `gates`**
 
 - **params:** `provider` (default `github`) · `trigger` (`push` | `land`)
-- **files:** one workflow calling `npx ai-cli check`, **matrix over packages** where relevant
+- **files:** one workflow calling `npx rungs check`, **matrix over packages** where relevant
 - **gates:** `workflow-proliferation` (declared — near-identical workflow files over a threshold)
 - **cost:** CI minutes; the `land` trigger option exists because they are billed
 - **implements:** `matrix-not-per-item-ci` `workflow-proliferation-check` `ci-at-land-time`
@@ -347,7 +357,7 @@ no-stack-specific boundary.
 
 ## 4. Install profiles
 
-`ai-cli init` offers these rather than a checkbox list of 15:
+`rungs init` offers these rather than a checkbox list of 15:
 
 | Profile | Modules | For |
 | --- | --- | --- |
@@ -393,8 +403,15 @@ lacks).
 
 ## 6. Next
 
-1. **Author `modules/backlog/` in full** — the exemplar that proves
-   [ADR-0003](../decisions/ADR-0003-module-definition-format.md)'s format survives a real module,
-   including its `[detect]` block against all four repos.
-2. Then `instructions` and `gates` — the two every profile needs.
+1. ~~Author `modules/backlog/` in full~~ — **done 2026-08-14**,
+   [`modules/backlog/`](../../modules/backlog/). The format survived, with two amendments it
+   forced: ADR-0003's redundant `docs/` disposition was dropped, and `sprint-archive` /
+   `backlog-spaces` were deferred out of this module because substitution-only templating cannot
+   make a section optional.
+2. **`instructions` and `gates`** — the two every profile needs, and the two that own the shared
+   surfaces (`AGENTS.md`, the registry) every other module merges into.
 3. Then the rest, in rung order.
+
+**What the exemplar did not exercise**, and therefore remains unproven: a module with more than one
+`rules/` file; a `command` gate (all three of `backlog`'s are `declared`); a `conflicts` entry; and
+the `detect.paradigm` path, which needs `axiom-mesh` in front of it to be tested honestly.

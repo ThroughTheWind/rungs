@@ -1,4 +1,4 @@
-# CLAUDE.md — ai-cli
+# CLAUDE.md — rungs
 
 Canonical agent policy for this repository. Read in full before making changes.
 

@@ -1,6 +1,6 @@
 # Decisions
 
-Architecture decision records for ai-cli itself.
+Architecture decision records for rungs itself.
 
 ## Index
 

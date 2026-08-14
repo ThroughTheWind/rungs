@@ -25,9 +25,9 @@ folder of `.mjs` scripts it did not ask for.
 
 ### (a) The CLI is TypeScript on Node, distributed via npm
 
-Run as `npx ai-cli`. Reasons, in order of weight:
+Run as `npx rungs`. Reasons, in order of weight:
 
-1. **Lowest first-run friction.** `npx ai-cli add backlog` needs no install step and no
+1. **Lowest first-run friction.** `npx rungs add backlog` needs no install step and no
    platform-specific download.
 2. **The ecosystem is here.** Agent Skills tooling, the harness vendors' own CLIs, and three of the
    four source repos are npm-based.
@@ -45,7 +45,7 @@ This is the binding constraint on everything downstream, and
 - **Anything the CLI cannot express generically is a `command` gate** — an arbitrary shell string
   the repo owns, in whatever language it likes. `pwsh ./scripts/validate-doc-links.ps1` and
   `dotnet build` are first-class registry entries, not workarounds.
-- **CI invokes `npx ai-cli check`**, which is a tool invocation, not a project dependency.
+- **CI invokes `npx rungs check`**, which is a tool invocation, not a project dependency.
 
 So `axiom-mesh` could install `backlog`, `findings`, and structural gates and gain: markdown under
 `docs/`, declarations under `.ai/`, and registry entries pointing at the PowerShell validators it
@@ -53,7 +53,7 @@ already has. No root `package.json`, no `.mjs`.
 
 ### The lock-in escape hatch
 
-`ai-cli eject` materializes the engines as scripts in the repo and rewrites the registry to
+`rungs eject` materializes the engines as scripts in the repo and rewrites the registry to
 `command` gates. A repo can leave and keep everything working. **This is a stated obligation, not
 a maybe** — a tool that makes a repo's checks disappear on uninstall is one nobody should adopt,
 and promising the exit is what makes the default acceptable.

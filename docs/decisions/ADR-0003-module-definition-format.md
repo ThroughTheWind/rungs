@@ -53,9 +53,15 @@ modules/backlog/
     gitignore
   gates/                 # → DECLARE  registry entries + engine tables
     ids.toml
-  docs/                  # → CREATE   the authority doc the rules cite
     delivery-methodology.md
 ```
+
+> **Amended 2026-08-14, on first use.** This tree originally carried a sixth directory, `docs/`,
+> "for the authority doc the rules cite" — with **exactly the same disposition as `files/`**. Two
+> directories, one behaviour, distinguished only by intent, which is precisely the per-file
+> ambiguity this design exists to remove. Authoring `modules/backlog/` found it immediately: the
+> methodology *is* `files/docs/{{root}}/README.md`, and there was nothing for `docs/` to hold.
+> Dropped. Authority docs are files, and they go in `files/`.
 
 Five dispositions, one per directory. A contributor adding to a module picks a directory and that
 is the whole decision — there is no per-file metadata to get wrong, and the tree reads as a preview
@@ -127,15 +133,15 @@ Shared files are owned by exactly one module (`AGENTS.md` by `instructions`, the
 `gates`). Others contribute fragments into marked blocks:
 
 ```markdown
-<!-- ai-cli:begin backlog@1.0.0 -->
+<!-- rungs:begin backlog@1.0.0 -->
 Work is tracked as **work items** (`WI-###`) under `docs/backlog/`…
-<!-- ai-cli:end backlog -->
+<!-- rungs:end backlog -->
 ```
 
 - Content **inside** a block is generated: `upgrade` replaces it, `doctor` reports hand-edits in it
   as divergence with the module version that wrote it.
 - Content **outside** every block is the user's and is never touched.
-- Structured targets (the gate registry, `.gitignore`, `.ai/ai-cli.toml`) merge by key or line
+- Structured targets (the gate registry, `.gitignore`, `.ai/rungs.toml`) merge by key or line
   rather than by marker, same ownership rule.
 
 This is what makes [the brief §7](../design/product-brief.md)'s upgrade story mechanical: the

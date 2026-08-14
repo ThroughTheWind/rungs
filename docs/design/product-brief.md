@@ -1,6 +1,6 @@
 # Product brief
 
-> Phase 3. Written 2026-08-14. **Authoritative for:** what ai-cli is, its scaffold model, module
+> Phase 3. Written 2026-08-14. **Authoritative for:** what rungs is, its scaffold model, module
 > boundary, output contract, CLI surface, and upgrade story. **Not authoritative for:** individual
 > module contents (`module-catalog.md`, Phase 4 — not yet written) or the rendering policy
 > ([ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md)).
@@ -9,7 +9,7 @@
 
 ## 1. What it is
 
-**ai-cli installs and maintains a repository's agentic development system.** Not a project
+**rungs installs and maintains a repository's agentic development system.** Not a project
 template — a composable set of modules (backlog, findings, ADRs, skills, gates, concurrency,
 release…) that can be added to a repo, checked, and upgraded over time, and that render into
 whichever coding agents the repo's owners use.
@@ -76,7 +76,7 @@ Angular + .NET + Node, and everything extracted from it was workflow, not stack 
 that way.
 
 **Modules carry a rung and a cost**, from
-[the maturity ladder](../research/synthesis.md#5-the-maturity-ladder). `ai-cli add concurrency` on
+[the maturity ladder](../research/synthesis.md#5-the-maturity-ladder). `rungs add concurrency` on
 a repo with one active session states the threshold (~5+ concurrent sessions) and asks for
 confirmation. Selling rung 5 to a rung 1 repo is the most likely way this tool does harm.
 
@@ -90,7 +90,7 @@ Copilot:
 AGENTS.md                       # P1 canonical — the standard, authored
 CLAUDE.md                       # bridge: "@AGENTS.md" + Claude-only additions
 .ai/
-  ai-cli.toml                   # installed modules, versions, harnesses, overrides
+  rungs.toml                    # installed modules, versions, harnesses, overrides
   rules/                        # P2 source — authored, vendor-neutral frontmatter
     backend.md
     frontend.md
@@ -119,11 +119,11 @@ Nothing else is generated — which is the point of ADR-0001.
 
 | Command | Does |
 | --- | --- |
-| `ai-cli init` | New repo: pick harnesses, pick modules by rung, write everything |
-| `ai-cli add <module>` | **The primary command.** Install one module into an existing repo, resolving dependencies and refusing unmet ones. Detects what is already there by hand and adopts rather than overwrites |
-| `ai-cli doctor` | Audit a repo against the modules it claims: missing files, stale renderings, rules tagged `gated` with no gate, dependency violations, unreached procedures, containers past their archive threshold |
-| `ai-cli render` | Re-emit P2 renderings + the render report. What the freshness gate calls |
-| `ai-cli upgrade` | Move a repo to newer module versions (§7) |
+| `rungs init` | New repo: pick harnesses, pick modules by rung, write everything |
+| `rungs add <module>` | **The primary command.** Install one module into an existing repo, resolving dependencies and refusing unmet ones. Detects what is already there by hand and adopts rather than overwrites |
+| `rungs doctor` | Audit a repo against the modules it claims: missing files, stale renderings, rules tagged `gated` with no gate, dependency violations, unreached procedures, containers past their archive threshold |
+| `rungs render` | Re-emit P2 renderings + the render report. What the freshness gate calls |
+| `rungs upgrade` | Move a repo to newer module versions (§7) |
 
 `doctor` is the command that carries the research. Every check in it is one of the eight failure
 modes made detectable — *"you have an audit skill and no findings register"*, *"this rule says
@@ -138,7 +138,7 @@ delta and offers to converge.
 
 A repo scaffolded at v1 must be able to take v2's modules. Three mechanisms:
 
-1. **`.ai/ai-cli.toml` records installed modules and their versions**, plus every override, so
+1. **`.ai/rungs.toml` records installed modules and their versions**, plus every override, so
    `upgrade` knows what it is upgrading from and what it must not clobber.
 2. **Generated files upgrade freely; authored files are proposed as a diff.** ADR-0001 keeps the
    authored surface deliberately small — `AGENTS.md`, `.ai/rules/`, `.claude/skills/` — which is
@@ -170,7 +170,7 @@ somewhere — never silent divergence, and never forced convergence either.
 | # | Decision | Outcome |
 | --- | --- | --- |
 | [0001](../decisions/ADR-0001-multi-harness-rendering.md) | Multi-harness rendering | Render only path-scoped rules; skills and `AGENTS.md` are authored native; `CLAUDE.md` is an import bridge; degradation is reported |
-| [0002](../decisions/ADR-0002-stack-and-runtime-footprint.md) | Stack + runtime footprint | CLI is TypeScript on Node via `npx`. **A scaffolded repo acquires no new language runtime** — no emitted gate scripts. `ai-cli eject` is the promised exit |
+| [0002](../decisions/ADR-0002-stack-and-runtime-footprint.md) | Stack + runtime footprint | CLI is TypeScript on Node via `npx`. **A scaffolded repo acquires no new language runtime** — no emitted gate scripts. `rungs eject` is the promised exit |
 | [0003](../decisions/ADR-0003-module-definition-format.md) | Module definition format | A directory that looks like what it emits + a TOML manifest. Disposition by subdirectory; substitution-only templating; managed merge blocks; `[provenance]` required |
 | [0004](../decisions/ADR-0004-adoption-detection.md) | Adoption detection | **Adoption is a mapping, not a migration** — `add` records where a repo's equivalent lives and never rewrites it. Six per-artifact states, two safe unattended, no `--force`. Presence decided by paths; params only *proposed* by id inference. Signatures biased toward false negatives |
 | [0005](../decisions/ADR-0005-self-instrumentation.md) | Self-instrumentation | Runner records exit status and wall-clock per gate; `doctor` asks two questions with provenance attached; rework rate, attribution, aggregation and any health score refused permanently |
