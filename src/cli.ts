@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { auditModules, loadAllModules } from './manifest.ts';
 import { detect, scanRepo } from './detect.ts';
-import { addModule, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
+import { addModule, adoptableGates, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
@@ -139,8 +139,24 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     }
   }
 
+  // Detect what the repo already has and register it alongside (ADR-0004).
+  const repoFiles = scanRepo(root);
+  const adopted = installed.flatMap((m) =>
+    (m.detect.adopt_as ?? [])
+      .filter((a) => a.kind === 'command')
+      .flatMap((a) => adoptableGates(repoFiles, a.paths ?? [], root)),
+  );
+  if (adopted.length) {
+    console.log(
+      '\n  ' + c.cyan(`adopting ${adopted.length} existing validator(s)`) +
+        ' as command gates' + c.dim(' — their scripts are untouched'),
+    );
+    for (const a of adopted.slice(0, 3)) console.log(c.dim(`      ${a.command}`));
+    if (adopted.length > 3) console.log(c.dim(`      …and ${adopted.length - 3} more`));
+  }
+
   // Phase two: the registry's owner has created it by now.
-  const gateActions = registerGates(installed, root, dryRun);
+  const gateActions = registerGates(installed, root, dryRun, adopted);
   if (gateActions.length) {
     console.log(c.dim(`\n  registered ${gateActions.reduce((n, a) => n + Number(a.note!.split(': ')[1].split(' ')[0]), 0)} gates from ${gateActions.length} module(s)`));
   }

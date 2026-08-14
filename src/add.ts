@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Manifest } from './types.ts';
-import { walk } from './glob.ts';
+import { matchAny, walk } from './glob.ts';
 import { markers, mergeBlock, substitute, type Params } from './substitute.ts';
 
 export interface AddAction {
@@ -107,9 +107,34 @@ export function addModule(
  * ordering was never the problem: **the owner of a shared file must create it
  * before anything merges into it, which is a phase, not a position.**
  */
-export function registerGates(mods: Manifest[], repoRoot: string, dryRun = false): AddAction[] {
+export function registerGates(mods: Manifest[], repoRoot: string, dryRun = false, adopted: AdoptedGate[] = []): AddAction[] {
   const actions: AddAction[] = [];
   const registry = join(repoRoot, '.ai', 'gates.toml');
+
+  // Adoption, in the only form ADR-0004 permits: the repo's existing validators
+  // are registered as `command` gates so they gain the runner, the ledger and
+  // attribution — **without a line of them being rewritten**. This is the claim
+  // the whole product rests on, and it was missing: `add` created a registry of
+  // rungs' own gates and left the repo's sixteen where they were.
+  if (adopted.length) {
+    const existing = existsSync(registry) ? readFileSync(registry, 'utf8') : '';
+    const { begin, end } = markers('gates.toml', 'adopted', '1.0.0');
+    const body = [
+      begin,
+      '# Registered from validators this repo already had. Their scripts are untouched and',
+      '# stay yours; rungs only runs them and records what it observes.',
+      ...adopted.map(
+        (a) => `\n[[gates]]\nid      = "${a.id}"\nkind    = "command"\nmodule  = "adopted"\ntier    = "${a.tier}"\ncommand = "${a.command}"\nwhy     = """Adopted from ${a.source}. Predates rungs and is owned by this repo."""`,
+      ),
+      end,
+    ].join('\n');
+    actions.push({ disposition: 'gate', target: '.ai/gates.toml', note: `adopted: ${adopted.length} entries` });
+    if (!dryRun) {
+      mkdirSync(dirname(registry), { recursive: true });
+      writeFileSync(registry, mergeBlock(existing, body, 'adopted'));
+    }
+  }
+
   for (const mod of mods) {
     if (!mod.gates.length) continue;
     const existing = existsSync(registry) ? readFileSync(registry, 'utf8') : '';
@@ -201,4 +226,37 @@ export function writeInstallRecord(repoRoot: string, mods: Manifest[], params: P
     lines.push('');
   }
   writeFileSync(join(repoRoot, '.ai', 'rungs.toml'), lines.join('\n'));
+}
+
+export interface AdoptedGate {
+  id: string;
+  command: string;
+  tier: string;
+  source: string;
+}
+
+/**
+ * Turn detected `adopt_as` matches into `command` gate entries.
+ *
+ * The interpreter is chosen from the extension, and an unknown one is skipped
+ * rather than guessed at — a registry entry that cannot run is worse than one
+ * that is absent, because it reports as a failure the owner did not cause.
+ */
+export function adoptableGates(files: string[], patterns: string[], repoRoot: string): AdoptedGate[] {
+  const runner: Record<string, string> = { '.mjs': 'node', '.js': 'node', '.ps1': 'pwsh -File', '.sh': 'bash' };
+  const out: AdoptedGate[] = [];
+  for (const pattern of patterns) {
+    for (const rel of matchAny(files, pattern)) {
+      const ext = rel.slice(rel.lastIndexOf('.'));
+      const exec = runner[ext];
+      if (!exec) continue;
+      out.push({
+        id: `adopted-${rel.split('/').pop()!.replace(/\.[^.]+$/, '')}`,
+        command: `${exec} ${rel}`,
+        tier: 'fast',
+        source: rel,
+      });
+    }
+  }
+  return out;
 }
