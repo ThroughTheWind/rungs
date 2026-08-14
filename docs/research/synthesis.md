@@ -76,6 +76,15 @@ two dialects; `axiom-mesh`'s 21 prompts are skills without frontmatter.
 → **CLI position (opinion):** author once in a neutral source, emit every requested rendering, and
 gate that they agree. Multi-harness output is a first-class feature, not a compatibility layer.
 
+> **Amended 2026-08-14 — this position was too broad.** Measuring the actual formats
+> ([harness-landscape.md](harness-landscape.md)) showed that agentic config is **four primitives**,
+> not one, and that two of them stopped needing rendering after these repos were built: procedures
+> are now an open standard (Agent Skills, 45+ clients) and always-on context needs a one-line
+> bridge, not a rendering. Only **path-scoped rules** are genuinely fragmented. The corrected
+> position — *portable-first, bridge second, render last* — is
+> [ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md), which supersedes this paragraph.
+> The paragraph is kept because §7.3 and the module set were derived from it.
+
 ### 3.2 Instruction scoping: one file or many?
 
 One monolith (`axiom-mesh` 350, `rift-forge` 1513) vs. path-scoped set (`hexguard`, `templates`).
@@ -86,6 +95,11 @@ Scoped wins on: per-session cost, relevance, per-file ownership.
 → **CLI position:** small always-loaded core (identity · non-negotiables · routing · validation
 matrix) + scoped guides, with a **size budget on the core**. `rift-forge` is the counter-example
 that makes the budget non-negotiable.
+
+> **Confirmed 2026-08-14.** Anthropic's own guidance is *"target under 200 lines per CLAUDE.md
+> file. Longer files consume more context and reduce adherence."* The scoping mechanism
+> `rift-forge` lacked now exists natively in every major harness — see
+> [harness-landscape §4](harness-landscape.md).
 
 ### 3.3 Unit of work
 

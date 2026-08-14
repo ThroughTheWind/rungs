@@ -57,14 +57,22 @@ size — a solo spike does not want rift-forge's land protocol.
 → [`docs/research/synthesis.md`](docs/research/synthesis.md) ·
 [`docs/research/pattern-catalog.md`](docs/research/pattern-catalog.md)
 
-### Phase 3 — Product definition · **next**
+### Phase 3 — Product definition · **in progress**
 
-What the CLI actually is: the scaffold model (compose vs. template), the module boundary,
-the upgrade story (a repo scaffolded in v1 must be able to take v2's modules), and the
-harness-portability question — Claude Code skills, Copilot instruction files, and `AGENTS.md`
-are three renderings of the same content and the CLI should emit all three from one source.
+What the CLI actually is: the scaffold model, the module boundary, the output contract, the
+upgrade story, and harness portability.
 
-Deliverable: `docs/design/product-brief.md` + the first ADRs.
+Measuring the harness formats before designing for them
+([harness-landscape.md](docs/research/harness-landscape.md), 2026-08-14) overturned the Phase 2
+hypothesis. Agentic config is **four primitives**, not one, and two of them stopped needing
+rendering after the source repos were built: procedures are now an open standard (Agent Skills,
+45+ clients) and always-on context needs a one-line bridge. Only **path-scoped rules** are
+genuinely fragmented — so the CLI renders one primitive, not four.
+
+- [`docs/design/product-brief.md`](docs/design/product-brief.md) — **done**
+- [ADR-0001 — multi-harness rendering](docs/decisions/ADR-0001-multi-harness-rendering.md) — **accepted**
+- ADRs 0002–0005 (stack · module format · adoption detection · self-instrumentation) — open,
+  listed in the brief §9
 
 ### Phase 4 — Module catalog
 
@@ -97,4 +105,5 @@ that its content was paid for once already.
 
 ## Status
 
-Phase 2 complete. Phase 3 not started.
+Phase 3 in progress: the product brief and ADR-0001 (multi-harness rendering) are done; ADRs
+0002–0005 are open. Phase 4 (module catalog) is blocked on ADR-0003.

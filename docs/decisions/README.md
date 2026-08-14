@@ -4,9 +4,9 @@ Architecture decision records for ai-cli itself.
 
 ## Index
 
-| ADR | Title | Status |
-| --- | --- | --- |
-| — | *none yet* | |
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [0001](ADR-0001-multi-harness-rendering.md) | Multi-harness rendering: render only what is fragmented | accepted | 2026-08-14 |
 
 ## Admission rule
 

@@ -1,11 +1,12 @@
 # Design
 
-Phase 3+ output: what the CLI is, its module specifications, and its implementation design.
+What the CLI is, and how it is specified.
 
-Empty until Phase 3 opens. See [README — the sequence](../../README.md#the-sequence).
+| Document | Status |
+| --- | --- |
+| [`product-brief.md`](product-brief.md) | **Written 2026-08-14.** What it is · scaffold model · module boundary · output contract · CLI surface · upgrade story · non-goals · open decisions |
+| `module-catalog.md` | Phase 4. The specified module set, from [pattern-catalog.md](../research/pattern-catalog.md) |
+| `cli-surface.md` | Phase 5. Detailed command behaviour, beyond the brief's summary |
 
-Planned:
-
-- `product-brief.md` — scaffold model, module boundary, upgrade story, multi-harness rendering
-- `module-catalog.md` — the specified module set (from [pattern-catalog.md](../research/pattern-catalog.md))
-- `cli-surface.md` — `init` / `add` / `doctor` / `upgrade`
+Decisions live in [`../decisions/`](../decisions/README.md). The one that settles the output
+contract is [ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md).

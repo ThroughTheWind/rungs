@@ -13,8 +13,13 @@ condensed into the material the CLI will ship.
 | [`repos/rift-forge.md`](repos/rift-forge.md) | Skills + mechanical gates + concurrency. 2026-07→08, 401 branches |
 | [`synthesis.md`](synthesis.md) | The learning curve · convergences · divergences · **the 8 failure modes** · the maturity ladder · what nobody solved |
 | [`pattern-catalog.md`](pattern-catalog.md) | Canonical definition of every pattern, with source, rung, and target module. **The input to Phase 4** |
+| [`harness-landscape.md`](harness-landscape.md) | Phase 3 addendum: what each harness actually reads, measured 2026-08-14. **The four primitives**, and what changed under the source repos |
 
 Reading only two: `synthesis.md` then `pattern-catalog.md`.
+
+> `harness-landscape.md` was added during Phase 3 and **amends** synthesis §3.1 in place. The
+> source repos were built 2026-03 → 08 and predate the Agent Skills standardization; where a
+> per-repo file describes a portability problem, check the landscape snapshot before acting on it.
 
 ## Method
 
