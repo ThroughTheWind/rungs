@@ -2,7 +2,7 @@
 id: WI-031
 title: Integrate transferable Rift Forge workflow capabilities into rungs
 type: feature
-status: review
+status: done
 branch: feature/WI-031-integrate-rift-forge-capabilities
 created: 2026-08-15
 updated: 2026-08-15
@@ -99,7 +99,7 @@ Executed on `feature/WI-031-integrate-rift-forge-capabilities`.
 
 ## Review
 
-Ready for review. The adopted engine is covered in both directions (including a
+Reviewed and merged to `main` in `3783a7a`. The adopted engine is covered in both directions (including a
 reasoned partial-fix exception and cross-finding citation), the module manifest
 and gate table carry provenance/cost and self-tests, and the capability matrix
 records every deferred boundary. No Rift Forge-specific command or path is
