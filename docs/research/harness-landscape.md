@@ -12,7 +12,8 @@ they were solving:
 1. **Agent Skills became an open standard** (agentskills.io, from Anthropic, adopted by 45+
    clients). Procedures are now portable by default.
 2. **Every major harness gained path-scoped rules** — including Claude Code, via `.claude/rules/`
-   with `paths:` frontmatter. `rift-forge`'s 1513-line `CLAUDE.md` now has a native fix.
+   with `paths:` frontmatter. `rift-forge`'s former 1,513-line `CLAUDE.md` is now a 555-line core
+   plus a 1,223-line on-demand `PROJECT-STATE.md` record, a partial native fix.
 
 ---
 
@@ -91,7 +92,8 @@ portable form.
 
 **Vendor size guidance:** *"target under 200 lines per CLAUDE.md file. Longer files consume more
 context and reduce adherence."* This is direct vendor confirmation of the `core-size-budget`
-pattern that [`repos/rift-forge.md`](repos/rift-forge.md) derives from a 1513-line counter-example.
+pattern that [`repos/rift-forge.md`](repos/rift-forge.md) derives from the historical 1,513-line
+counter-example; the current candidate measures a 555-line always-loaded core.
 
 `@path` imports load at launch — they organize, they do **not** reduce context.
 
@@ -146,7 +148,7 @@ over time, which is the gap [ADR-0001](../decisions/ADR-0001-multi-harness-rende
 | Phase 2 claim | Status after this snapshot |
 | --- | --- |
 | [synthesis §3.1](synthesis.md) — "author once, emit every rendering" for all agentic config | **Overstated.** Only P2 needs rendering. P3 is standardized; P1 needs a one-line bridge. Corrected in place |
-| `core-size-budget` — derived from `rift-forge`'s 1513-line file | **Confirmed by the vendor** at <200 lines |
-| `rift-forge`'s unscoped instruction file | The native fix (`.claude/rules/` + `paths:`) now exists. The improvement in [`repos/rift-forge.md §5.1`](repos/rift-forge.md) is cheaper than it was when written |
-| `skill-neighbours` (routing at ~13 skills) | Unaffected — a description-quality problem, not a format problem |
+| `core-size-budget` — derived from `rift-forge`'s historical 1,513-line file | **Confirmed by the vendor** at <200 lines |
+| `rift-forge`'s unscoped instruction file | The candidate moved shipped history to `PROJECT-STATE.md`, but its 555-line `CLAUDE.md` still has no path-scoped rules. The improvement in [`repos/rift-forge.md §5.1`](repos/rift-forge.md) is cheaper than it was when written |
+| `skill-neighbours` (routing at ~14 skills) | Unaffected — a description-quality problem, not a format problem |
 | `prompt-library` (`axiom-mesh`'s 21 uninvocable playbooks) | The migration target is now a **standard**, not a Claude-specific format. Portability objection to converting them is gone |

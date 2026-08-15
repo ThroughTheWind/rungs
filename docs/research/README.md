@@ -13,7 +13,7 @@ and share one [`pattern-catalog.md`](pattern-catalog.md).
 | [`repos/axiom-mesh.md`](repos/axiom-mesh.md) | Doc-authority + prompt library. 2026-03→04, .NET |
 | [`repos/hexguard.md`](repos/hexguard.md) | Scoped instructions + phase checklists. 2026-06→07, Angular/.NET, 105 packages |
 | [`repos/hexguard-templates.md`](repos/hexguard-templates.md) | Spec-first + decision procedure. 2026-07, reference apps |
-| [`repos/rift-forge.md`](repos/rift-forge.md) | Skills + mechanical gates + concurrency. 2026-07→08, 401 branches |
+| [`repos/rift-forge.md`](repos/rift-forge.md) | Skills + mechanical gates + concurrency. Candidate refreshed 2026-08-15: 433 branches, 105 registered worktrees |
 | [`frameworks/README.md`](frameworks/README.md) | Public-framework architecture corpus: question, method, template, and index |
 | [`frameworks/synthesis.md`](frameworks/synthesis.md) | Six-framework comparison · convergences · divergences · unsolved boundaries · catalogue reconciliation |
 | [`follow-on/README.md`](follow-on/README.md) | Follow-on corpus: shared comparison spine · product/evaluation/protocol methods · eight-subject index |

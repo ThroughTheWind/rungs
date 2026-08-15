@@ -1,10 +1,48 @@
 # Extraction — `rift-forge`
 
-> Surveyed 2026-08-14 against the working tree at `C:\Development\Repositories\rift-forge`.
-> 3236 commits, 2026-07 → 2026-08, **401 branches, 51 live worktrees**. .NET 10 + Angular 22.
-> **13 skills · 69 `.mjs` scripts · 137 npm scripts (42 `check:`, 27 `test:`, 26 `report:`, 6 `gen:`)
-> · 16 specs · 25 ADRs · 102 live work items + 543 archived · 4 sprints · 91 findings ·
-> `CLAUDE.md` at 1513 lines.** A deterministic League-of-Legends damage calculator.
+> **Refreshed 2026-08-15** against local `candidate/0.1.0` at
+> `4a51848cfc9a2acbcdeddcd028418572406e2950` in the temporary worktree
+> `C:\Development\Repositories\rift-forge-wi030-candidate`; the source checkout is
+> `C:\Development\Repositories\rift-forge` (detached at `472d45ed`). The local candidate is the
+> authority requested for this refresh: `origin/candidate/0.1.0` still points to
+> `159f9f030c32df6828c16b3637ae572513d34d4e`.
+> **3,585 commits, 2026-07-29 → 2026-08-15, 433 branches, 105 registered worktrees**
+> (.NET 10 + Angular 22). `pnpm worktrees` measured 80 prunable, 16 merged-but-dirty, and 13 dirty
+> worktrees untouched for 10+ days (oldest 12 days).
+> **14 skills · 85 `.mjs` scripts · 181 npm scripts (58 `check:`, 46 `test:`, 30 `report:`, 7 `gen:`)
+> · 16 specs · 25 ADRs · 163 live work items + 537 archived · 3 active + 2 archived sprints ·
+> 74 open finding rows + 200 archived finding sections · `CLAUDE.md` at 555 lines.**
+> The candidate has no root `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE` file and no `license` field in
+> `package.json`; the project's licence is **not established from this checkout**. A deterministic
+> League-of-Legends damage calculator.
+
+The headline inventory above was recomputed on 2026-08-15 with the following read-only commands from
+the candidate worktree (counts are not copied from the earlier survey):
+
+```text
+git rev-parse candidate/0.1.0
+git rev-list --count candidate/0.1.0
+git log candidate/0.1.0 --reverse --format='%aI' | Select-Object -First 1
+git for-each-ref refs/heads --format='%(refname)' | Measure-Object
+git worktree list --porcelain | Select-String '^worktree ' | Measure-Object
+Get-ChildItem .claude/skills -Directory | Measure-Object
+Get-ChildItem .github/scripts -Filter '*.mjs' | Measure-Object
+node -e "const a=Object.keys(require('./package.json').scripts||{}); console.log(a.length,a.filter(x=>x.startsWith('check:')).length,a.filter(x=>x.startsWith('test:')).length,a.filter(x=>x.startsWith('report:')).length,a.filter(x=>x.startsWith('gen:')).length)"
+Get-ChildItem docs/backlog/items -Recurse -Filter 'WI-*.md' | Measure-Object
+Get-ChildItem docs/backlog/archive -Recurse -Filter 'WI-*.md' | Measure-Object
+node .github/scripts/check-ids.mjs
+node .github/scripts/worktrees.mjs
+Get-Content CLAUDE.md | Measure-Object -Line
+Get-Content PROJECT-STATE.md | Measure-Object -Line
+rg '^\| \[F-\d+\]' docs/backlog/FINDINGS.md | Measure-Object
+rg '^### F-\d+' docs/backlog/findings -g '*.md' | Measure-Object
+```
+
+The `check-ids` and `worktrees.mjs` commands are especially important: `check-ids` reported 700 work items (163 live,
+537 archived), 25 ADRs, 5 sprints, no duplicates or dangling citations; `worktrees.mjs` reports the
+registered/prunable/dirty split above. The findings counts use `rg '^\| \[F-\d+\]' docs/backlog/FINDINGS.md`
+and `rg '^### F-\d+' docs/backlog/findings -g '*.md'`, so “open rows” and “archived sections” are
+not conflated with the old survey's single “findings” number.
 
 **The one-line thesis:** *prose that has been broken becomes a gate.* Every mechanism here is a
 response to a **measured** failure, and the repo's distinguishing move is that it treats a
@@ -19,15 +57,15 @@ the CLI should ship comes from here.
 
 | Surface | What it holds |
 | --- | --- |
-| `CLAUDE.md` (1513 lines) | Canonical policy: design-system contract · engineering principles · repo conventions · **instruction hardening** · **working-rule propagation** · **shell editing** · id claiming · backlog & branches · current phase |
-| `AGENTS.md` (28 lines) | Thin bridge → `CLAUDE.md`, with an explicit no-duplication rationale |
-| `.claude/skills/*/SKILL.md` | **13 skills**, each with a `description:` that names its triggers *and its neighbours* |
+| `CLAUDE.md` (555 lines) | Canonical policy: design-system contract · engineering principles · repo conventions · **instruction hardening** · **working-rule propagation** · **shell editing** · id claiming · backlog & branches · current phase routing; shipped-history moved to the on-demand `PROJECT-STATE.md` (1,223 lines) |
+| `AGENTS.md` (35 lines) | Thin bridge → `CLAUDE.md`, with an explicit no-duplication rationale |
+| `.claude/skills/*/SKILL.md` | **14 skills**, each with a `description:` that names its triggers *and its neighbours* |
 | `.claude/settings.json` | `PreToolUse` hook on `Bash|PowerShell` → `check-shell-backticks.mjs` |
-| `docs/backlog/` | `README.md` (481 lines, the delivery methodology) · `BACKLOG.md` board · `FINDINGS.md` (91) · `TEMPLATE.md` · `SPRINT-TEMPLATE.md` · `items/` (102) · `sprints/` (4) · `archive/` (543) |
+| `docs/backlog/` | `README.md` (567 lines, the delivery methodology) · `BACKLOG.md` board · `FINDINGS.md` (74 open rows) · `TEMPLATE.md` · `SPRINT-TEMPLATE.md` · `items/` (163) · `sprints/` (3 active + 2 archived) · `archive/` (537 work items) |
 | `docs/specs/`, `docs/decisions/` | 16 specs, 25 ADRs |
 | `docs/engineering/` | Per-surface guides: backend · frontend · tool-ui-ux · testing · structure · ci |
 | `docs/research/lol-mechanics/` | Sourced, patch-pinned external reference, **projected into the app** |
-| `.github/scripts/` | 69 scripts: `check-*` gates, `gen-*` generators, `report-*`, plus `land.mjs`, `verify`, `preflight`, `session-start`, `claim-id`, `renumber-claims`, `backlog-archive` |
+| `.github/scripts/` | 85 scripts: `check-*` gates, `gen-*` generators, `report-*`, plus `land.mjs`, `verify`, `preflight`, `session-start`, `claim-id`, `renumber-claims`, `backlog-archive` |
 | `design-system/` | Mirror of an upstream Claude Design project, pulled by `/design-pull` |
 | `.gitattributes` + `pnpm setup:git` | Custom merge drivers (`backlog`, `generated`) + `rerere` |
 
@@ -37,7 +75,7 @@ the CLI should ship comes from here.
 
 ### 2.1 Skills that route themselves — and name their neighbours
 
-Thirteen skills, each `description:` written as trigger phrases in the user's voice, and — the
+Fourteen skills, each `description:` written as trigger phrases in the user's voice, and — the
 part no other repo does — **each names the adjacent skill and the boundary between them**:
 
 > `/curate-mechanic`: "A game-wide re-check is `/mechanics-audit`; this skill executes one mechanic."
@@ -114,7 +152,7 @@ Documented in the script's own header, and both generalize to every gate anyone 
   an off switch."*
 
 Plus a third, from `--self-test`: *"a gate whose rules are all currently satisfied is
-indistinguishable from a gate that matches nothing."* **27 `test:` scripts exist to test the 42
+indistinguishable from a gate that matches nothing."* **46 `test:` scripts exist beside 58
 `check:` scripts.** Gates are treated as software.
 
 ### 2.5 Concurrent sessions on one shared candidate
@@ -203,8 +241,11 @@ Two rules generalize past it, and the second is the mature one:
 
 ### 2.9 Findings separate from work items
 
-`FINDINGS.md` (`F-###`, 91 of them) with a `/record-finding` skill: severity, priority, evidence,
-when to act, how to fix, blockers. *"A finding is the observation, a `WI` is the decision."*
+`FINDINGS.md` (`F-###`, 74 open rows, with 200 archived detail sections measured 2026-08-15) with
+a `/record-finding` skill: severity, priority, evidence, when to act, how to fix, blockers.
+*"A finding is the observation, a `WI` is the decision."* The new `check:finding-closure` gate catches
+the narrower contradiction where an open detail section declares itself fixed; it does not infer code
+closure.
 
 This is the object `hexguard` was missing under 268 audit reports, and it is why noticing something
 out of scope has a cost near zero here.
@@ -212,8 +253,8 @@ out of scope has a cost near zero here.
 ### 2.10 Sprints that archive with their items
 
 Closing a sprint moves it **and all its work items** to `archive/`, via `pnpm backlog:archive`,
-which recomputes every link repo-wide (543 items already archived; `items/` holds only work that can
-still change). `check:ids` indexes the archive, so archived ids still resolve and stay permanently
+which recomputes every link repo-wide (537 items archived; 163 live items remain in `items/`, measured
+2026-08-15). `check:ids` indexes the archive, so archived ids still resolve and stay permanently
 spent. **"Never edit an archived item: if archived work is wrong, that is a new item."**
 
 ### 2.11 Skills for operating workflows, not just development
@@ -229,7 +270,7 @@ and no other repo in the corpus went there.
 
 ### 2.12 Smaller things worth taking verbatim
 
-- **`AGENTS.md` as a 28-line bridge**, with the reason stated: *"keeping two large copies would let
+- **`AGENTS.md` as a 35-line bridge**, with the reason stated: *"keeping two large copies would let
   Codex and Claude silently drift"* — plus which file wins on disagreement.
 - **Performance claims require a controlled comparison** — baseline command, ref, test count,
   environment, recorded before the change; contamination noted. *"Passing tests proves correctness,
@@ -245,36 +286,56 @@ and no other repo in the corpus went there.
   *ahead* of the implementation; WI-494 rediscovered from the wiki something the internal doc had
   described eight days earlier.
 
+### 2.13 What changed on the candidate after the prior survey
+
+The local candidate is 66 commits beyond the detached source checkout used as the comparison anchor.
+The changes alter the workflow extraction, not just the product data:
+
+| Change | Evidence | Research consequence |
+| --- | --- | --- |
+| Current-phase history moved out of the always-loaded instruction file | `2eddf18f` (`docs(wi-829): the record leaves the instruction file`); `PROJECT-STATE.md`; `CLAUDE.md` is now 555 lines and the record is 1,223 lines | The old “1,513-line instruction file” is a **historical pre-split measurement**. The current pain is a 555-line unscoped core plus a large on-demand record, a partial fix rather than no fix. |
+| `land` now judges the status of the merge it is about to create, sharing the predicate with `check:ids` | `f9f26580`; `.github/scripts/land.mjs`, `lib/item-status.mjs`; `land --self-test` status-preflight cases | The old “merged branch status can turn the candidate red after verification” failure is retired for new lands. A `Landed-branch:` trailer preserves the evidence after branch deletion; pre-trailer merges remain invisible. |
+| Open findings that declare themselves fixed are mechanically rejected | `f9f26580`; `.github/scripts/check-finding-closure.mjs`; `verify.mjs` adds a fast gate + self-test | The findings log is no longer only a passive register: it has a narrow closure gate, while code-level closure remains deliberately out of scope for that gate. |
+| Generated triage owners must be durable channels or live work items | `8107be2d`; `gen-dataset-coverage.mjs` resolves item status and refuses archived/missing owners | The old “finished work can remain a next owner” failure is now enforced in the generator, not only detected in `check:ids`. |
+| Product-language rewrites moved from inventory to enforcement ledger | `48247f8c`; `report-product-language.mjs` adds resolved/exception/open dispositions and refuses open enforced rows | The earlier “reports but does not enforce” verdict is stale for the enforced scopes; pending scopes and exemption classes remain explicit. |
+| Worktree reporting now exposes ageing and dirty merged worktrees | `node .github/scripts/worktrees.mjs`, measured 2026-08-15: 105 total, 80 prunable, 16 merged-but-dirty, 13 dirty for 10+ days | Accumulation is still a real operational cost, but the current evidence is registered/dirty/age buckets rather than the prior 51-live snapshot. |
+
+**Opinion:** these changes make Rift Forge a stronger source for *workflow hardening* than the first
+survey showed, but they do not remove the taxonomy, generated-artifact, or multi-owner scheduling
+costs. I would extract the new status-preflight and finding-closure patterns alongside the earlier
+land protocol, not treat them as separate product features.
+
 ---
 
 ## 3. What doesn't
 
-**`CLAUDE.md` is 1513 lines and every session reads all of it.** `AGENTS.md` insists on it: *"Read
-`CLAUDE.md` in full. Do not replace it with a summary or read only the section that appears
-relevant."* Correct given the content, and it is a large fixed cost on every session, in the one
-repo that otherwise measures everything. `hexguard`'s `applyTo:` scoping is not used at all. The
-irony is sharp: the repo with the most sophisticated instruction-propagation gate has the least
-scoped instruction file.
+**`CLAUDE.md` is still unscoped, but it is now 555 lines rather than the prior 1,513-line record.**
+`AGENTS.md` insists on reading it in full. WI-829 moved the 1,223-line shipped-history record into
+`PROJECT-STATE.md`, read on demand, which lowers the fixed cost but does not provide `applyTo:`-style
+per-surface routing. The repo with the most sophisticated instruction-propagation gate still has an
+always-loaded core without a size gate.
 
-**137 npm scripts and 69 `.mjs` files are their own onboarding surface.** 42 `check:` gates and 26
-`report:` generators — the naming is disciplined (`check:` / `report:` / `gen:` / `test:`), but
-there is no index of what each gate protects, and knowing which to run when is tacit.
+**181 npm scripts and 85 `.mjs` files are their own onboarding surface.** 58 `check:` gates, 46
+`test:` scripts, and 30 `report:` scripts — the naming is disciplined and `docs/engineering/gates.md`
+is now generated as an index, but knowing which of the 181 scripts to run remains a significant
+cost.
 
 **Gates are prose-and-regex, and the repo knows what that costs.** `check-working-rules` matches
 *vocabulary*, so it detects a surface that dropped the current phrasing — not one that keeps the
 phrasing and means something else. Two design constraints were learned by shipping guards that were
 wrong in both directions. This is the right trade for documentation, and it is a ceiling.
 
-**The candidate's CI was red enough to be uninformative.** *"11 of the last 15 runs failed"*, two
-permanently-red jobs, and the doc says so: *"a pipeline with two permanently-red jobs carries little
-information. Fix those two first."* Attribution is what makes that survivable — and attribution is
-also what makes it tolerable to leave unfixed. **A mitigation that removes the pain of a broken
-thing extends how long it stays broken.**
+**Inherited failures are still easy to normalize.** On this refresh, `pnpm verify --fast` completed
+111/113 gates; the two failures were attributed as inherited `product-language` and
+`product-language-self` errors because the temporary worktree had no installed `typescript` package.
+That attribution is useful and non-blocking, but it is also a reminder that an inherited-red path can
+remain red. **A mitigation that removes the pain of a broken thing extends how long it stays broken.**
 
-**51 live worktrees, 401 branches.** `pnpm worktrees` reports (62 of 90 were prunable when it
-landed) but deliberately does not remove — *"removing someone else's worktree is not a script's
-call."* Right, and the queue still grows. §4 says delete the branch on merge; **deleting it also
-costs you the merged-branch status check**, so the two rules pull against each other.
+**105 registered worktrees, 433 branches.** `pnpm worktrees` now reports 80 prunable, 16 merged but
+dirty, and 13 dirty for 10+ days, but deliberately does not remove — *"removing someone else's
+worktree is not a script's call."* The queue still grows. The branch-deletion contradiction is partly
+resolved by `Landed-branch:` trailers in new land commits; merges predating the trailer remain
+invisible to the status check.
 
 **`.claude/worktrees/` contains full repository copies with their own `.claude/skills/`.** A
 worktree's skill copy can be stale relative to the candidate, and `/backlog-summary` has an explicit
@@ -286,7 +347,7 @@ paragraphs carry measured counts (*"37 items"*, *"95% of 474 rows"*, *"seven of 
 true on their measurement date. They are the evidence that makes the rules persuasive; they are also
 exactly the shape `check:boundary-claims` was built to catch, in the one file it does not check.
 
-**Skill count is at the routing limit.** Thirteen skills with overlapping trigger vocabulary
+**Skill count is at the routing limit.** Fourteen skills with overlapping trigger vocabulary
 (`/curate-mechanic` vs `/curate-champion` vs `/patch-ingest` vs `/mechanics-audit`) is why the
 name-your-neighbours convention had to be invented. It works — and it is a patch over a taxonomy
 that grew past what descriptions alone can disambiguate.
@@ -302,7 +363,7 @@ that grew past what descriptions alone can disambiguate.
 | Backticks in `node -e "…"` silently deleting doc text | Documented → broken 3 more times → **`PreToolUse` hook** that refuses the command | **Yes** — 6 occurrences, 6 repair passes, then a hook |
 | A guard that also refuses its own fix | Negation-context window before matching `forbids` | **Yes** |
 | An escape hatch becoming an off switch | Exemption markers ignored unless they state a reason | **Yes** |
-| A gate that matches nothing looking identical to a passing gate | 27 `test:` scripts, `--self-test` over fixtures | **Yes** |
+| A gate that matches nothing looking identical to a passing gate | 46 `test:` scripts, `--self-test` over fixtures | **Yes** |
 | Many sessions, one candidate, invisible to each other | `session:start` from `green/` · `preflight` · `land` with lock + CAS · `worktrees` | **Yes** — the corpus's hardest problem, solved |
 | Red gates you did not cause teaching people to bypass | inherited / INTRODUCED attribution; unattributable blocks | **Yes** |
 | Candidate going red from an unverified merge | Verify the *merged tree* on `integ/`, then fast-forward | **Yes** |
@@ -311,34 +372,36 @@ that grew past what descriptions alone can disambiguate.
 | Generated artifacts merged as text into a file neither side would emit | `generated` merge driver **refuses**; regenerate instead | **Yes** |
 | Two sessions claiming the same id | `claim:id` across refs, ref names, and worktrees + merge driver + `renumber-claims` + `check:ids` backstop | **Yes** — a human no longer does the mechanical part |
 | Docs citing finished work as a live blocker | `check:ids` rule, vocabulary narrowed after 29 false positives | **Yes** |
-| Status fields lying about landed work | One-directional merged-branch gate + `branch-merged-ok:` escape | **Yes** — 37 items caught |
+| Status fields lying about landed work | One-directional merged-branch gate + `branch-merged-ok:` escape, now also preflighted by `land` with a shared predicate | **Yes** — the new land path refuses the red candidate before fast-forward |
 | Hand-typed counts drifting from the data | `check:boundary-claims` + `fix:boundary-claims`; uncovered claims pinned | **Yes** — 7 of 11 were false |
-| Out-of-scope observations lost or dumped in prose | `FINDINGS.md` + `/record-finding` | **Yes** — 91 findings |
-| `items/` unreadable at 600+ items | Sprint close archives the sprint with its items; links recomputed | **Yes** — 543 archived, 102 live |
-| Instruction file size | *(nothing)* | **No** — 1513 lines, read in full, every session |
-| Worktree/branch accumulation | `worktrees` reports, never removes | **Partly** — 51 live |
-| Candidate CI permanently red | Attribution makes it non-blocking | **Mitigated, not fixed** — and the mitigation reduces the pressure to fix |
+| Out-of-scope observations lost or dumped in prose | `FINDINGS.md` + `/record-finding` + narrow self-declared-closure gate | **Yes** — 74 open rows + 200 archived sections measured 2026-08-15 |
+| `items/` unreadable at 600+ items | Sprint close archives the sprint with its items; links recomputed | **Yes** — 537 archived, 163 live |
+| Instruction file size | Move shipped history to `PROJECT-STATE.md` and read it on demand | **Partly** — 555-line core plus 1,223-line record; still unscoped |
+| Worktree/branch accumulation | `worktrees` reports, never removes, now with dirty/age buckets | **Partly** — 105 registered, 80 prunable, 13 dirty 10+ days |
+| Candidate CI/environment red | Inherited / INTRODUCED attribution | **Mitigated, not fixed** — this refresh still saw two inherited missing-`typescript` failures |
 
 ---
 
 ## 5. How to improve it further
 
-1. **Scope `CLAUDE.md`.** Split into a small always-loaded core (product, non-negotiables, routing)
-   plus `applyTo:`-scoped guides — `hexguard`'s pattern, which this repo has not adopted. The
-   engineering guides already exist under `docs/engineering/`; the entry file should route rather
-   than restate.
+1. **Keep the instruction core on a size budget.** WI-829 moved shipped history to
+   `PROJECT-STATE.md`, a real improvement, but `CLAUDE.md` remains unscoped at 555 lines. The next
+   step is `applyTo:`-style routing for the engineering guides rather than another paragraph in the
+   entry file.
 2. **Point `check:boundary-claims` at `CLAUDE.md`'s own measured counts.** They are exactly the
    claim class the gate exists for, in the file every session trusts most. Or mark them as
    `measured YYYY-MM-DD` so age is visible at the point of reading.
-3. **Generate a gate index** — gate → what it protects → when it runs (fast/full/CI) → its
-   self-test. 42 `check:` scripts have no map.
+3. **Keep the generated gate index honest** — `docs/engineering/gates.md` now maps gate → what it
+   protects → tier/CI/cost → self-test, but 58 `check:` scripts and 181 npm scripts remain an
+   onboarding surface. The index needs to stay generated and easy to query.
 4. **Fix the two permanently-red CI jobs, or delete them.** A red job that attribution has made
    painless is a job carrying no information at a real dollar cost.
-5. **Resolve the branch-deletion conflict.** Deleting a merged branch is prescribed *and* costs the
-   merged-branch check. Record the status at land time so the check no longer depends on the branch
-   surviving.
-6. **Add worktree ageing.** `worktrees` should not delete — but it can escalate: age, last commit,
-   and a nag once a clean merged worktree passes N days.
+5. **Close the pre-trailer branch-status hole.** New `land` merges write a `Landed-branch:` trailer,
+   so deleting the branch no longer hides the status. Merges predating that trailer remain invisible;
+   the next improvement is a one-time reconciliation or explicit historical exemption.
+6. **Turn worktree ageing into an escalation.** `worktrees` now exposes age and dirty state, but it
+   still only reports. A nag or owner-facing queue once a clean merged worktree passes N days would
+   make the 105-entry inventory shrink without deleting another owner's checkout.
 7. **Consider consolidating the curation skills.** `/curate-mechanic` + `/curate-champion` are one
    skill with a scope parameter; the neighbour-naming convention is doing work a taxonomy could do.
 8. **Make the skill copies in worktrees a symlink or a check**, rather than a documented "go to the

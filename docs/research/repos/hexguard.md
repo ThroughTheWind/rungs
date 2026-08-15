@@ -34,7 +34,9 @@ Seven files instead of one, each attached only when a matching path is touched:
 `angular/packages/**` gets library rules; `angular/packages/angular-{ssr-config,hydration,sitemap,pwa}/**`
 additionally gets SSR-safety rules; the demo app gets Playwright-selector rules. An agent editing
 a doc never loads the SSR rules. `axiom-mesh` put all of this in one 350-line file, and
-`rift-forge` put it in a 1513-line one — this is the only repo of the four that solved it.
+`rift-forge` put it in a 1,513-line one before WI-829 moved shipped history out; the current
+candidate keeps a 555-line unscoped core plus a 1,223-line on-demand record. It remains the only
+repo of the four that solved the enforcement half.
 
 **The `description:` field is doing routing work, not decoration.** Each begins with *"Use
 when…"* and names concrete triggers. That is the same contract as a skill's `description:`, two

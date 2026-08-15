@@ -1,7 +1,8 @@
 # Cross-repo synthesis
 
-> Written 2026-08-14 from the four extractions in [`repos/`](repos/). Every claim here traces to
-> one of them; where a claim is opinion it says so.
+> Refreshed 2026-08-15 from the four extractions in [`repos/`](repos/). The Rift Forge comparison
+> now uses local `candidate/0.1.0` at `4a51848c` (full pin in the extraction); incident counts retain
+> their original measurement dates and are labelled as historical where they are not current.
 
 ---
 
@@ -17,11 +18,11 @@ argument that the content is portable rather than domain-specific.
 | **Home** | `.ai/` | `.github/` | `.github/` + `docs/specs/` | `.claude/` + `.github/scripts/` |
 | **Unit of work** | Milestone `M##-T#` | *(none)* | *(none)* — spec story ids only | Work item `WI-###` |
 | **Unit of decision** | ADR (48+) | Workflow decision (4) | Plan doc, 2 tiers (20) | ADR (25) + WI plan |
-| **Problem register** | `AD-###` + `DF-###` | 268 audit documents | *(none)* | `F-###` (91) |
-| **Invocation** | Paste a prompt file | 3 slash commands + 1 agent | **none** | 13 skills + hooks |
-| **Enforcement** | 8 structural validators | `ci.yml` | *(none)* | **42 `check:` gates + 27 self-tests + a `PreToolUse` hook** |
-| **Concurrency** | 29 branches, unspecified | 6 branches, trunk-ish | 3 branches, trunk-ish | **401 branches, 51 worktrees, a land protocol** |
-| **Instruction scoping** | 1 file, 350 lines | **7 files, `applyTo:` globs** | 7 files, `applyTo:` globs | 1 file, 1513 lines |
+| **Problem register** | `AD-###` + `DF-###` | 268 audit documents | *(none)* | `F-###` (74 open + 200 archived detail sections) |
+| **Invocation** | Paste a prompt file | 3 slash commands + 1 agent | **none** | 14 skills + hooks |
+| **Enforcement** | 8 structural validators | `ci.yml` | *(none)* | **58 `check:` gates + 46 self-tests + a `PreToolUse` hook** |
+| **Concurrency** | 29 branches, unspecified | 6 branches, trunk-ish | 3 branches, trunk-ish | **433 branches, 105 registered worktrees, a land protocol** |
+| **Instruction scoping** | 1 file, 350 lines | **7 files, `applyTo:` globs** | 7 files, `applyTo:` globs | 555-line core + 1,223-line on-demand record |
 
 **The arc:** *document authority* (`axiom-mesh`) → *scoped instruction + repeatable checklist*
 (`hexguard`) → *decision procedure* (`hexguard-templates`) → *mechanical enforcement + concurrency*
@@ -30,8 +31,9 @@ argument that the content is portable rather than domain-specific.
 Each stage answers the previous stage's unsolved problem. `axiom-mesh` wrote excellent rules and
 could not check them; `hexguard` scoped and repeated them but had nowhere for a finding to land;
 `hexguard-templates` made the decisions crisp but gave them no entry point; `rift-forge` made
-everything mechanical and paid for it with a 1513-line instruction file — which is precisely
-`hexguard`'s solved problem, unadopted.
+everything mechanical and paid for it with a large instruction surface. The candidate now splits its
+555-line always-loaded core from a 1,223-line on-demand record, which partially adopts `hexguard`'s
+solved scoping problem without using `applyTo:` guides.
 
 **No repo has all four stages.** That gap is the product.
 
@@ -87,7 +89,8 @@ gate that they agree. Multi-harness output is a first-class feature, not a compa
 
 ### 3.2 Instruction scoping: one file or many?
 
-One monolith (`axiom-mesh` 350, `rift-forge` 1513) vs. path-scoped set (`hexguard`, `templates`).
+One monolith (`axiom-mesh` 350, `rift-forge` 555-line core plus a 1,223-line record) vs. path-scoped
+set (`hexguard`, `templates`).
 
 Monolith wins on: nothing is missed, cross-references are local, one thing to keep true.
 Scoped wins on: per-session cost, relevance, per-file ownership.
@@ -129,7 +132,8 @@ work item. Split into two registers only at scale.
 ### 3.5 Concurrency model
 
 Trunk-ish (`hexguard` 6 branches, `templates` 3) · branch-per-task, unspecified (`axiom-mesh` 29) ·
-**shared candidate + worktrees + land protocol** (`rift-forge` 401 branches, 51 worktrees).
+**shared candidate + worktrees + land protocol** (`rift-forge` 433 branches, 105 registered
+worktrees; measured 2026-08-15).
 
 The land protocol is superb and expensive: merge drivers, a lock, CAS, attribution, a green ref,
 scratch integration refs. Below roughly 5 concurrent sessions it is pure overhead.
@@ -148,7 +152,7 @@ should say the threshold out loud rather than let people adopt it aspirationally
 ### 3.6 Enforcement level
 
 Review-only (`templates`) · CI build (`hexguard`) · structural validators (`axiom-mesh`, 8) ·
-**semantic gates + self-tests + hooks** (`rift-forge`, 42 + 27 + 1).
+**semantic gates + self-tests + hooks** (`rift-forge`, 58 + 46 + 1; measured 2026-08-15).
 
 → **CLI position:** tiered. Tier 1 structural gates are near-free and should be **on by default**
 (links resolve, ids unique, required sections present, referenced paths exist). Tier 2 semantic
@@ -174,7 +178,8 @@ The most valuable section here. Each is a **module requirement**, not a nice-to-
   `decisions.md` is a dead redirect.
 - `hexguard-templates` forbids restating scope; its `AGENTS.md` repo map has 5 duplicated entries.
 - `hexguard` states SSR safety in three places across two repos, gates it in zero.
-- `rift-forge` had *"keep it current with the code"* in bold while **7 of 11 counts went false**,
+- `rift-forge` had *"keep it current with the code"* in bold while **7 of 11 counts went false**
+  in the pre-refresh survey,
   and measured **5 working rules** that never reached the files teaching them.
 
 **→ Requirement:** any module that generates a rule generates its checker, or explicitly records
@@ -193,8 +198,8 @@ same step. A workflow doc with no skill/prompt is an incomplete artifact.
 ### F3 — Analysis with nowhere to land produces unactioned prose
 
 268 audit reports (`hexguard`) with no register and no work-item object; 7 audits
-(`hexguard-templates`) with the same gap. `rift-forge` reached 91 findings with a promotion path
-and near-zero cost to record one.
+(`hexguard-templates`) with the same gap. The current candidate has 74 open finding rows plus 200
+archived detail sections, with a promotion path and near-zero cost to record one.
 
 **→ Requirement:** `audit` **depends on** `findings`; `findings` **depends on** `backlog`. Declared
 as module dependencies, refused if unmet.
@@ -227,16 +232,17 @@ entry*. The `ci` module ships a proliferation check.
 
 ### F7 — Scale outruns the container
 
-`items/` past ~600 (`rift-forge` → sprint archiving, 543 moved) · 268 audits with no rollup
-(`hexguard`) · 51 worktrees and 401 branches (`rift-forge`) · 99 workflow files.
+`items/` past ~600 (`rift-forge` → sprint archiving, 537 moved) · 268 audits with no rollup
+(`hexguard`) · 105 registered worktrees and 433 branches (`rift-forge`) · 99 workflow files.
 
 **→ Requirement:** every generated container declares its **archive/rollup strategy up front**, not
 after it becomes unreadable.
 
 ### F8 — The mitigation extends the outage
 
-`rift-forge`'s inherited/INTRODUCED attribution made red CI painless — and *"11 of the last 15 runs
-failed"* with two permanently-red jobs. The mitigation is correct and it removed the pressure.
+`rift-forge`'s inherited/INTRODUCED attribution made red CI painless — the **11 of the last 15 runs
+failed** figure belongs to the pre-refresh survey, with two permanently-red jobs. The mitigation is
+correct and it removed the pressure.
 
 **→ Requirement:** any known-broken-is-non-blocking affordance ships with an ageing signal.
 
@@ -291,7 +297,7 @@ Green ref · fast/full verify with attribution · preflight · land protocol wit
 merge drivers per conflict class · id claiming across refs · worktree lifecycle · sprint archiving ·
 cost-aware CI trigger placement.
 
-> `rift-forge` at 401 branches / 51 worktrees. **Below ~5 concurrent sessions this is overhead**,
+> `rift-forge` at 433 branches / 105 registered worktrees. **Below ~5 concurrent sessions this is overhead**,
 > and the CLI should say so at install time.
 
 ---
@@ -308,10 +314,10 @@ Open problems. The CLI should not pretend these are answered.
    and changed meaning.
 3. **Cross-repo rule propagation.** `hexguard` ↔ `hexguard-templates` share rules by hand, in
    both directions, with no gate. Both repos' SSR rules are already stated in three places.
-4. **Skill taxonomy past ~12 skills.** `rift-forge` invented neighbour-naming as a patch. Nobody
+4. **Skill taxonomy past ~12 skills.** `rift-forge` now has 14 skills and invented neighbour-naming as a patch. Nobody
    knows the ceiling.
 5. **Worktree/branch garbage collection with multiple owners.** *"Removing someone else's worktree
-   is not a script's call"* — correct, and 51 accumulated.
+   is not a script's call"* — correct, and 105 are currently registered.
 6. **Nothing is recorded across runs.** No repo keeps any per-run history, so no question about
    change over time can be asked at all.
 

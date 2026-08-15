@@ -21,7 +21,7 @@
 | `entry-point` | One canonical agent-instruction file: identity · non-negotiables · repo map · routing. Everything else links to it | 4/4 | 0 |
 | `agents-md-bridge` | Thin `AGENTS.md` (~25 lines) pointing at the canonical file, stating *why* it does not duplicate, and naming the tie-breaker | RF | 0 |
 | `scoped-instructions` | Split instructions into path-scoped files with `description:` ("Use when…") + `applyTo:` glob frontmatter. Routing lives *in* the instruction | HG, HT | 2 |
-| `core-size-budget` | The always-loaded core has a declared line budget; overflow routes to a scoped guide | *(none — RF counter-example at 1513)* | 2 |
+| `core-size-budget` | The always-loaded core has a declared line budget; overflow routes to a scoped guide | *(none — RF historical counter-example at 1,513; current core 555 after WI-829)* | 2 |
 | `validation-matrix` | Change-surface → exact commands, in the always-loaded file. Kills both "run everything" and "run the wrong subset" | HG, RF, AM | 0 |
 | `repo-map` | Where things live, in the entry doc — **generated** from the workspace, not hand-listed (`generate-derivable`) | 4/4 | 0 |
 | `narrowest-anchor-loop` | anchor (file/symbol/failing test) → scoped instruction → smallest change → narrowest validation → docs | HG, SW | 0 |
