@@ -2,7 +2,7 @@
 id: WI-023
 title: Extract goose — local extensibility, MCP/ACP, and session isolation
 type: docs
-status: review
+status: done
 branch: feature/WI-023-extract-goose
 created: 2026-08-15
 updated: 2026-08-15
