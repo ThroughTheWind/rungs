@@ -76,10 +76,36 @@ inventory claim to measure, not a proxy for framework quality.
 
 ## Execution
 
-Started 2026-08-15 on `feature/WI-021-extract-inspect-ai`, cut from `main` after the item was
-planned. The extraction boundary is the pinned public Inspect AI repository; no model evaluation
-is run and no source code is copied into this repository.
+Completed 2026-08-15 on `feature/WI-021-extract-inspect-ai`.
+
+- Pinned `UKGovernmentBEIS/inspect_ai` at `d482209d573cdde116cc0f28abfb01712e91e80c`, recorded
+  MIT, and measured the checkout at 2,088 tracked files, 1,565 Python files, 773 test-named/test
+  directory files, 186 documentation files, and 110 task definitions.
+- Added [`inspect-ai.md`](../../research/follow-on/evaluations/inspect-ai.md) and updated the
+  follow-on index. The extraction traces the `examples/tool_use.py` `bash` task through task/sample
+  construction, solver/model/tool events, local sandbox lifecycle, deterministic scoring, recorder
+  flush, aggregate results, retries, cancellation, and checkpoint/crash recovery.
+- Explicitly separates deterministic, model-graded, and human-approval boundaries; records the
+  local sandbox's current-user execution counterexample; labels opinions and defers catalogue edits
+  to WI-028. No module or CLI file changed.
+- Validation: `node src/cli.ts check` — 20 pass, 0 fail; site `npm run build` — 81 pages; site
+  `npm run check` — 0 Astro diagnostics and 1,037 internal links, 0 broken. The source checkout was
+  not live-executed because this environment has no Python runtime or model credentials; the
+  extraction cites the pinned repository's mock-model/sandbox tests instead.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** Snapshot, MIT licence, full SHA, measured scale, read date, and bounded paths are
+   recorded in the extraction; all implementation links resolve to the pinned commit.
+2. **Pass.** The `bash` example is traced from sample input through solver/model/tool calls,
+   sandbox events, scorer, recorder, and `EvalResults`/reductions.
+3. **Pass.** The extraction distinguishes observation/replay, checkpoint resume, crash recovery,
+   and missing in-flight/unflushed data, and includes retry/cancel/partial-result paths.
+4. **Pass.** Deterministic predicates, model-graded scores, epoch reducers, and human approval are
+   given separate claim boundaries; no numeric result is presented as truth.
+5. **Pass.** Sandbox provider setup/cleanup, concurrency, local current-user execution, and
+   external model/image/network authorities are explicitly bounded.
+6. **Pass.** Opinions are labelled, catalogue candidates are deferred to WI-028, no modules changed,
+   `rungs check` passed 20/20, and the site build/link check passed with 0 broken links.
