@@ -2,8 +2,8 @@
 id: WI-021
 title: Extract Inspect AI — reproducible agent evaluation and sandboxed evidence
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-021-extract-inspect-ai
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-017, WI-019, WI-027, WI-028]
@@ -76,7 +76,9 @@ inventory claim to measure, not a proxy for framework quality.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-021-extract-inspect-ai`, cut from `main` after the item was
+planned. The extraction boundary is the pinned public Inspect AI repository; no model evaluation
+is run and no source code is copied into this repository.
 
 ## Review
 
