@@ -2,7 +2,7 @@
 id: WI-032
 title: Sync public docs, roadmap, and frontend surfaces with the current product
 type: docs
-status: review
+status: done
 branch: feature/WI-032-sync-docs-roadmap-frontend
 created: 2026-08-15
 updated: 2026-08-15
@@ -87,6 +87,6 @@ and the command/date used to re-check it.
 
 ## Review
 
-Ready for review. README, roadmap, module catalogue, product brief, and landing-page claims now
+Reviewed and merged to `main` in `2564eea`. README, roadmap, module catalogue, product brief, and landing-page claims now
 use the current package/module/candidate evidence. The new matrix and claim inventory are published
 through the existing docs glob; no second content copy or route registry was introduced.
