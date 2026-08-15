@@ -2,7 +2,7 @@
 id: WI-009
 title: Extract a second research corpus — six public agent frameworks
 type: epic
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -76,9 +76,9 @@ assumes, the divergence is the finding.
 
 ## Decision
 
-`proposed` — 2026-08-15. Opened at the user's request. The decision this epic needs is whether
-rungs takes on a second research axis at all; the eight children are each individually decidable
-once it does.
+`accepted` — 2026-08-15. The user directed work on the research epic to start. The epic is planned
+through its eight children; each child remains individually decidable and executes on its own
+branch.
 
 ## Plan
 

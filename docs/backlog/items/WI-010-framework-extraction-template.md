@@ -2,7 +2,7 @@
 id: WI-010
 title: A fixed template and method for the public-framework corpus
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -29,7 +29,8 @@ corpus lives and how it is kept honest, before six documents establish that by a
 
 ## Decision
 
-`proposed` — 2026-08-15. Prerequisite for the other seven children of
+`accepted` — 2026-08-15. The user directed work on the research epic to start; this template is
+the planned prerequisite for the other seven children of
 [WI-009](WI-009-public-agent-framework-corpus.md).
 
 ## Plan

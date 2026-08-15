@@ -22,7 +22,8 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| — | | |
+| [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
+| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs |
 
 ## Accepted
 
@@ -34,8 +35,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
-| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs |
 | [WI-011](items/WI-011-extract-swe-agent.md) | Extract SWE-agent — the minimal coding-agent loop | docs |
 | [WI-012](items/WI-012-extract-langgraph.md) | Extract LangGraph — state, checkpoints, and long-running workflows | docs |
 | [WI-013](items/WI-013-extract-openai-agents-sdk.md) | Extract the OpenAI Agents SDK — a deliberately small primitive surface | docs |
