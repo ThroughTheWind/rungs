@@ -2,7 +2,7 @@
 id: WI-015
 title: Extract the Microsoft Agent Framework — enterprise .NET and multi-agent workflows
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-015-extract-microsoft-agent-framework
 created: 2026-08-15
 updated: 2026-08-15
@@ -109,4 +109,23 @@ Branch `feature/WI-015-extract-microsoft-agent-framework`, cut from `main` 2026-
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** [`microsoft-agent-framework.md`](../../research/frameworks/microsoft-agent-framework.md)
+   answers all eight template sections and records the repository, pinned SHA, MIT licence, read
+   date, count commands, language split, and .NET-primary read boundary.
+2. **Pass.** Section 6 traces the audit inputs through `Run`, `StreamingRun`, `WorkflowEvent`,
+   `.WithOpenTelemetry`, and the Aspire exporter sample, explicitly distinguishing ephemeral events
+   and spans from a durable audit ledger. Approval is traced through the named
+   `GroupChatToolApproval/Program.cs` sample, `AIAgentHostExecutor`, `InProcessRunnerContext`, and
+   `ApprovalResponseBindingChatClient`.
+3. **Pass.** Section 7 records the retired Python-core provider-bundling practice and the removal of
+   deprecated assistants-parity samples, with the accepted decision's reasons: core weight,
+   provider/abstraction conflation, and a maintainable deprecation path.
+4. **Pass.** Section 7 states the small-project cost: decorator order, sessions, orchestration,
+   event handling, state hooks, checkpoint serialization, telemetry exporters, and host-owned
+   identity and retention policy.
+5. **Pass.** Judgement is labelled **Opinion** and the extraction makes no comparison to another
+   corpus repository. The .NET/Python table compares only the two implementations of this subject.
+6. **Pass.** `node src/cli.ts check` passed 20/20 gates. In `site`, `npm run build` generated 60
+   pages and `npm run check` reported 0 diagnostics and 520 internal links with 0 broken.
