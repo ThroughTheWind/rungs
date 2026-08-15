@@ -2,8 +2,8 @@
 id: WI-007
 title: A first-hour guide — the surface between install and the first work item
 type: docs
-status: proposed
-branch:
+status: done
+branch: feature/WI-007-first-hour-guide
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-005, WI-006]
@@ -42,27 +42,51 @@ Found while assessing first-user documentation completeness on 2026-08-15.
 
 ## Decision
 
-*Empty until decided.*
+`accepted` — 2026-08-15, last of the first-user path, so it can link to what the other six landed.
 
 ## Plan
 
-> Filled once `accepted`.
-
 ### Requirements
 
-*Filled once `accepted`.*
+- Names which of the twenty-five installed files matter, and what each is for.
+- Names the five skills and when to invoke each.
+- Says what to do when a gate is red, including the one that is red by design.
+- Names the scaffold's deliberate blanks as deliberate.
+- **Restates no rule owned elsewhere.** Every section ends by handing off to the owning document.
+- Reachable from the README and from the wiki.
 
 ### Impacts
 
-*Filled once `accepted`.*
+- New `docs/getting-started.md`, so the wiki routes it at `/wiki/getting-started/` with no site
+  change — the collection globs `docs/**`.
+- [`README.md`](../../../README.md) — one link, in Install.
+- **No ADR.** Criterion 4: every topic it touches is owned by a document that already exists.
 
 ### Approach
 
-*Filled once `accepted`.*
+**Route, do not re-explain.** The in-repo agent documentation is already good; a guide that
+restated the lifecycle would be a second definition of it, stale the first time the lifecycle
+changes. So each section is short and ends in a link to the owner: the backlog README owns the
+lifecycle, `parameters.md` owns parameters, ADR-0005 owns instrumentation.
+
+**A repo document, not a site page.** The item left this open. `docs/` is published to the wiki
+verbatim, so one markdown file gets both surfaces at once — and it stays readable in a clone, in a
+terminal, and to an agent, which a site-only page would not be. The Out of scope note that
+`docs/README.md` is a candidate home is declined: that file would be the wiki index's intro prose,
+a different job.
+
+Ordering is by when a reader needs it, not by importance: which files, fill the blanks, the skills,
+the first item, red gates, and the limits.
 
 ### Acceptance criteria / tests
 
-*Filled once `accepted`.*
+1. The four load-bearing files are named, distinguished from the twenty-one that are not.
+2. All five installed skills are listed with a trigger.
+3. `concurrency-no-integration-checkout`'s by-design redness and the reason-carrying exemptions both
+   appear.
+4. The `AGENTS.md` blanks are named as deliberate.
+5. Every claim about a rule links to the document that owns it; the page defines nothing itself.
+6. The README links it; the site builds it; `rungs check` → 20 pass, 0 fail, links resolving.
 
 ### Out of scope
 
@@ -77,8 +101,32 @@ Found while assessing first-user documentation completeness on 2026-08-15.
 
 ## Execution
 
-*Not started.*
+Branch `feature/WI-007-first-hour-guide`, cut from `main` 2026-08-15.
+
+- New [`docs/getting-started.md`](../getting-started.md) — six sections in the order a reader needs
+  them, plus a where-next table. Every section hands off rather than explaining.
+- [`README.md`](../../../README.md) — the Install block now says what `doctor` does and links here.
+
+Written against a real `tracked` install rather than from memory: the five skills were listed by
+reading `.claude/skills/` in a scaffolded repo, and the twenty-five-file count re-measured there.
+
+**Verified with the site's link checker, not the repo's.** F-005 — recorded during WI-006 — is that
+`gates-links-resolve` passes on broken relative links, so `rungs check` going green says nothing
+about this page's twelve cross-links. `npm run check` in `site/` is what actually proved them.
+Using the gate that F-005 says is blind would have been the exact failure this whole batch is about.
 
 ## Review
 
-*Not started.*
+Checked 2026-08-15.
+
+1. **Pass.** §1 tables the four load-bearing files and says the other twenty-one are templates,
+   indexes and per-harness renderings.
+2. **Pass, mechanically.** Each of the five skill directories in a fresh `tracked` install appears
+   in the page, compared by listing `.claude/skills/` and grepping for each.
+3. **Pass.** §5 covers `concurrency-no-integration-checkout` being red by design and the
+   reason-carrying exemptions, plus the never-fired-gate question.
+4. **Pass.** §2 names all three blanks and says why a guess would be worse than a hole.
+5. **Pass.** The page defines nothing: the lifecycle goes to `docs/backlog/README.md`, parameters to
+   `design/parameters.md`, instrumentation to ADR-0005, failure modes to `synthesis.md`.
+6. **Pass.** README links it. Site builds `/wiki/getting-started/` — 43 routes, 477 links, 0 broken,
+   up from 42/462. `rungs check` → 20 pass, 0 fail.

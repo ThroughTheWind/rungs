@@ -62,6 +62,11 @@ so you don't install rung 5 at rung 1.
 npx @rungs/cli doctor
 ```
 
+It reports what your repo already has, installed or not, and ends by naming one
+command to run next. Once you have run that:
+**[your first hour](docs/getting-started.md)** — which of the new files matter,
+what the installed skills are for, and what to do when a gate goes red.
+
 Requires **Node 22.18+** — it runs TypeScript directly, no build step.
 
 Published as **`@rungs/cli`**, not `rungs`: the unscoped name is unpublishable,
