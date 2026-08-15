@@ -37,11 +37,11 @@ All seven opened 2026-08-15 from one assessment: the path a first user walks, fr
 names its evidence. Accepted as a set on 2026-08-15 and being worked in id order, which also
 satisfies the one sequencing constraint — WI-006 sits behind WI-002.
 
-**Done:** [WI-001](items/WI-001-infer-project-name.md).
+**Done:** [WI-001](items/WI-001-infer-project-name.md) ·
+[WI-002](items/WI-002-set-flag-parsing.md).
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-002](items/WI-002-set-flag-parsing.md) | Accept `--set k=v`, and refuse an unparsed positional instead of silently retargeting | chore |
 | [WI-003](items/WI-003-render-reports-what-it-cannot-reemit.md) | Stop `.ai/rungs.toml` instructing a fix that `rungs render` cannot perform | chore |
 | [WI-004](items/WI-004-help-completeness.md) | Reconcile `rungs --help` with the README's command table | docs |
 | [WI-005](items/WI-005-doctor-next-step.md) | End `doctor` with a recommended next command | feature |
