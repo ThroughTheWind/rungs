@@ -102,9 +102,10 @@ against a pristine `git archive HEAD` checkout on 2026-08-15.
 "startCommand": "npm --prefix site start"
 ```
 
-**`--include=dev` is load-bearing.** `astro` is a devDependency and `sirv-cli` is the only runtime
-dependency, so under `NODE_ENV=production` a plain `npm ci` installs 13 packages instead of 414
-and the build dies on a missing `astro`. Measured on 2026-08-15 in a clean checkout.
+**`--include=dev` is load-bearing.** `astro` and the static build integrations are devDependencies
+and `sirv-cli` is the only runtime dependency, so under `NODE_ENV=production` a plain `npm ci`
+omits the build toolchain and the build dies on a missing `astro`. Verified on 2026-08-15 in a
+clean checkout.
 
 `sirv` binds `0.0.0.0:$PORT`, which Railway provides. Nothing here needs a database, a runtime
 secret, or a server. If the Phase 7 template registry later becomes a service, it belongs beside

@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
+import { unified } from "@astrojs/markdown-remark";
 import { rehypeRungs } from "./src/plugins/rehype-rungs.mjs";
 
 // The wiki reads docs/ from the repo root, one level above this package. Vite has to be told
@@ -22,9 +23,9 @@ export default defineConfig({
   markdown: {
     // The mapping table from the design system's readme: plain markdown in, provenance
     // components out, with no author-side wrappers. src/plugins/rehype-rungs.mjs is the contract.
-    rehypePlugins: [rehypeRungs],
-    // Terminal transcripts are ink pits styled by tokens/base.css; Shiki would fight them.
-    syntaxHighlight: false,
+    // Astro 7 requires these plugins to live on the selected processor, not the legacy top-level
+    // markdown options. The unified processor also keeps terminal transcripts unhighlighted.
+    processor: unified({ rehypePlugins: [rehypeRungs] }),
   },
   vite: {
     server: { fs: { allow: [REPO_ROOT] } },

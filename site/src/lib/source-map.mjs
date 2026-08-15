@@ -12,10 +12,13 @@
  * silently dropping a document.
  */
 import { readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { ROOT_DOCS, slugForDoc } from "./routes.mjs";
 
-const ROOT = fileURLToPath(new URL("../../../", import.meta.url)).replace(/\\/g, "/").replace(/\/$/, "");
+// Astro bundles this module into dist/.prerender during a production build, so a path derived
+// from import.meta.url would point at site/ rather than the repository root. npm runs scripts with
+// the package directory as cwd; resolve from there so dev, check, and build use the same corpus.
+const ROOT = resolve(process.cwd(), "..").replace(/\\/g, "/").replace(/\/$/, "");
 
 function walk(relDir) {
   const out = [];

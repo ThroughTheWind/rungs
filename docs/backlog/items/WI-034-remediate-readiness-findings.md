@@ -2,8 +2,8 @@
 id: WI-034
 title: Remediate release-readiness findings
 type: chore
-status: planned
-branch:
+status: review
+branch: feature/WI-034-remediate-readiness-findings
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-033]
@@ -71,9 +71,26 @@ assessment; it must not become a general backlog sweep.
 
 ## Execution
 
-Not started. Planning artifact only; execute on `feature/WI-034-remediate-readiness-findings` after WI-033 has a reviewed assessment.
+Execution started on `feature/WI-034-remediate-readiness-findings` after WI-033 was reviewed and
+merged. The frozen input set is `docs/design/release-readiness.md`; no unrelated backlog sweep is
+included.
+
+- The npm package now builds `src/cli.ts` into `dist/cli.js` with esbuild during `prepack`; the
+  published bin no longer asks Node to strip TypeScript under `node_modules`.
+- A fresh packed artifact installed in `C:\Temp\rungs-wi034-consumer`; the executable returned
+  help successfully and a git-backed consumer completed `doctor`, `init`, `add release`, `check`
+  (21/21), `render`, `upgrade` preview, and `eject --dry-run`. An unknown-module dry-run exited 1
+  without changing the consumer repository.
+- Added a package-bin regression test; `npm test` passes 7/7 and `npm run rungs -- check` passes
+  20/20 on the remediation branch.
+- Upgraded the site to Astro `7.2.2` with compatible integrations, refreshed its lock, and moved
+  the wiki to the unified processor. `npm audit` reports 0 vulnerabilities; `npm run build` passes
+  with 97 pages and `npm run check` reports 0 errors, warnings, or hints, 1,203 links, and 0 broken.
+- Closed F-009 and F-010 with evidence in `docs/backlog/FINDINGS.md`; the readiness report records
+  the before/after evidence and hands registry/platform verification to WI-035.
 
 ## Review
 
-Not started.
-
+Ready for review. Implementation is committed in `e095885`; the two WI-033 pre-release findings
+are closed, the local packed-consumer journey passes, and no publish/tag/release action was taken.
+WI-035 owns the public-registry artifact, provenance, platform matrix, and final release decision.
