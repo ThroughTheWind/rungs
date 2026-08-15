@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolve } from 'node:path';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
+import { selfDeclaredClosure } from '../src/engines2.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 
 test('substitute resolves local and cross-module values without touching passthrough expressions', () => {
@@ -57,4 +60,29 @@ test('managed marker syntax matches markdown and TOML files', () => {
     begin: '# rungs:begin gates@1.0.0',
     end: '# rungs:end gates',
   });
+});
+
+test('self-declared closure catches an open finding declaring itself fixed, but honours a reasoned exception', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-closure-'));
+  const table = {
+    file: 'FINDINGS.md',
+    open_heading: 'Open findings',
+    closed_heading: 'Closed findings',
+    detail_heading: 'Detail',
+    id_pattern: 'F-\\d{1,4}',
+    open_row_pattern: '^\\|\\s*\\[?(F-\\d{1,4})\\]',
+    detail_heading_pattern: '^###\\s+(F-\\d{1,4})\\s+—\\s+',
+    declares_fixed: ['\\*\\*Fixed[.,)*]'],
+    exempt_marker: 'closure-ok:',
+  };
+  const header = ['## Open findings', '', '| [F-001] |', '', '## Closed findings', '', '## Detail', ''].join('\n');
+
+  writeFileSync(join(root, 'FINDINGS.md'), `${header}### F-001 — stale observation\n\n**Fixed.**\n`);
+  assert.equal(selfDeclaredClosure(table, root, ['FINDINGS.md']).findings.length, 1);
+
+  writeFileSync(join(root, 'FINDINGS.md'), `${header}### F-001 — stale observation\n\n<!-- closure-ok: only the mitigation shipped -->\n**Fixed.**\n`);
+  assert.deepEqual(selfDeclaredClosure(table, root, ['FINDINGS.md']).findings, []);
+
+  writeFileSync(join(root, 'FINDINGS.md'), `${header}### F-001 — stale observation\n\nThis is a citation: F-002 is **Fixed.**\n`);
+  assert.deepEqual(selfDeclaredClosure(table, root, ['FINDINGS.md']).findings, []);
 });

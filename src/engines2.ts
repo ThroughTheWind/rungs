@@ -167,6 +167,76 @@ export const registerSchema: Engine = (t, root, files) => {
   return { findings, examined };
 };
 
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * An open finding must not declare itself fixed in its own detail section.
+ *
+ * This is deliberately a text-only contradiction check. It does not inspect
+ * code or infer that a fix really shipped; those questions are repository-
+ * specific and a guessed probe would be confidently wrong. A section may
+ * contain a reasoned `closure-ok:` marker when only a part of the observation
+ * was addressed. The table owns the headings, id shape, and verdict phrases so
+ * the engine remains useful for registers that use a different prefix or
+ * detail heading.
+ */
+export const selfDeclaredClosure: Engine = (t, root, files) => {
+  const findings: Finding[] = [];
+  let examined = 0;
+  const targets = t.file ? [t.file] : expand(files, t.scan ?? ['docs/**/FINDINGS.md']);
+  const idPattern = t.id_pattern ?? '[A-Z]{1,6}-\\d{1,4}';
+  const openRow = new RegExp(t.open_row_pattern ?? `^\\|\\s*\\[?(${idPattern})\\]`, 'gmu');
+  const detailHeading = new RegExp(t.detail_heading_pattern ?? `^###\\s+(${idPattern})\\s+—\\s+`, 'gmu');
+  const verdicts = (t.declares_fixed ?? [
+    '\\*\\*Fixed[.,)*]',
+    '\\*\\*Fixed\\s+(?:in|by|the\\s+same\\s+day|\\d{4}-\\d{2}-\\d{2})',
+    '\\*\\*Implemented in this change\\.?\\*\\*',
+    '\\*\\*fixed in the pass that found it\\*\\*',
+  ]).map((p: string) => new RegExp(p, 'iu'));
+
+  for (const rel of targets) {
+    const text = read(root, rel);
+    if (!text) continue;
+    const openStart = headingIndex(text, t.open_heading ?? 'Open');
+    const closedStart = headingIndex(text, t.closed_heading ?? 'Closed');
+    const detailStart = headingIndex(text, t.detail_heading ?? 'Detail');
+    if (openStart < 0 || closedStart < 0 || detailStart < 0 || closedStart <= openStart || detailStart < closedStart) continue;
+
+    const open = new Set<string>();
+    for (const match of text.slice(openStart, closedStart).matchAll(openRow)) open.add(match[1]);
+    if (!open.size) continue;
+
+    const detail = text.slice(detailStart);
+    const headings = [...detail.matchAll(detailHeading)];
+    for (let i = 0; i < headings.length; i++) {
+      const id = headings[i][1];
+      if (!open.has(id)) continue;
+      examined++;
+      const start = headings[i].index ?? 0;
+      const end = headings[i + 1]?.index ?? detail.length;
+      const section = detail.slice(start, end);
+      const marker = t.exempt_marker ?? 'closure-ok:';
+      if (new RegExp(`<!--\\s*${escapeRe(marker)}\\s*\\S`, 'u').test(section)) continue;
+      const body = section.slice(section.indexOf('\n') + 1);
+      for (const verdict of verdicts) {
+        const match = verdict.exec(body);
+        if (!match) continue;
+        const before = body.slice(Math.max(0, match.index - (t.citation_window ?? 120)), match.index);
+        const cited = [...before.matchAll(new RegExp(`(${idPattern})[^.]{0,${t.citation_window ?? 120}}$`, 'gu'))].at(-1)?.[1];
+        if (cited && cited !== id) continue;
+        findings.push({ file: rel, message: `${id} is open but its detail declares it fixed: ${body.slice(match.index, match.index + 60).split('\n')[0].trim()}` });
+        break;
+      }
+    }
+  }
+  return { findings, examined };
+};
+
+function headingIndex(text: string, heading: string): number {
+  const re = new RegExp(`^#{1,6}\\s+${escapeRe(heading)}\\s*$`, 'imu');
+  return text.search(re);
+}
+
 const strip = (v?: string) => (v ?? '').replace(/[`*\[\]]/g, '').split('(')[0].trim();
 const firstCell = (row: Record<string, string>) => strip(Object.values(row)[0]) || '?';
 

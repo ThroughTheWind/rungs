@@ -33,6 +33,24 @@ non_empty = ["Sev", "Pri", "What", "Evidence"]
 enum      = { Sev = ["high", "medium", "low"], Pri = ["now", "next", "someday"] }
 placeholder_ok = ["none — hunch", "unknown"]
 
+# ── findings-self-declared-closure ───────────────────────────────────────────
+
+[self_declared_closure]
+file                    = "{{path}}"
+open_heading            = "Open"
+closed_heading          = "Closed"
+detail_heading          = "Detail"
+id_pattern              = "{{id_prefix}}-\\d{1,4}"
+open_row_pattern        = "^\\|\\s*\\[?({{id_prefix}}-\\d{1,4})\\]"
+detail_heading_pattern  = "^###\\s+({{id_prefix}}-\\d{1,4})\\s+—\\s+"
+exempt_marker           = "closure-ok:"
+declares_fixed          = [
+  "\\*\\*Fixed[.,)*]",
+  "\\*\\*Fixed\\s+(?:in|by|the\\s+same\\s+day|\\d{4}-\\d{2}-\\d{2})",
+  "\\*\\*Implemented in this change\\.?\\*\\*",
+  "\\*\\*fixed in the pass that found it\\*\\*",
+]
+
 # ── self-tests ────────────────────────────────────────────────────────────────
 
 [[self_test]]
@@ -54,6 +72,16 @@ fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "critical", 
 gate    = "findings-disposition-has-reason"
 expect  = "pass"
 fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "high", Pri = "now", What = "x", Evidence = "none — hunch" } }
+
+[[self_test]]
+gate    = "findings-self-declared-closure"
+expect  = "fail"
+fixture = { open = ["{{id_prefix}}-001"], detail = "### {{id_prefix}}-001 — x\\n\\n**Fixed.**" }
+
+[[self_test]]
+gate    = "findings-self-declared-closure"
+expect  = "pass"
+fixture = { open = ["{{id_prefix}}-001"], detail = "### {{id_prefix}}-001 — x\\n\\n<!-- closure-ok: the mitigation only -->\\n**Fixed.**" }
 
 # ── findings-ids self-tests ───────────────────────────────────────────────────
 

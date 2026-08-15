@@ -196,7 +196,7 @@ if (!engine || !ENGINES[engine]) { console.error(\`gate \${id}: engine '\${engin
 // Tables were converted to JSON when this was ejected, so nothing here needs a
 // TOML parser — or any dependency at all beyond Node itself.
 const raw = JSON.parse(readFileSync(join(here, 'tables', table.replace('/', '-').replace(/\\.toml$/, '.json')), 'utf8'));
-const KEYS = { 'file-budget': 'file_budget', 'frontmatter-schema': 'frontmatter_schema', 'link-integrity': 'link_integrity', 'file-population': 'file_population', 'gate-meta': 'gate_meta', 'render-freshness': 'render_freshness', 'register-schema': 'register_schema', 'filename-schema': 'filename_schema', 'cross-reference': 'cross_reference', 'git-status-reconcile': 'merged_status', 'computed-claim': 'computed_claim' };
+const KEYS = { 'file-budget': 'file_budget', 'frontmatter-schema': 'frontmatter_schema', 'link-integrity': 'link_integrity', 'file-population': 'file_population', 'gate-meta': 'gate_meta', 'render-freshness': 'render_freshness', 'register-schema': 'register_schema', 'self-declared-closure': 'self_declared_closure', 'filename-schema': 'filename_schema', 'cross-reference': 'cross_reference', 'git-status-reconcile': 'merged_status', 'computed-claim': 'computed_claim' };
 let section = raw[KEYS[engine] ?? engine] ?? raw;
 if (Array.isArray(section) && section.some((s) => s?.id)) {
   const mine = section.filter((s) => !s.id || id.includes(s.id));

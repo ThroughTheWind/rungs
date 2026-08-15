@@ -126,6 +126,7 @@
 | `structural-gates` | Near-free tier-1 checks, on by default: links resolve · ids unique · required sections present · referenced paths exist | AM, RF | 1 |
 | `typed-output-gate` | Turn probabilistic output into a typed structural boundary: invalid shape becomes an explicit retry or terminal error. **A well-typed value is not thereby true**; semantic validation is a separate gate | PA | 1 |
 | `bookkeeping-gates` | Status checked against git: no doc waiting on finished work · no merged branch in a pre-review status. **One-directional**, with reasoned escapes, vocabulary narrowed after measuring false positives | RF | 3 |
+| `self-declared-finding-closure` | A finding whose own open detail declares it fixed is a record contradiction; detect only that text, honour a reasoned partial-fix exemption, and never infer code-level closure | RF | 1 |
 | `tool-level-hook` | `PreToolUse` guard for traps prose has already failed to prevent (shell backticks). Must assert **both** directions | RF | 3 |
 | `ageing-signal` | Any known-broken-is-non-blocking affordance ships an ageing signal, or the mitigation extends the outage | *(RF counter-example: 11/15 CI runs red)* | 3 |
 | `enforcement-declaration` | Every generated rule is tagged *gated* or *review-only*. No silent third category | *(F1, unanimous)* | 1 |

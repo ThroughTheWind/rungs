@@ -174,11 +174,14 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 - **params:** `id_prefix` (default `F`) · `path` (default `docs/{{backlog.root}}/FINDINGS.md`)
 - **files:** the register + its README
 - **skills:** `record-finding` — record, and triage (promote · fix · dismiss **with a reason**)
-- **gates:** `findings-ids` (declared) · `dismissed-has-reason` (declared)
+- **gates:** `findings-ids` (declared) · `findings-disposition-has-reason` (declared) ·
+  `self-declared-closure` (declared — an open detail section cannot declare its own finding fixed)
 - **cost:** near-zero per finding — that is the point
 - **implements:** `findings-log` `record-without-derailing` `finding-promotion` `audit-to-register`
-- **provenance:** `rift-forge` — 91 findings. **A finding is the observation; a work item is the
-  decision.** The object `hexguard` lacked under 268 audit reports
+- **provenance:** `rift-forge` — 91 findings and the 2026-08-15 self-declared-closure gate. **A
+  finding is the observation; a work item is the decision.** The object `hexguard` lacked under 268
+  audit reports. The closure gate is text-only by design: it catches a record contradiction and does
+  not infer code-level closure.
 
 ### `adr`
 

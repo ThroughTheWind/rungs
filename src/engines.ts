@@ -9,6 +9,7 @@ import {
   idIntegrity,
   registerSchema,
   renderFreshness,
+  selfDeclaredClosure,
 } from './engines2.ts';
 import { gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
 
@@ -243,6 +244,7 @@ export const ENGINES: Record<string, Engine> = {
   'id-integrity': idIntegrity,
   'render-freshness': renderFreshness,
   'register-schema': registerSchema,
+  'self-declared-closure': selfDeclaredClosure,
   'filename-schema': filenameSchema,
   'cross-reference': crossReference,
   'git-status-reconcile': gitStatusReconcile,

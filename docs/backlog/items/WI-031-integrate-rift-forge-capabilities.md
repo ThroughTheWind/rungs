@@ -2,8 +2,8 @@
 id: WI-031
 title: Integrate transferable Rift Forge workflow capabilities into rungs
 type: feature
-status: planned
-branch:
+status: review
+branch: feature/WI-031-integrate-rift-forge-capabilities
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-029, WI-030]
@@ -82,9 +82,25 @@ module-boundary constraints.
 
 ## Execution
 
-Not started. Planning artifact only; execution should begin on `feature/WI-031-integrate-rift-forge-capabilities` after the item is picked up.
+Executed on `feature/WI-031-integrate-rift-forge-capabilities`.
+
+- Current candidate matrix and portability decisions are being recorded in
+  `docs/design/rift-forge-capability-matrix.md`.
+- The first adopted capability is a generic self-declared-finding-closure gate,
+  implemented in the `findings` module and its markdown engine contract. The
+  status-preflight, live-owner, history, gate-index, and ageing candidates are
+  explicitly deferred or rejected in the matrix because they require a product
+  land service, generated triage schema, or operational owner policy that rungs
+  does not own.
+- `npm test` passes 6/6.
+- `npm run rungs -- check` passes 20/20 on the working tree.
+- A temporary git-backed tracked-profile smoke repo initialized the new gate,
+  then passed `rungs check` (18/18) and `rungs render` (2 renderings).
 
 ## Review
 
-Not started.
-
+Ready for review. The adopted engine is covered in both directions (including a
+reasoned partial-fix exception and cross-finding citation), the module manifest
+and gate table carry provenance/cost and self-tests, and the capability matrix
+records every deferred boundary. No Rift Forge-specific command or path is
+required by the generic engine contract.
