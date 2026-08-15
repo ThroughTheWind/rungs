@@ -97,11 +97,18 @@ const canonical = new URL(here, origin);
     </main>
 
     <footer class="foot" style={`max-width:${width}px`}>
-      <div class="foot-text">
-        {SITE.tagline}<br />
-        <a href={SITE.npm} rel="noopener" target="_blank">Install @rungs/cli from npm</a>
+      <div class="foot-main">
+        <div>
+          <div class="foot-brand"><span class="mark" aria-hidden="true" set:html={logoSvg} />rungs</div>
+          <p class="foot-text">{SITE.tagline}</p>
+        </div>
+        <div class="foot-links">
+          <span class="foot-label">Elsewhere</span>
+          <a href="/versions/">Versions</a>
+          <a href={SITE.npm} rel="noopener" target="_blank">npm package ↗</a>
+          <a href={SITE.repo} rel="noopener" target="_blank">GitHub ↗</a>
+        </div>
       </div>
-      <div class="foot-mark"><span class="mark" aria-hidden="true" set:html={logoSvg} />rungs</div>
     </footer>
 
     <script is:inline>
@@ -222,26 +229,48 @@ const canonical = new URL(here, origin);
         margin: 0 auto;
         padding: 24px 32px 56px;
         border-top: 1px solid var(--ink);
-        display: flex;
-        justify-content: space-between;
-        gap: 24px;
-        flex-wrap: wrap;
+      }
+      .foot-main {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 40px;
+        align-items: start;
+      }
+      .foot-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--ink);
+        font: 700 24px var(--font-display);
+      }
+      .foot-brand .mark :global(svg) {
+        display: block;
+        width: 22px;
+        height: 22px;
       }
       .foot-text {
         font: 400 12px/1.7 var(--font-mono);
         color: var(--text-muted);
+        margin: 10px 0 0;
       }
-      .foot-mark {
-        font: 700 28px var(--font-display);
+      .foot-links {
+        display: grid;
+        gap: 10px;
+        justify-items: start;
+      }
+      .foot-links a {
+        font: 400 13px var(--font-mono);
+        color: var(--text-muted);
+        text-decoration: none;
+      }
+      .foot-links a:hover {
         color: var(--ink);
-        display: flex;
-        align-items: center;
-        gap: 12px;
       }
-      .foot-mark .mark :global(svg) {
-        display: block;
-        width: 28px;
-        height: 28px;
+      .foot-label {
+        font: 600 10px var(--font-label);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
       }
       @media (max-width: 560px) {
         .nav-status {
@@ -252,6 +281,10 @@ const canonical = new URL(here, origin);
         .foot {
           padding-left: 16px;
           padding-right: 16px;
+        }
+        .foot-main {
+          grid-template-columns: 1fr;
+          gap: 24px;
         }
       }
     </style>

@@ -31,6 +31,7 @@ export const SITE = {
 
 export const NAV = [
   { href: "/wiki/", label: "Wiki" },
+  { href: "/versions/", label: "Versions" },
   { href: "/contribute/", label: "Contribute" },
   { href: SITE.npm, label: "npm package", external: true },
   { href: SITE.repo, label: "GitHub", external: true },

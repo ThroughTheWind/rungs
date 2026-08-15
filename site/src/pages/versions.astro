@@ -1,0 +1,185 @@
+---
+import packageJson from "../../../package.json";
+import Base from "../layouts/Base.astro";
+import { Callout, Claim, Console, EnforcementTag, Measurement, TitleBlock } from "../design-system/components/index.js";
+import { SITE } from "../site.config";
+
+const nextVersion = packageJson.version as string;
+const publishedVersion = "0.1.2";
+
+const releases = [
+  {
+    version: "0.1.2",
+    date: "2026-08-15",
+    kind: "patch",
+    entries: [["changed", "Package metadata and the public homepage now point to docs.rungscli.com."]],
+  },
+  {
+    version: "0.1.1",
+    date: "2026-08-15",
+    kind: "patch",
+    entries: [
+      ["added", "A bundled JavaScript rungs executable for clean Node 22 consumers."],
+      ["added", "The self-declared-finding-closure gate and regression coverage."],
+      ["changed", "The static site moved to Astro 7.2.2 with a clean consumer smoke journey."],
+    ],
+  },
+];
+
+const modules = [
+  ["instructions", "1.1.0"], ["gates", "1.0.0"], ["backlog", "1.0.0"], ["findings", "1.1.0"],
+  ["adr", "1.0.0"], ["session", "1.1.0"], ["ci", "1.0.0"], ["specs", "1.0.0"],
+  ["workflows", "1.1.0"], ["skills", "1.1.0"], ["audit", "1.0.0"], ["release", "1.0.0"],
+  ["design-sync", "1.0.0"], ["doc-authority", "1.0.0"], ["concurrency", "1.0.0"],
+];
+---
+
+<Base
+  title="Versions & changelog — rungs"
+  description="Published rungs versions, the next package release, and the changelog discipline that keeps the version honest."
+  srHeading="rungs versions and changelog"
+  width={1000}
+>
+  <div class="sheet">
+    <TitleBlock
+      kicker="Versions"
+      title="Versions & changelog"
+      fields={[
+        { label: "Latest", value: `${publishedVersion} · published 2026-08-15` },
+        { label: "Next", value: `${nextVersion} · pending release` },
+        { label: "Updated", value: SITE.asOf },
+      ]}
+    />
+
+    <section class="releases">
+      <span class="lab">Release history · assembled from changelog fragments</span>
+      <div class="release-list">
+        {releases.map((release) => (
+          <article class="release-card">
+            <div class="release-head">
+              <span class="release-version">v{release.version}</span>
+              <span class="release-meta">{release.date} · {release.kind} · npm latest</span>
+            </div>
+            <div class="release-body">
+              {release.entries.map(([kind, text]) => (
+                <div class="release-entry">
+                  <span class:list={["entry-kind", { "is-fixed": kind === "fixed" }]}>{kind}</span>
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="next-card">
+        <span class="next-label">Next release · not published</span>
+        <p><code>v{nextVersion}</code> carries this site sync, the new Versions surface, and the refreshed footer. It becomes a release only after the gates, changelog assembly, tag, and npm publication complete.</p>
+      </div>
+    </section>
+
+    <section class="sec">
+      <span class="lab">Status · what exists alongside the version</span>
+      <div class="status">
+        <Measurement
+          value={`${SITE.gates.registered} gates register, all ${SITE.gates.withEngines} have engines`}
+          date={SITE.asOf}
+          command="npx @rungs/cli check"
+        />
+        <span class="mono">{SITE.gates.pass} pass</span>
+        <span class="mono bad">{SITE.gates.fail} fail</span>
+        <span class="mono dim">{SITE.gates.unimplemented} unimplemented · 15 modules</span>
+      </div>
+    </section>
+
+    <section class="sec">
+      <span class="lab">The release model · defined before the first release</span>
+      <p class="body">
+        <Claim kind="evidence" cite="pattern-catalog §H">candidate-and-release-lines</Claim> keeps
+        <code>candidate/&lt;version&gt;</code> integrating the next release, <code>main</code> stable,
+        and <code>release/&lt;version&gt;</code> deployable and rollbackable. The version is chosen from
+        the fragments at release time; branch names are prefixes, not promises.
+      </p>
+      <Console
+        date={SITE.asOf}
+        source="modules/release/skills/cut-release/SKILL.md — the procedure, not a transcript"
+        lines={[
+          { type: "out", text: "cut-release: gates → decide version from changelog fragments" },
+          { type: "out", text: "             → assemble changelog → bump everywhere" },
+          { type: "out", text: "             → tag → cut release/<version> → open next candidate" },
+          { type: "dim", text: "hotfix: fix → gate → patch tag → merge stable + forward into candidate" },
+          { type: "dim", text: "rollback: point deploy at previous release/<version>; never revert commits" },
+        ]}
+      />
+    </section>
+
+    <section class="sec">
+      <span class="lab">Changelog discipline · fragments, not memory</span>
+      <div class="discipline">
+        <div class="card">
+          <div class="card-title">Entries land with the change</div>
+          <p>Each release-worthy change adds one fragment to <code>changelog.d/</code> on the same branch. The next version is decided from those fragments, not reconstructed at tag time.</p>
+          <div class="tag-line"><EnforcementTag state="review-only" /> <span>release-changelog-fragment · declared, engine pending</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">The version agrees with itself</div>
+          <p><code>release-version-consistent</code> computes the package version across manifests rather than trusting the releaser. A disagreement is discovered before a user installs it.</p>
+          <div class="tag-line"><EnforcementTag state="review-only" /> <span>release-version-consistent · declared, engine pending</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <span class="lab">Module versions · what rungs records</span>
+      <p class="body">Installed modules are pinned in <code>.ai/rungs.toml</code>, while managed regions carry the module version that wrote them. <code>doctor</code> reports divergence and <code>upgrade</code> leaves overridden regions alone.</p>
+      <pre>&lt;!-- rungs:begin backlog@1.0.0 --&gt;
+…managed content…
+&lt;!-- rungs:end backlog@1.0.0 --&gt;</pre>
+      <table class="modules">
+        <thead><tr><th>module</th><th>version</th><th>status</th></tr></thead>
+        <tbody>
+          {modules.map(([name, version]) => <tr><td>{name}</td><td>{version}</td><td>authored</td></tr>)}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="sec">
+      <Callout kind="note">
+        Published versions are immutable. The next release is assembled from its fragments, tagged,
+        and published once; it is never rewritten in place after users can install it.
+      </Callout>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .sheet { padding: 40px 0 64px; }
+  .releases { padding: 28px 0 4px; }
+  .sec { padding: 32px 0; border-top: 1px solid var(--line); }
+  .lab { font: 600 10px var(--font-label); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 12px; }
+  .release-list { display: flex; flex-direction: column; gap: 14px; }
+  .release-card { border: 1px solid var(--ink); background: var(--surface-card); box-shadow: var(--shadow-sheet); }
+  .release-head { display: flex; gap: 14px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--ink); flex-wrap: wrap; }
+  .release-version { font: 700 17px var(--font-display); }
+  .release-meta { font: 400 12px var(--font-mono); color: var(--text-muted); }
+  .release-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .release-entry { display: flex; gap: 10px; align-items: baseline; font: 400 13.5px/1.5 var(--font-serif); }
+  .entry-kind { color: var(--text-muted); flex: none; width: 58px; font: 600 9.5px var(--font-label); letter-spacing: .1em; text-transform: uppercase; }
+  .entry-kind.is-fixed { color: var(--redline); }
+  .next-card { margin-top: 14px; border: 2px dashed var(--redline); background: var(--redline-tint); padding: 14px 16px; max-width: 72ch; }
+  .next-label { color: var(--redline); display: block; margin-bottom: 6px; font: 600 10px var(--font-label); letter-spacing: .1em; text-transform: uppercase; }
+  .next-card p, .body { font: 400 14.5px/1.6 var(--font-serif); color: var(--ink-2); margin: 0; max-width: 72ch; }
+  .status { display: flex; gap: 24px; align-items: baseline; flex-wrap: wrap; }
+  .mono { font: 500 14px var(--font-mono); }
+  .bad { color: var(--redline); }
+  .dim { color: var(--text-muted); font-weight: 400; }
+  .discipline { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { border: 1px solid var(--line); background: var(--surface-card); padding: 12px 14px; }
+  .card-title { font: 600 13px var(--font-display); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .card p { font: 400 13.5px/1.6 var(--font-serif); color: var(--ink-2); margin: 0; }
+  .tag-line { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 400 11.5px var(--font-mono); color: var(--text-muted); }
+  pre { max-width: 560px; overflow-x: auto; margin: 14px 0 0; }
+  .modules { background: var(--surface-card); border: 1px solid var(--ink); margin-top: 14px; }
+  .modules td:first-child, .modules td:nth-child(2) { font: 500 12.5px var(--font-mono); }
+  .modules td:last-child { color: var(--text-muted); font: 400 12.5px var(--font-mono); }
+  @media (max-width: 700px) { .discipline { grid-template-columns: 1fr; } }
+</style>
