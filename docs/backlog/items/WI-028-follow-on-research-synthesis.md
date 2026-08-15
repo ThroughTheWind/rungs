@@ -2,7 +2,7 @@
 id: WI-028
 title: Synthesize the follow-on research and reconcile the catalogue
 type: docs
-status: review
+status: done
 branch: feature/WI-028-follow-on-synthesis
 created: 2026-08-15
 updated: 2026-08-15
@@ -85,7 +85,7 @@ and guarantee, and defer any module or CLI consequence to a new work item.
 
 ## Review
 
-Review completed 2026-08-15. The synthesis compares all four durable/local products, both
+Review completed 2026-08-15; item complete. The synthesis compares all four durable/local products, both
 evaluation/optimization subjects, and both interoperability protocols using complete within-track
 tables plus a ten-term cross-track boundary table. It contains exactly 46 candidate adjudication
 rows (every candidate from WI-020 through WI-027), each routed to a pinned extraction and labelled
