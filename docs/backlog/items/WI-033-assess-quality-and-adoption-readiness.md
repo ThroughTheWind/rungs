@@ -2,7 +2,7 @@
 id: WI-033
 title: Assess repo quality, improvements, and external-adoption readiness
 type: spike
-status: review
+status: done
 branch: feature/WI-033-assess-quality-and-adoption-readiness
 created: 2026-08-15
 updated: 2026-08-15
@@ -96,6 +96,7 @@ merged. The dated evidence report will be [`docs/design/release-readiness.md`](.
 
 ## Review
 
-Ready for review. The report is explicit that local source quality is green but external adoption is
-blocked by the installed TypeScript entry point and the site dependency audit. WI-034 owns those
-remediations; WI-035 owns registry publication, platform coverage, and the final release decision.
+Reviewed and merged to `main` in `b0b2671`. The report is explicit that local source quality is green
+but external adoption is blocked by the installed TypeScript entry point and the site dependency
+audit. WI-034 owns those remediations; WI-035 owns registry publication, platform coverage, and the
+final release decision.
