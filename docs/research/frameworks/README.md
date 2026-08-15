@@ -20,7 +20,7 @@ product recommendations are outside [the epic's scope](../../backlog/items/WI-00
 | Work | Subject | State |
 | --- | --- | --- |
 | [Template](TEMPLATE.md) | Fixed extraction structure and evidence prompts | Ready for WI-011 to test |
-| [WI-011](../../backlog/items/WI-011-extract-swe-agent.md) | SWE-agent | Proposed |
+| [SWE-agent](swe-agent.md) · [WI-011](../../backlog/items/WI-011-extract-swe-agent.md) | Minimal coding-agent loop and agent-computer interface | Pinned at `3ea751c087f32b16e039a2233dd6eefecef325d5` |
 | [WI-012](../../backlog/items/WI-012-extract-langgraph.md) | LangGraph | Proposed |
 | [WI-013](../../backlog/items/WI-013-extract-openai-agents-sdk.md) | OpenAI Agents SDK | Proposed |
 | [WI-014](../../backlog/items/WI-014-extract-pydantic-ai.md) | Pydantic AI | Proposed |
@@ -68,4 +68,3 @@ than widening the first one invisibly. This constraint is established by
   fact until the implementation or an executable test supports it.
 - This corpus extracts patterns and warnings. It does not copy framework code into rungs, and
   [WI-009 excludes changes to `modules/`](../../backlog/items/WI-009-public-agent-framework-corpus.md#out-of-scope).
-
