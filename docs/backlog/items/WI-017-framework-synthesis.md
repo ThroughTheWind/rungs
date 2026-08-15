@@ -2,7 +2,7 @@
 id: WI-017
 title: Synthesize the framework corpus and reconcile it with the pattern catalogue
 type: docs
-status: review
+status: done
 branch: feature/WI-017-framework-synthesis
 created: 2026-08-15
 updated: 2026-08-15

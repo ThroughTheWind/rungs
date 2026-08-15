@@ -16,7 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-017](items/WI-017-framework-synthesis.md) | Synthesize the framework corpus and reconcile it with the pattern catalogue | docs | `feature/WI-017-framework-synthesis` |
+| — | | | |
 
 ## Planned
 
