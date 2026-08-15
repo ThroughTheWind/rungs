@@ -2,8 +2,8 @@
 id: WI-034
 title: Remediate release-readiness findings
 type: chore
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-034-remediate-readiness-findings
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-033]
@@ -71,9 +71,10 @@ assessment; it must not become a general backlog sweep.
 
 ## Execution
 
-Not started. Planning artifact only; execute on `feature/WI-034-remediate-readiness-findings` after WI-033 has a reviewed assessment.
+Execution started on `feature/WI-034-remediate-readiness-findings` after WI-033 was reviewed and
+merged. The frozen input set is `docs/design/release-readiness.md`; no unrelated backlog sweep is
+included.
 
 ## Review
 
 Not started.
-
