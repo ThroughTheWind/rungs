@@ -2,8 +2,8 @@
 id: WI-015
 title: Extract the Microsoft Agent Framework — enterprise .NET and multi-agent workflows
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-015-extract-microsoft-agent-framework
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010, WI-013]
@@ -105,7 +105,7 @@ to miss by reading only the current documentation, which describes the survivor.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-015-extract-microsoft-agent-framework`, cut from `main` 2026-08-15.
 
 ## Review
 
