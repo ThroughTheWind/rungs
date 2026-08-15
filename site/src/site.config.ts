@@ -27,9 +27,6 @@ export const SITE = {
   /** From `rungs check` on 2026-08-15: "20 pass · 0 fail · 0 unimplemented · 0 error". */
   gates: { registered: 20, withEngines: 20, pass: 20, fail: 0, unimplemented: 0 },
 
-  /** ADR-0006's open consequence. It is on the site because it is unresolved, not despite it. */
-  openTrigger:
-    "The managed-marker prefix is the product name, so renaming would orphan every block already written into a scaffolded repo — ADR-0006's open follow-up.",
 } as const;
 
 export const NAV = [
