@@ -2,8 +2,8 @@
 id: WI-026
 title: Extract A2A — remote agent discovery, tasks, and artifacts
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-026-extract-a2a
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-013, WI-015, WI-017, WI-019, WI-024, WI-025, WI-028]
@@ -75,7 +75,9 @@ requirements are located in normative text or executable checks.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-026-extract-a2a`. The normative read set is the released
+`1.0.0` specification and `specification/a2a.proto`; no SDK or TCK behavior is used unless
+separately pinned and labelled.
 
 ## Review
 
