@@ -2,7 +2,7 @@
 id: WI-025
 title: Extract MCP — the tool and context interoperability boundary
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-025-extract-mcp
 created: 2026-08-15
 updated: 2026-08-15
@@ -82,4 +82,22 @@ labelled separately.
 
 ## Review
 
-Not started.
+Review complete 2026-08-15.
+
+- [x] The normative repository SHA, stable protocol version (`2025-11-25`), schema files, read
+  date, licence transition, scope, and reproducible measurement are recorded.
+- [x] One lifecycle is traced from initialize/version/capability negotiation through tools/list,
+  tools/call, complete/input-required/error results, progress/cancellation, and shutdown across
+  client, server, and transport.
+- [x] Required base/lifecycle, optional negotiated capabilities, deprecated transport/version
+  behavior, and application policy are visibly distinct.
+- [x] Identity, authorization, consent, roots, filesystem, sampling, elicitation, secrets, and
+  human authority are assigned to named protocol parties; advisory roots and untrusted tool
+  annotations are called out.
+- [x] The strongest compatibility/security counter-example records why negotiation and JSON-RPC
+  validity do not prove authorization, sandboxing, or external-effect success.
+- [x] Draft and `2026-07-28` material is explicitly outside the normative read boundary; no SDK
+  behavior is presented as a protocol requirement.
+- [x] No catalogue, module, or CLI files changed.
+- [x] Verification: `node src/cli.ts check` (20 pass); `git diff --check`; `site/npm run build`
+  (85 pages); `site/npm run check` (0 Astro diagnostics, 1,075 internal links, 0 broken).
