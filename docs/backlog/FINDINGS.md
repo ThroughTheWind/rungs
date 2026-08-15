@@ -4,7 +4,7 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-008 -->
+<!-- NEXT-ID: F-009 -->
 
 ## Open
 
@@ -20,6 +20,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
+| F-008 | F-004 was marked fixed on `main`, but its site-schema fix existed only on the unmerged `feature/site-logo-and-icons` branch, so builds from `main` still rejected backlog lifecycle statuses | fixed | Commit `655eacb` cherry-picked the existing fix `4acb73d` onto `main` on 2026-08-15. `npm run build && npm run check` then built 53 routes and checked 469 internal links with 0 broken on `main`; after WI-010 rebased, the same commands built 55 routes and checked 497 internal links with 0 broken. F-004's disposition is now true in git. |
 | F-005 | A markdown file containing any `{{token}}` had *every* link exempted from `gates-links-resolve` and `gates-paths-exist` — 16 non-excluded files, eight of which ship to consumer repos | promoted | [WI-008](items/WI-008-link-gate-checks-every-file.md), 2026-08-15. The item took the full mechanism — move the token test from the file to the individual link, and stop matching links quoted inside code spans, which the file-level skip had been masking. It did **not** take the two things the investigation surfaced alongside: self-tests being declared but never run (F-006) and `backticked_paths` being configured but unimplemented (F-007) |
 | F-004 | The wiki's content schema accepted only the four ADR statuses, so the first backlog item to reach `status: done` failed the whole site build — `astro build` aborted on `WI-001` with *"Invalid enum value … received 'done'"* (2026-08-15). Backlog items joined the wiki after the enum was written; marking one done was enough | fixed | `site/src/content.config.ts` now enumerates the union of both vocabularies — the ADR statuses plus the lifecycle declared in `docs/backlog/TEMPLATE.md` (`deferred`, `planned`, `in_progress`, `review`, `done`). Left as an enum rather than `z.string()` so a typo'd status still fails the build. Found while re-vendoring the design system, on a build that was already broken at `a006b5c` |
 

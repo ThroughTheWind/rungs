@@ -7,20 +7,21 @@ Keep it short. This document is read at the start of every session, and a long o
 
 ## Current objective
 
-<!-- One or two sentences. What is being pursued right now, not the roadmap. -->
+Execute WI-009's public-framework research corpus sequentially. WI-010 establishes the fixed method;
+WI-011 is the first extraction and may correct that template with recorded reasons.
 
 ## In progress
 
-<!-- What is actually being worked on, with its id. Empty is a valid and honest answer. -->
+None while WI-010 lands.
 
 ## Resume from
 
-<!-- The single next concrete action. A path, a command, a work-item id — something a cold session
-     can act on without reconstructing context. This is the section that earns the document. -->
+Start WI-011 from `main` and pin the SWE-agent source commit before measuring or writing claims.
 
 ## Up next
 
-1.
+1. Execute WI-011 as the template's first real test.
+2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
 
@@ -31,20 +32,25 @@ Keep it short. This document is read at the start of every session, and a long o
      This is the section that pays for the document. Without it every session re-derives, and
      re-derivation reaches a different answer often enough to matter. -->
 
--
+- The public-framework corpus is a second, architecture-focused research axis; do not redefine the
+  existing workflow corpus in place (WI-009).
+- Every framework extraction pins a commit SHA and records its license because these sources move
+  and are licensed (WI-009).
+- WI-009 changes no files under `modules/`; any evidence-backed product change is a later item.
+- WI-011 may correct the WI-010 template, but every correction records the evidence and reason.
 
 ## Working assumptions
 
 <!-- Things believed true and not verified this session. Being wrong here is normal; the value is
      that the next session knows which claims to distrust first. -->
 
--
+- The eight proposed template sections are sufficient until WI-011 tests them against SWE-agent.
 
 ## Open questions
 
 <!-- Blocking and non-blocking, marked. "None blocking" is a useful thing to state. -->
 
--
+- None blocking.
 
 ## Archive
 
