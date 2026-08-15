@@ -9,7 +9,7 @@ const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 
 test('the published bin points at a built executable and answers help', () => {
   const bin = resolve(root, manifest.bin.rungs);
-  assert.equal(manifest.bin.rungs, './dist/cli.js');
+  assert.equal(manifest.bin.rungs, 'dist/cli.js');
   assert.ok(existsSync(bin), 'pretest should build the package executable');
 
   const run = spawnSync(process.execPath, [bin, '--help'], { encoding: 'utf8' });
