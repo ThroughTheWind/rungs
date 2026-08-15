@@ -13,8 +13,9 @@ children: []
 
 ## Proposal (rationale)
 
-Rungs already has an npm package identity and a published v0.1.1, but the repository still calls the
-product pre-release and the external-user path has not been proven end to end. After capability
+Rungs already has an npm package identity and a published v0.1.0; the local tree carries a v0.1.1
+candidate, but the repository still calls the product pre-release and the external-user path has not
+been proven end to end. After capability
 integration, documentation sync, assessment, and remediation, a dedicated release item is needed to
 turn a ready tree into a reproducible public release with rollback evidence and honest release notes.
 
