@@ -8,23 +8,23 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Execute WI-009's public-framework research corpus sequentially. WI-010 established the fixed
-method; WI-011 through WI-014 validated it against a coding-agent loop, durable graph execution,
-a deliberately small primitive surface expressed in two languages, and typed/testable agents.
-WI-015 now tests audit, approval, workflow composition, and cross-language divergence.
+method; WI-011 through WI-015 validated it against a coding-agent loop, durable graph execution,
+a small primitive surface, typed/testable agents, and enterprise workflow controls. WI-016 now
+tests a shipped product's sandbox, concurrency, recovery, repository ingress/egress, and run UI.
 
 ## In progress
 
-WI-015 — pin Microsoft Agent Framework and trace one non-trivial .NET workflow end to end.
+WI-016 — pin OpenHands and trace one run from request through sandbox execution to a committed
+change, with a deliberately narrow product boundary.
 
 ## Resume from
 
-Clone the canonical source outside this repository, pin its SHA and licence, then locate the .NET
-workflow, audit-trail, approval, and predecessor-retirement boundaries before checking Python
-divergence.
+Clone the canonical source outside this repository, pin its SHA and licence, then find the runtime,
+sandbox, event/session, version-control, and run-control paths before following one run.
 
 ## Up next
 
-1. Execute WI-015 for Microsoft Agent Framework.
+1. Execute WI-016 for OpenHands.
 2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
