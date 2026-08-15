@@ -16,7 +16,7 @@ WI-011 — pin and inspect SWE-agent, then write `docs/research/frameworks/swe-a
 
 ## Resume from
 
-Confirm SWE-agent's canonical repository, clone it outside this repo, and record the pinned SHA.
+Land reviewed WI-011 on `main`, then plan WI-012 from the accepted sequential epic instruction.
 
 ## Up next
 

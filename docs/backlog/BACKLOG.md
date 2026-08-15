@@ -10,13 +10,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-011](items/WI-011-extract-swe-agent.md) | Extract SWE-agent — the minimal coding-agent loop | docs | `feature/WI-011-extract-swe-agent` |
+| — | *nothing in flight* | | |
 
 ## Review
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-011](items/WI-011-extract-swe-agent.md) | Extract SWE-agent — the minimal coding-agent loop | docs | `feature/WI-011-extract-swe-agent` |
 
 ## Planned
 
