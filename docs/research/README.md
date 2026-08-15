@@ -1,7 +1,9 @@
 # Research
 
-The extraction phase. Four repositories built with four different agentic workflows, surveyed and
-condensed into the material the CLI will ship.
+The research has two axes: four repositories surveyed for **workflow**, condensed into the material
+the CLI ships, and a [second corpus of public agent frameworks](frameworks/README.md) read for
+**architecture**. The axes have separate templates and share one
+[`pattern-catalog.md`](pattern-catalog.md).
 
 ## Read in this order
 
@@ -11,6 +13,7 @@ condensed into the material the CLI will ship.
 | [`repos/hexguard.md`](repos/hexguard.md) | Scoped instructions + phase checklists. 2026-06→07, Angular/.NET, 105 packages |
 | [`repos/hexguard-templates.md`](repos/hexguard-templates.md) | Spec-first + decision procedure. 2026-07, reference apps |
 | [`repos/rift-forge.md`](repos/rift-forge.md) | Skills + mechanical gates + concurrency. 2026-07→08, 401 branches |
+| [`frameworks/README.md`](frameworks/README.md) | Public-framework architecture corpus: question, method, template, and index |
 | [`synthesis.md`](synthesis.md) | The learning curve · convergences · divergences · **the 8 failure modes** · the maturity ladder · what nobody solved |
 | [`pattern-catalog.md`](pattern-catalog.md) | Canonical definition of every pattern, with source, rung, and target module. **The input to Phase 4** |
 | [`harness-landscape.md`](harness-landscape.md) | Phase 3 addendum: what each harness actually reads, measured 2026-08-14. **The four primitives**, and what changed under the source repos |
