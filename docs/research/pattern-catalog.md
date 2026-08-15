@@ -6,7 +6,11 @@
 >
 > **Rung** = maturity rung from [synthesis §5](synthesis.md#5-the-maturity-ladder).
 > **Module** = the proposed CLI module, specified in Phase 4.
-> Sources: **AM** `axiom-mesh` · **HG** `hexguard` · **HT** `hexguard-templates` · **RF** `rift-forge`.
+> Workflow sources: **AM** `axiom-mesh` · **HG** `hexguard` · **HT** `hexguard-templates` ·
+> **RF** `rift-forge`. Public-framework sources, pinned through
+> [`frameworks/synthesis.md`](frameworks/synthesis.md): **SW** SWE-agent · **LG** LangGraph ·
+> **OA** OpenAI Agents SDK · **PA** Pydantic AI · **MF** Microsoft Agent Framework · **OH**
+> OpenHands.
 
 ---
 
@@ -20,7 +24,8 @@
 | `core-size-budget` | The always-loaded core has a declared line budget; overflow routes to a scoped guide | *(none — RF counter-example at 1513)* | 2 |
 | `validation-matrix` | Change-surface → exact commands, in the always-loaded file. Kills both "run everything" and "run the wrong subset" | HG, RF, AM | 0 |
 | `repo-map` | Where things live, in the entry doc — **generated** from the workspace, not hand-listed (`generate-derivable`) | 4/4 | 0 |
-| `narrowest-anchor-loop` | anchor (file/symbol/failing test) → scoped instruction → smallest change → narrowest validation → docs | HG | 0 |
+| `narrowest-anchor-loop` | anchor (file/symbol/failing test) → scoped instruction → smallest change → narrowest validation → docs | HG, SW | 0 |
+| `isolation-boundary-declaration` | State where agent commands run, the unit isolated, which filesystem/environment/credential/network surfaces cross it, and which resource or rollback controls are absent. **A worktree is Git coordination, not a sandbox** | OH | 0 |
 | `negative-conventions` | Prohibitions stated as strongly as prescriptions, each with the evidence threshold that would reverse it | HG, HT, RF | 0 |
 | `comms-style` | Opt-in anti-sycophancy block: contradict me, challenge assumptions, no "Great idea!" | AM | 0 |
 | `vocabulary-table` | Domain glossary as a routed doc with an owner — **not** inline in the entry file | AM *(location is the correction)* | 1 |
@@ -86,14 +91,22 @@
 | `phase-checklist` | Ordered mandatory phases for repeated creation work, ending in an assessment gate | HG | 2 |
 | `lifecycle-verbs` | find → plan → assess (or equivalent), one invocable entry point each | HG | 2 |
 | `controlled-performance-comparison` | Baseline command/ref/count/environment recorded *before*; contamination noted; *"passing tests proves correctness, not a speedup"*; if uncontended comparison is impossible the criterion stays **open** | RF | 3 |
+| `protocol-with-escape-hatch` | A deliberately small abstraction names the protocol, callback, adapter, or capability check through which non-owned cases extend it. Minimalism without an escape hatch is a closed assumption | OA, PA | 2 |
+| `replay-safe-side-effect` | Every resumable procedure names the durable boundary, what may re-execute after it, and whether pre-boundary effects are idempotent, separately recorded, or explicitly ambiguous. Persistence alone is not replay safety | LG, PA, OH | 3 |
+| `resumable-approval-state` | A pending decision is durable state with stable request identity, validated arguments, an explicit response path, and enough continuation state to resume. UI and authority may stay host-owned | OA, PA, MF, LG | 2 |
+| `approval-bound-to-request` | Approval binds server-side to the exact immutable action id and arguments that were surfaced, records the authorized decision, and is consumed once. A caller-supplied boolean is not the binding | MF *(OH counter-example)* | 2 |
+| `explicit-output-designation` | Internal progress becomes caller-facing output only through an allow-list; graph connectivity, tool visibility, or event emission must not decide disclosure by accident | MF | 2 |
 
 ## G. Invocation → module `skills`
 
 | id | Pattern | Src | Rung |
 | --- | --- | --- | --- |
 | `invocable-procedure` | Every procedure document ships its entry point in the same change. **A workflow with no invocation surface does not run** | RF, HG | 2 |
-| `skill-neighbours` | Every skill names the adjacent skills and the boundary between them. Fixes *plausible-but-wrong skill runs to completion* | RF | 3 |
-| `prompt-writes-artifact` | Every invocation lands a durable file in a known directory. What makes a prompt library compound instead of evaporating | HG, RF, HT | 2 |
+| `skill-neighbours` | Every skill names adjacent skills and the boundary between them, including whether routing transfers continuation ownership or returns a result. Fixes *plausible-but-wrong skill runs to completion* | RF, OA | 3 |
+| `agent-facing-interface` | Design action schema, state exposure, observations, empty output, truncation, and errors as one interface the agent can reason about; each failure returns a bounded model-visible shape | SW | 2 |
+| `bounded-agent-loop` | Every agentic invocation declares iteration, cost, time, context, and retry bounds that apply, plus the terminal artifact/status produced when each bound fires. “Until done” is not a procedure | SW, PA, OH | 2 |
+| `ownership-changing-handoff` | A composed invocation declares who owns continuation, which state crosses, what the callee may mutate, and whether its result returns to the caller. Tool-shaped syntax does not settle those semantics | OA, MF | 2 |
+| `prompt-writes-artifact` | Every invocation lands durable progress in a known directory, at the recovery boundary rather than only after successful completion. What makes a prompt library compound instead of evaporating | HG, RF, HT, SW | 2 |
 | `operating-skills` | Skills for running the product — release, external-data ingest, inbound triage, design sync — not only for building it | RF | 3 |
 | `prompt-index-routing` | A "suggested starting points" decision list, not just an alphabetical file listing | AM | 2 |
 | `external-reasoning-prompt` | A playbook for briefing a model that has no repo access | AM | 2 |
@@ -111,6 +124,7 @@
 | `computed-claims` | A number a machine can compute is never typed by a human — gate + autofix. Probe only what the data settles **without judgement**; **pin what the gate does not cover**, so green never reads as "verified" | RF | 3 |
 | `generate-derivable` | Generate what the filesystem already knows (repo maps, indexes, coverage), and gate that the generated file is current. *A green check means "not yet regenerated", never "current"* | RF, HG | 2 |
 | `structural-gates` | Near-free tier-1 checks, on by default: links resolve · ids unique · required sections present · referenced paths exist | AM, RF | 1 |
+| `typed-output-gate` | Turn probabilistic output into a typed structural boundary: invalid shape becomes an explicit retry or terminal error. **A well-typed value is not thereby true**; semantic validation is a separate gate | PA | 1 |
 | `bookkeeping-gates` | Status checked against git: no doc waiting on finished work · no merged branch in a pre-review status. **One-directional**, with reasoned escapes, vocabulary narrowed after measuring false positives | RF | 3 |
 | `tool-level-hook` | `PreToolUse` guard for traps prose has already failed to prevent (shell backticks). Must assert **both** directions | RF | 3 |
 | `ageing-signal` | Any known-broken-is-non-blocking affordance ships an ageing signal, or the mitigation extends the outage | *(RF counter-example: 11/15 CI runs red)* | 3 |
@@ -131,7 +145,7 @@
 | `conflict-classes` | ledger (driver merges counters) · generated (driver **refuses**, prints the regenerate command) · shared code (**scheduling, not tooling** — one owner at a time) | RF |
 | `regenerate-never-merge` | Reconcile generated artifacts by taking one side and re-running the producer; re-pin what moved, with the reason at the pin | RF |
 | `id-claiming` | Scan every ref, every ref **name**, and every worktree's live docs including uncommitted files; claim on your own branch | RF |
-| `worktree-lifecycle` | Report finished worktrees; never remove someone else's. Add ageing | RF |
+| `worktree-lifecycle` | Report finished worktrees; never remove someone else's; add ageing. Worktrees isolate checkout/index/branch state, **not** processes, the wider filesystem, credentials, or network | RF, OH |
 | `ci-at-land-time` | Trigger CI on the merged scratch ref, not per item-branch push. State the arithmetic (~19 billed min/run × N sessions) | RF |
 
 ## J. Release & external sync → modules `release`, `design-sync`, `ci`
@@ -149,16 +163,18 @@
 
 | id | Pattern | Src | Rung |
 | --- | --- | --- | --- |
-| `session-handoff` | Fixed-section live state file: objectives · in progress · resume from · up next · **active constraints** · working assumptions · open questions · archive refs | AM | 1 |
+| `session-handoff` | Fixed-section narrative state: objectives · in progress · resume from · up next · **active constraints** · working assumptions · open questions · archive refs. It is not a machine checkpoint, event log, or conversation-memory store | AM *(SW, LG, OA, PA, MF boundary evidence)* | 1 |
 | `settled-decisions-lock` | An explicit "do not reopen X during Y unless re-planned" list, so a fresh session cannot relitigate settled questions | AM | 1 |
 | `dated-session-archive` | `YYYY-MM-DD_session-NN_<what-closed>-and-<what-is-next>.md` | AM | 2 |
 | `board-as-state` | Or: derive session state from the work-item board instead of a hand-written file (the `rift-forge` alternative — cheaper, less narrative) | RF | 1 |
+| `event-stream-not-audit-log` | Events, spans, and persisted history are audit inputs, not accountability. Call out durability, retention, access control, actor identity, request binding, and decision reasons separately | MF, OH | 1 |
 
 ## L. Engineering practice (non-agentic, but extracted) → module `testing`
 
 | id | Pattern | Src | Rung |
 | --- | --- | --- | --- |
-| `contract-test-base` | Fake and real implementations share one abstract `<Interface>ContractTests` base carrying all test methods; concrete subclasses wire each implementation. **Testing a fake in isolation is a violation** | AM | 2 |
+| `contract-test-base` | Fake and real implementations share one abstract `<Interface>ContractTests` base carrying all test methods; concrete subclasses wire each implementation. Add separately named real-boundary evidence for behavior a deterministic substitute cannot prove. **Testing a fake in isolation is a violation** | AM, PA | 2 |
+| `deterministic-model-substitution` | Inject a scripted/deterministic decision source to make loop branches and state transitions exact; pair it with separate provider/transport evidence and state the fake's claim boundary | PA | 2 |
 | `golden-tests` | Tests pinned against an external ground truth, never weakened; changes to them are a documented event | RF | 2 |
 | `shell-editing-rules` | Script files, not `-e` strings; `&&` not `;` when a later step consumes an earlier one. *A control that cannot fail loudly is not a control* | RF | 1 |
 

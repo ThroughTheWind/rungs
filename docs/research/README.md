@@ -14,11 +14,13 @@ the CLI ships, and a [second corpus of public agent frameworks](frameworks/READM
 | [`repos/hexguard-templates.md`](repos/hexguard-templates.md) | Spec-first + decision procedure. 2026-07, reference apps |
 | [`repos/rift-forge.md`](repos/rift-forge.md) | Skills + mechanical gates + concurrency. 2026-07→08, 401 branches |
 | [`frameworks/README.md`](frameworks/README.md) | Public-framework architecture corpus: question, method, template, and index |
+| [`frameworks/synthesis.md`](frameworks/synthesis.md) | Six-framework comparison · convergences · divergences · unsolved boundaries · catalogue reconciliation |
 | [`synthesis.md`](synthesis.md) | The learning curve · convergences · divergences · **the 8 failure modes** · the maturity ladder · what nobody solved |
 | [`pattern-catalog.md`](pattern-catalog.md) | Canonical definition of every pattern, with source, rung, and target module. **The input to Phase 4** |
 | [`harness-landscape.md`](harness-landscape.md) | Phase 3 addendum: what each harness actually reads, measured 2026-08-14. **The four primitives**, and what changed under the source repos |
 
-Reading only two: `synthesis.md` then `pattern-catalog.md`.
+Reading only the workflow corpus: `synthesis.md` then `pattern-catalog.md`. Reading only the public
+framework result: `frameworks/synthesis.md` then `pattern-catalog.md`.
 
 > `harness-landscape.md` was added during Phase 3 and **amends** synthesis §3.1 in place. The
 > source repos were built 2026-03 → 08 and predate the Agent Skills standardization; where a
