@@ -46,6 +46,32 @@ from a pristine checkout and deploys. What remains is the **module registry**, s
 third-party modules are possible — the format is a plain directory precisely so
 that does not need a format change.
 
+## A second corpus — proposed, not a phase
+
+[WI-009](backlog/items/WI-009-public-agent-framework-corpus.md), opened 2026-08-15, proposes
+extracting six public agent frameworks — SWE-agent, LangGraph, the OpenAI Agents
+SDK, Pydantic AI, the Microsoft Agent Framework and OpenHands.
+
+**It is deliberately not Phase 8.** The seven phases are a sequence in which each
+gated the next; this gates nothing and nothing gates it. It is a second *axis* on
+work Phase 1 already did, and it is proposed rather than accepted — so it appears
+here as a pointer, not a row in the table above.
+
+Why it exists: the four extracted repos share an author, so every convergence in
+[`pattern-catalog.md`](research/pattern-catalog.md) is currently one operator
+agreeing with themselves. Six independently-built repos are the cheapest test of
+which patterns are portable and which are one person's habits.
+
+Two things distinguish it from Phase 1. The corpus is read for **architecture**,
+which [`research/README.md`](research/README.md) names as the first corpus's
+explicit non-goal — so it gets its own directory and template rather than
+redefining `docs/research/` in place. And the sources **move and are licensed**:
+every extraction pins a commit SHA, because a date alone does not make a count
+reproducible when other people are pushing.
+
+It ends at the catalogue. Any change to [`modules/`](../modules/README.md) that
+the evidence warrants is a separate item.
+
 ## Known open items
 
 - `docauth-scope-headers` and the module docs: **closed** 2026-08-14.

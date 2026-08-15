@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-009 -->
+<!-- NEXT-ID: WI-018 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -34,7 +34,26 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| — | *nothing proposed* | |
+| [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
+| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs |
+| [WI-011](items/WI-011-extract-swe-agent.md) | Extract SWE-agent — the minimal coding-agent loop | docs |
+| [WI-012](items/WI-012-extract-langgraph.md) | Extract LangGraph — state, checkpoints, and long-running workflows | docs |
+| [WI-013](items/WI-013-extract-openai-agents-sdk.md) | Extract the OpenAI Agents SDK — a deliberately small primitive surface | docs |
+| [WI-014](items/WI-014-extract-pydantic-ai.md) | Extract Pydantic AI — typing, injection, and testable agents | docs |
+| [WI-015](items/WI-015-extract-microsoft-agent-framework.md) | Extract the Microsoft Agent Framework — enterprise .NET and multi-agent workflows | docs |
+| [WI-016](items/WI-016-extract-openhands.md) | Extract OpenHands — a shipped autonomous agent, sandboxing and scale | docs |
+| [WI-017](items/WI-017-framework-synthesis.md) | Synthesize the framework corpus and reconcile it with the pattern catalogue | docs |
+
+All eight are one epic — [WI-009](items/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15.
+The four extracted repos share an author, so every convergence in
+[`pattern-catalog.md`](../research/pattern-catalog.md) is currently one operator agreeing with
+themselves; six independently-built public frameworks are the cheapest test of which patterns are
+portable. Order is template → SWE-agent (which corrects the template) → the middle four in any
+order → OpenHands → synthesis.
+
+**The epic is the decision that matters.** These six are read for *architecture*, which
+[`research/README.md`](../research/README.md) names as the existing corpus's explicit non-goal — so
+this is a second research axis with its own directory and template, not more of the first.
 
 **Done since:** [WI-008](items/WI-008-link-gate-checks-every-file.md) — promoted from F-005.
 Link checking covered 72 of 89 files; a single `{{token}}` anywhere in a document exempted every
