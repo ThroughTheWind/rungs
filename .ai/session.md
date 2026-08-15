@@ -12,11 +12,11 @@ WI-011 is the first extraction and may correct that template with recorded reaso
 
 ## In progress
 
-None while WI-010 lands.
+WI-011 — pin and inspect SWE-agent, then write `docs/research/frameworks/swe-agent.md`.
 
 ## Resume from
 
-Start WI-011 from `main` and pin the SWE-agent source commit before measuring or writing claims.
+Confirm SWE-agent's canonical repository, clone it outside this repo, and record the pinned SHA.
 
 ## Up next
 

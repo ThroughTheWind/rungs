@@ -10,7 +10,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | *nothing in flight* | | |
+| [WI-011](items/WI-011-extract-swe-agent.md) | Extract SWE-agent — the minimal coding-agent loop | docs | `feature/WI-011-extract-swe-agent` |
 
 ## Review
 
@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
-| [WI-011](items/WI-011-extract-swe-agent.md) | Extract SWE-agent — the minimal coding-agent loop | docs |
 
 ## Accepted
 

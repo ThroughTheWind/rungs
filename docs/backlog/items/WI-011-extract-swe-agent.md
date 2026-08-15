@@ -2,8 +2,8 @@
 id: WI-011
 title: Extract SWE-agent — the minimal coding-agent loop
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-011-extract-swe-agent
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010]
@@ -95,7 +95,7 @@ trace rather than a summary.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-011-extract-swe-agent`, cut from `main` 2026-08-15.
 
 ## Review
 
