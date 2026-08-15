@@ -31,13 +31,35 @@ const STATE_LABEL: Record<DetectResult['state'], string> = {
   unknown: c.red('unknown'),
 };
 
-function cmdModules() {
+function cmdModules(showParams = false) {
   const mods = loadAllModules(MODULES);
   console.log(c.bold(`\n${mods.length} modules\n`));
   for (const m of mods) {
     const deps = m.requires.length ? c.dim(` ← ${m.requires.join(', ')}`) : '';
     console.log(`  ${c.bold(m.name.padEnd(14))} rung ${m.rung}${deps}`);
     console.log(`  ${' '.repeat(14)} ${c.dim(m.summary)}`);
+    // Rendered from the manifest at the moment it is asked for, never written down. A committed
+    // parameter table would be correct the day it was generated and silently wrong the day a
+    // default moved — which is the failure this flag exists to answer (WI-006).
+    if (!showParams) continue;
+    for (const [name, spec] of Object.entries(m.params)) {
+      const shown = spec.default === undefined ? c.dim('(none)') : JSON.stringify(spec.default);
+      const notes = [
+        spec.allowed ? `one of ${spec.allowed.map(String).join(' · ')}` : '',
+        // Behavioural parameters never appear as {{token}}, so a reader hunting for one in a
+        // template would conclude the parameter was dead. Say so where they meet it.
+        spec.consumed_by ? `behavioural — changes what \`${spec.consumed_by}\` does, not a template` : '',
+        spec.required ? 'required' : '',
+      ].filter(Boolean);
+      console.log(`  ${' '.repeat(14)} ${c.cyan(`${m.name}.${name}`.padEnd(30))} ${c.dim('=')} ${shown}`);
+      if (spec.description) console.log(`  ${' '.repeat(16)} ${c.dim(firstSentence(spec.description))}`);
+      for (const n of notes) console.log(`  ${' '.repeat(16)} ${c.dim(n)}`);
+    }
+    if (Object.keys(m.params).length) console.log();
+  }
+  if (showParams) {
+    console.log(c.dim('  Set one with `--set module.param=value` on `add` or `init`; either spelling works.'));
+    console.log(c.dim('  Resolved values are recorded in `.ai/rungs.toml`. See docs/design/parameters.md.\n'));
   }
 
   const issues = auditModules(mods);
@@ -445,6 +467,7 @@ const FLAGS: [flag: string, blurb: string][] = [
   ['--confirm-threshold', 'add: install a module whose rung is above this repo'],
   ['--apply', 'upgrade: write the changes, rather than preview them'],
   ['--fast, --full', 'check: pick the gate tier, as the positional also does'],
+  ['--params', 'modules: show every module parameter, its default and its allowed values'],
   ['--copilot', 'also emit Copilot instruction files'],
 ];
 
@@ -522,7 +545,7 @@ if (strayOverride) {
 
 switch (cmd) {
   case 'modules':
-    process.exit(cmdModules());
+    process.exit(cmdModules(flags.has('--params')));
   case 'doctor':
     process.exit(cmdDoctor(args[0] ?? process.cwd()));
   case 'check': {
