@@ -2,8 +2,8 @@
 id: WI-033
 title: Assess repo quality, improvements, and external-adoption readiness
 type: spike
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-033-assess-quality-and-adoption-readiness
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-030, WI-031, WI-032]
@@ -82,9 +82,9 @@ separate work items so the assessment cannot grade its own fixes.
 
 ## Execution
 
-Not started. Planning artifact only; execute on `feature/WI-033-assess-quality-and-adoption-readiness` after WI-031/WI-032 are resolved or explicitly deferred.
+Execution started on `feature/WI-033-assess-quality-and-adoption-readiness` after WI-031 and WI-032
+merged. The dated evidence report will be [`docs/design/release-readiness.md`](../../design/release-readiness.md).
 
 ## Review
 
 Not started.
-
