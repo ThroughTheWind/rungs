@@ -2,8 +2,8 @@
 id: WI-022
 title: Extract Aider — git-first coding, repository context, and validation
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-022-extract-aider
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-011, WI-016, WI-017, WI-019, WI-028]
@@ -73,8 +73,27 @@ edit formats only where they materially change ownership or validation boundarie
 
 ## Execution
 
-Not started.
+Completed 2026-08-15 on `feature/WI-022-extract-aider`.
+
+- Pinned `Aider-AI/aider` at `5dc9490bb35f9729ef2c95d00a19ccd30c26339c`, recorded Apache-2.0, and
+  measured 691 tracked files, 147 Python files, 88 test-named/test-directory files, 160 text/docs
+  files, and 38 coder implementations.
+- Added [`aider.md`](../../research/follow-on/products/aider.md) and the follow-on index row. The
+  extraction traces repo detection/map/context, model request, exact edit application, dirty and
+  ignore gates, lint/test feedback, automatic/user commit, diff, undo, and restart boundaries.
+- Validation: `node src/cli.ts check` — 20 pass, 0 fail; site `npm run build` — 82 pages; site
+  `npm run check` — 0 Astro diagnostics and 1,048 internal links, 0 broken. No real model request or
+  repository mutation was run; cited Aider tests provide executable evidence at the pinned SHA.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** The extraction traces one ordinary edit from repo-map context through edit parsing,
+   mutation, validation, and Git result with pinned implementation paths.
+2. **Pass.** Dirty-tree pre-commit, Git/Aider ignore handling, auto/user commit, guarded undo,
+   malformed edits, lint/test failure, and reflection limits cite source and named tests.
+3. **Pass.** Defaults (`auto_commits`, `dirty_commits`, `auto_lint`), opt-ins (`auto_test`, shell
+   confirmation), and workflow conventions are distinguished.
+4. **Pass.** Repo-map syntax/tag measurements are explicitly separated from semantic understanding.
+5. **Pass.** Opinions are labelled, catalogue work is deferred to WI-028, and gates/site links pass.
