@@ -10,7 +10,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs | `feature/WI-019-follow-on-research-method` |
 
 ## Review
 
@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs |
 
 ## Accepted
 
