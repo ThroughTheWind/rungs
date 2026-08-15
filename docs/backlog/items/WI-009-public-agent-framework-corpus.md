@@ -2,7 +2,7 @@
 id: WI-009
 title: Extract a second research corpus — six public agent frameworks
 type: epic
-status: review
+status: done
 branch:
 created: 2026-08-15
 updated: 2026-08-15
