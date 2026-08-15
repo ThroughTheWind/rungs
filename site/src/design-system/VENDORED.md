@@ -8,7 +8,7 @@
 | Source | `design_system/export/` — **gitignored**, regenerable from the design tool |
 | Namespace | `RungsDesignSystem_68a248` |
 | Components | 12 |
-| Vendored | 2026-08-14 |
+| Vendored | 2026-08-15 |
 
 ## Why this copy exists
 
