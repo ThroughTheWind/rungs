@@ -103,17 +103,23 @@ the first item, red gates, and the limits.
 
 Branch `feature/WI-007-first-hour-guide`, cut from `main` 2026-08-15.
 
-- New [`docs/getting-started.md`](../getting-started.md) — six sections in the order a reader needs
+- New [`docs/getting-started.md`](../../getting-started.md) — six sections in the order a reader needs
   them, plus a where-next table. Every section hands off rather than explaining.
 - [`README.md`](../../../README.md) — the Install block now says what `doctor` does and links here.
 
 Written against a real `tracked` install rather than from memory: the five skills were listed by
 reading `.claude/skills/` in a scaffolded repo, and the twenty-five-file count re-measured there.
 
-**Verified with the site's link checker, not the repo's.** F-005 — recorded during WI-006 — is that
-`gates-links-resolve` passes on broken relative links, so `rungs check` going green says nothing
-about this page's twelve cross-links. `npm run check` in `site/` is what actually proved them.
-Using the gate that F-005 says is blind would have been the exact failure this whole batch is about.
+**Verified with the site's link checker as well as the repo's**, and the two disagreed in a way that
+sharpened F-005. This item's own first draft carried a broken `](../getting-started.md)`, and
+`gates-links-resolve` **caught** it — while the identically-shaped broken link in WI-006's item, in
+the same directory, had passed. The difference is not the link: `linkIntegrity` skips a whole file
+on its first `{{token}}`, and WI-006's item discusses `{{repo.dirname}}` while this one does not.
+
+F-005 was filed during WI-006 as "passes on broken relative links". That was the observation, not
+the mechanism, and it was wrong in a way that would have misdirected whoever picked it up. Rewritten
+against [`src/engines.ts:155`](../../../src/engines.ts), and it is worse than first filed: 16
+non-excluded files are exempt, eight of which ship to consumer repos.
 
 ## Review
 
