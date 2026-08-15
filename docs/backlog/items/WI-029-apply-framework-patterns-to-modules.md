@@ -2,7 +2,7 @@
 id: WI-029
 title: Apply framework-derived patterns to shipped modules
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -23,8 +23,10 @@ small edits from silently choosing different vocabulary, versioning, and upgrade
 
 ## Decision
 
-`proposed` — 2026-08-15. Opened by WI-017 because its acceptance criteria require warranted module
-changes to become their own work item rather than scope-creep the research synthesis.
+`accepted` — 2026-08-15. The item will apply only patterns with a useful, repository-level
+expression. The `testing` entry remains catalogue-only because the module catalogue deliberately
+dropped a language-specific testing module; product-only/runtime patterns remain outside the module
+boundary. No child item is needed before the concern table is completed.
 
 ## Plan
 
