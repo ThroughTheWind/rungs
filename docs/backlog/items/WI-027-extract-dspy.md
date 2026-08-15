@@ -2,8 +2,8 @@
 id: WI-027
 title: Extract DSPy — metric-driven agent program optimization
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-027-extract-dspy
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-014, WI-017, WI-019, WI-021, WI-028]
@@ -73,7 +73,10 @@ metric as evidence only for that metric, dataset, model, and run boundary.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-027-extract-dspy`. The read boundary is the pinned
+`stanfordnlp/dspy` source at `80b118e52cb1f143a0d80d84685572000c59639e`; the selected executable
+path is `ReAct` plus `BootstrapFewShot`, with `Evaluate` and the saving API used to establish
+evaluation and artifact boundaries.
 
 ## Review
 
