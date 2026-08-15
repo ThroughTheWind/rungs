@@ -1,10 +1,9 @@
 ---
-import { readFile } from "node:fs/promises";
+import packageJson from "../../../package.json";
 import Base from "../layouts/Base.astro";
 import { Callout, Claim, Console, EnforcementTag, Measurement, TitleBlock } from "../design-system/components/index.js";
 import { SITE } from "../site.config";
 
-const packageJson = JSON.parse(await readFile(new URL("../../../package.json", import.meta.url), "utf8"));
 const nextVersion = packageJson.version as string;
 const publishedVersion = "0.1.2";
 
