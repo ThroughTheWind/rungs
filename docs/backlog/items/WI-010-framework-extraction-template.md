@@ -106,6 +106,36 @@ concept and keeps the workflow corpus's non-goal true as written.
 
 Branch `feature/WI-010-framework-extraction-template`, cut from `main` 2026-08-15.
 
+- Added `docs/research/frameworks/TEMPLATE.md` with the eight planned sections and explicit prompts
+  for pinned implementation evidence, documented claims, measurements, bounded absence claims, and
+  visibly marked opinion.
+- Added `docs/research/frameworks/README.md` with the corpus question, work-item index, method,
+  commit-pinning rule, and licence and quotation rule.
+- Updated `docs/research/README.md` to distinguish the workflow and architecture axes and link the
+  new corpus.
+
+**Verification deviation.** `node src/cli.ts check` passes 20/20 and examines 100 links. The
+required site build cannot reach this branch's new routes: `npm run build` aborts first on WI-001's
+existing `status: done`, because `main`'s `site/src/content.config.ts` accepts only ADR statuses.
+The fix recorded as F-004 exists in commit `4acb73d` only on the unmerged
+`feature/site-logo-and-icons` branch, not on `main`. Recorded as F-008 rather than copied into this
+research item; landing another branch's site fix is outside WI-010. For isolation, applying that
+exact status union temporarily made the full site build and check pass: 55 routes, 497 internal
+links, 0 broken, with both new framework routes rendered. The temporary change was then removed.
+
 ## Review
 
-Not started.
+Checked 2026-08-15; the item remains `in_progress` because criterion 5 is blocked on F-008.
+
+1. **Pass.** `docs/research/frameworks/TEMPLATE.md` has all eight planned sections, each opening
+   with the purpose of that section.
+2. **Pass.** Snapshot requires a full commit SHA and licence, and immediately states why the SHA is
+   required: a date cannot reconstruct a moving repository.
+3. **Pass.** `docs/research/frameworks/README.md` states the corpus question, direct-inspection
+   method, commit-pinning rule, and licence and quotation rules.
+4. **Pass.** `docs/research/README.md` now names the workflow and architecture axes and links the
+   framework index.
+5. **Open on the branch; isolated content check passes.** `node src/cli.ts check` is 20/20. A normal
+   site build fails on the pre-existing F-008 schema defect before loading the new routes. With the
+   already-authored fix from commit `4acb73d` temporarily applied, `npm run build && npm run check`
+   builds 55 routes, including both framework pages, and checks 497 internal links with 0 broken.

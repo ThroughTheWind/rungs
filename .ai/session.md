@@ -17,7 +17,8 @@ axes in `docs/research/README.md`.
 
 ## Resume from
 
-Write `docs/research/frameworks/TEMPLATE.md` from WI-010's eight-section plan.
+After site schema fix `4acb73d` lands on `main`, rebase WI-010, rerun `npm run build && npm run
+check` under `site/`, and finish the item review.
 
 ## Up next
 
@@ -51,7 +52,8 @@ Write `docs/research/frameworks/TEMPLATE.md` from WI-010's eight-section plan.
 
 <!-- Blocking and non-blocking, marked. "None blocking" is a useful thing to state. -->
 
-- None blocking.
+- **Blocking WI-010 completion:** commit `4acb73d`, which fixes the site schema, exists only on the
+  unmerged `feature/site-logo-and-icons` branch. F-008 records that `main` still fails to build.
 
 ## Archive
 
