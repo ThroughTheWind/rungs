@@ -9,15 +9,17 @@ Keep it short. This document is read at the start of every session, and a long o
 
 Execute WI-009's public-framework research corpus sequentially. WI-010 established the fixed
 method; WI-011 through WI-013 validated it against a coding-agent loop, durable graph execution,
-and a deliberately small primitive surface expressed in two languages.
+and a deliberately small primitive surface expressed in two languages. WI-014 now tests typed
+outputs, dependency injection, deterministic tests, and durable execution.
 
 ## In progress
 
-None while WI-013 lands.
+WI-014 — plan and pin the Pydantic AI source before entering through its tests.
 
 ## Resume from
 
-Start WI-014 from `main` and pin Pydantic AI before tracing its typed dependency and test surfaces.
+Plan WI-014 on `main`, then create its feature branch and pin the canonical source outside this
+repository.
 
 ## Up next
 
