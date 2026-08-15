@@ -387,6 +387,54 @@ function cmdEject(root: string, dryRun: boolean) {
  */
 const VALUE_FLAGS = new Set(['--set']);
 
+/**
+ * The command surface, defined once and rendered into `--help`.
+ *
+ * It was a template literal listing eight of the nine commands — `setup git` was missing entirely —
+ * beside a README table listing all nine, which is two hand-kept inventories of one fact. They had
+ * already drifted, in both directions: help omitted a real command, and three real flags appeared
+ * in neither. Keep this table beside the switch it describes, and add a row when you add a `case`.
+ *
+ * The README's table is still hand-kept and still a second inventory. That is a known cost, not an
+ * oversight — see WI-004.
+ */
+const COMMANDS: [usage: string, blurb: string][] = [
+  ['init [path] [profile]', 'scaffold a repo — minimal · tracked · disciplined · hardened · fleet'],
+  ['doctor [path]', 'detect what a repo already has, installed or not'],
+  ['add <module…> [--into p]', 'install modules, resolving dependencies and adopting what exists'],
+  ['check [path] [tier]', 'run the registered gates and record the ledger'],
+  ['render [path]', 're-emit path-scoped rules per harness'],
+  ['upgrade [path]', 'move to newer module versions, never touching what you edited'],
+  ['eject [path]', 'materialise the engines; stop depending on rungs'],
+  ['setup git [path]', 'install the merge drivers .gitattributes names'],
+  ['modules', 'list the module set and audit the manifests'],
+];
+
+/** Every flag the parser honours. A flag absent here is a flag nobody can find. */
+const FLAGS: [flag: string, blurb: string][] = [
+  ['--dry-run', 'report what would happen, write nothing'],
+  ['--into <path>', 'add: install into this repo instead of the working directory'],
+  ['--set m.param=value', 'add/init: override a module parameter. Repeatable'],
+  ['--confirm-threshold', 'add: install a module whose rung is above this repo'],
+  ['--apply', 'upgrade: write the changes, rather than preview them'],
+  ['--fast, --full', 'check: pick the gate tier, as the positional also does'],
+  ['--copilot', 'also emit Copilot instruction files'],
+];
+
+function renderHelp(): string {
+  const pad = Math.max(...COMMANDS.map(([u]) => u.length)) + 2;
+  const fpad = Math.max(...FLAGS.map(([f]) => f.length)) + 2;
+  return [
+    ``,
+    `${c.bold('rungs')} — installs and maintains a repository's agentic development system`,
+    ``,
+    ...COMMANDS.map(([u, b]) => `  ${c.bold(`rungs ${u.split(' ')[0]}`)}${u.slice(u.split(' ')[0].length).padEnd(pad - u.split(' ')[0].length)} ${c.dim(b)}`),
+    ``,
+    ...FLAGS.map(([f, b]) => `  ${c.dim(f.padEnd(fpad))} ${c.dim(b)}`),
+    ``,
+  ].join('\n');
+}
+
 const [, , cmd, ...rest] = process.argv;
 
 const flags = new Set<string>();
@@ -480,22 +528,13 @@ switch (cmd) {
     const names = flags.has('--into') ? args.slice(0, -1) : args;
     process.exit(cmdAdd(names, resolve(target), flags.has('--dry-run'), HARNESSES, STAMP));
   }
-  default:
-    console.log(`
-${c.bold('rungs')} — installs and maintains a repository's agentic development system
-
-  ${c.bold('rungs init')} [path] [profile]      scaffold a repo — minimal · tracked · disciplined · hardened · fleet
-  ${c.bold('rungs doctor')} [path]              detect what a repo already has, installed or not
-  ${c.bold('rungs add')} <module…> [--into p]   install modules, resolving dependencies and adopting what exists
-  ${c.bold('rungs check')} [path] [tier]        run the registered gates and record the ledger
-  ${c.bold('rungs render')} [path]              re-emit path-scoped rules per harness
-  ${c.bold('rungs upgrade')} [path]             move to newer module versions, never touching what you edited
-  ${c.bold('rungs eject')} [path]               materialise the engines; stop depending on rungs
-  ${c.bold('rungs modules')}                    list the module set and audit the manifests
-
-  ${c.dim('--dry-run   report what would happen, write nothing')}
-  ${c.dim('--apply     upgrade only: write the changes')}
-  ${c.dim('--copilot   also emit Copilot instruction files')}
-`);
-    process.exit(cmd ? 1 : 0);
+  default: {
+    // Help is a success, and an unknown command is not. Both used to land here and exit on
+    // `cmd ? 1 : 0`, which made `rungs --help` — a command that did exactly what was asked —
+    // report failure to anything checking the status (WI-004).
+    const wantedHelp = cmd === undefined || cmd === 'help' || cmd === '--help' || cmd === '-h';
+    if (!wantedHelp) console.log(c.red(`\n  unknown command: ${cmd}`));
+    console.log(renderHelp());
+    process.exit(wantedHelp ? 0 : 1);
+  }
 }

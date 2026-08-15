@@ -111,7 +111,18 @@ reported as diverged and left alone.
 | `rungs setup git [path]` | Install the merge drivers `.gitattributes` names |
 | `rungs modules` | List the set and audit the manifests |
 
-Add `--dry-run` to any write command.
+| | |
+| --- | --- |
+| `--dry-run` | Report what would happen, write nothing. Any write command |
+| `--into <path>` | `add`: install into this repo rather than the working directory |
+| `--set <module>.<param>=<value>` | `add` / `init`: override a module parameter. Repeatable, and `--set m.p=v` works too |
+| `--confirm-threshold` | `add`: install a module whose rung is above this repo |
+| `--apply` | `upgrade`: write the changes rather than preview them |
+| `--fast` / `--full` | `check`: pick the gate tier, as the positional also does |
+| `--copilot` | Also emit Copilot instruction files |
+
+`rungs --help` prints the same two tables. What each parameter *is* comes from
+each module's manifest — see [`modules/README.md`](modules/README.md).
 
 ## Modules
 

@@ -2,8 +2,8 @@
 id: WI-004
 title: Reconcile rungs --help with the README's command table
 type: docs
-status: proposed
-branch:
+status: done
+branch: feature/WI-004-help-completeness
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-002, WI-006]
@@ -96,8 +96,37 @@ if it does.
 
 ## Execution
 
-*Not started.*
+Branch `feature/WI-004-help-completeness`, cut from `main` 2026-08-15.
+
+- [`src/cli.ts`](../../../src/cli.ts) — `COMMANDS` and `FLAGS` tables plus `renderHelp()`, replacing
+  the template literal. Placed beside the dispatch switch, with the instruction to add a row when
+  adding a `case`.
+- The `default:` branch now distinguishes a help *request* from an unknown command: the former
+  exits 0, the latter names the command and exits 1. Previously both took `cmd ? 1 : 0`, so bare
+  `rungs` exited 0 and `rungs --help` exited 1 — the flag doing exactly what was asked reported
+  failure.
+- [`README.md`](../../../README.md) — the seven flags now have a table beside the command table,
+  and it points at `modules/README.md` for what parameters exist rather than restating them.
+
+**Checked before documenting, not after:** the `--set` blurb claims `add` *and* `init`. `cmdInit`
+delegates to `cmdAdd`, and `init … --set backlog.root=custom` produced `docs/custom/`. Writing
+"add/init" without running it would have been this item's own failure mode — a help text asserting
+a behaviour nobody tested.
+
+**F-001 recurred**, fourth occurrence.
 
 ## Review
 
-*Not started.*
+Checked 2026-08-15, exit codes unpiped.
+
+1. **Pass.** `rungs --help` → 0. `rungs frobnicate` → 1, naming the command. Bare `rungs` → 0.
+2. **Pass.** Help lists `setup git` and all seven flag rows, including the three
+   (`--set`, `--confirm-threshold`, `--fast`/`--full`) that appeared in no documentation at all.
+   Requirements named eight flags counting `--fast` and `--full` separately; they share one row.
+3. **Pass, mechanically.** Dispatch cases and help entries are the same nine, compared by extracting
+   both and sorting: `add check doctor eject init modules render setup upgrade`.
+4. **Pass.** The README's command rows name that same set.
+5. **Pass.** `rungs check` → 20 pass, 0 fail once the branch carried a commit.
+
+Not claimed: that the two lists cannot drift again. The README table is still hand-kept, which the
+Approach records as a known cost rather than a solved problem.
