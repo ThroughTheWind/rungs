@@ -148,4 +148,4 @@ Self-review completed 2026-08-15 against every acceptance criterion:
    [WI-029](WI-029-apply-framework-patterns-to-modules.md) owns disposition, versioning, fixtures,
    and upgrade behavior for the affected shipped modules.
 7. **Pass.** `node src/cli.ts check` passed 20/20 gates. In `site`, `npm run build` generated 63
-   pages and `npm run check` reported 0 diagnostics and 661 internal links with 0 broken.
+   pages and `npm run check` reported 0 diagnostics and 662 internal links with 0 broken.
