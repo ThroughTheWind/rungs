@@ -2,7 +2,7 @@
 
 > Phase 3. Written 2026-08-14. **Authoritative for:** what rungs is, its scaffold model, module
 > boundary, output contract, CLI surface, and upgrade story. **Not authoritative for:** individual
-> module contents (`module-catalog.md`, Phase 4 — not yet written) or the rendering policy
+> module contents (`module-catalog.md`, Phase 4 — the authored catalogue) or the rendering policy
 > ([ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md)).
 
 ---

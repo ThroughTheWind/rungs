@@ -178,7 +178,8 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
   `self-declared-closure` (declared — an open detail section cannot declare its own finding fixed)
 - **cost:** near-zero per finding — that is the point
 - **implements:** `findings-log` `record-without-derailing` `finding-promotion` `audit-to-register`
-- **provenance:** `rift-forge` — 91 findings and the 2026-08-15 self-declared-closure gate. **A
+- **provenance:** `rift-forge` — 91 findings in the initial survey, plus the 2026-08-15
+  self-declared-closure gate. **A
   finding is the observation; a work item is the decision.** The object `hexguard` lacked under 268
   audit reports. The closure gate is text-only by design: it catches a record contradiction and does
   not infer code-level closure.
@@ -351,7 +352,7 @@ module in the catalog when it applies.
 - **implements:** `green-ref` `failure-attribution` `land-protocol` `lock-not-checkout`
   `no-pre-land-full-verify` `preflight` `conflict-classes` `regenerate-never-merge` `id-claiming`
   `worktree-lifecycle` `ci-at-land-time`
-- **provenance:** `rift-forge` at 401 branches and 51 worktrees. Ships with its corrections
+- **provenance:** `rift-forge` at 401 branches and 51 worktrees in the initial survey. Ships with its corrections
   included: the checkout-based lock that blocked every session *and did not work*, and the
   pre-land full verify that caused **three of five refused lands**
 
@@ -398,6 +399,10 @@ Per [ADR-0004 §5](../decisions/ADR-0004-adoption-detection.md), **a module whos
 misclassifies any of the four source repos is not finished.** This is the Phase 6 acceptance
 criterion, stated up front.
 
+The matrix below is the **initial corpus baseline**, run 2026-08-14. It preserves the evidence that
+shaped module detection; it is not a live inventory of the refreshed Rift Forge candidate. Current
+candidate deltas and portability decisions are in [`rift-forge-capability-matrix.md`](rift-forge-capability-matrix.md).
+
 `C` create · `A` adopt · `P` partial (adopt + install the gap) · `¶` paradigm difference, report
 only · `—` not applicable
 
@@ -435,15 +440,14 @@ lacks).
    six modules, every rung-0 and rung-1 module in the catalog.
 4. ~~Then rung 2, then rung 3+~~ — **done 2026-08-14. All fifteen modules are authored.**
    Phase 4 is complete.
-5. **Phase 5.** Nothing has been executed yet: every finding so far came from *writing* modules,
-   not running them. The `[detect]` blocks are unverified claims and the gate tables describe
-   engines that do not exist. The first executable milestone is `render` plus `doctor` on the
-   four source repos, which is also Phase 6's acceptance criterion arriving early.
+5. ~~**Phase 5.**~~ **Executed 2026-08-14–15.** The CLI, engines, render pipeline, and gate tables
+   are running; detection was verified against the four source repos. The remaining Phase 6
+   milestone is a real install into a source repo, tracked in [`docs/roadmap.md`](../roadmap.md).
 
-**Still unexercised by the three authored modules**, and therefore unproven: a module with more
-than one `rules/` file; a live `command` gate (`gates` documents the kind and adopts into it, but
-ships none); a `conflicts` entry; and the `detect.paradigm` path, which needs `axiom-mesh` in front
-of it to be tested honestly.
+**Remaining format probes as of 2026-08-15:** a live `command` gate shipped by a module (the
+`gates` module adopts existing validators but ships none), a `conflicts` entry, and a
+`detect.paradigm` path beyond the verified source-repo cases. These are test gaps, not claims that
+the engines do not exist.
 
 **Format findings so far — eleven across six modules, all applied to their sources rather than
 noted.** ADR-0003's redundant `docs/` disposition dropped · `sprint-archive`/`backlog-spaces`

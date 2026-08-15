@@ -10,7 +10,7 @@ const MODULES = [
   ["instructions", 0, [], "The entry point, the bridge, path-scoped rules, and the render pipeline"],
   ["gates", 1, ["instructions"], "The runner, the registry, the ledger, and the structural gate set"],
   ["backlog", 1, ["instructions"], "Work items with ids, a lifecycle, and a board"],
-  ["findings", 1, ["backlog"], "The register for what is noticed before it is decided"],
+  ["findings", 1, ["backlog"], "The register for what is noticed before it is decided, with self-declared closure detection"],
   ["adr", 1, [], "Decision records, with an admission rule"],
   ["session", 1, [], "Handoff state across sessions"],
   ["ci", 1, ["gates"], "Matrix workflows, and a proliferation check"],
@@ -36,7 +36,7 @@ const REPOS = [
   ["axiom-mesh", "2026-03 → 04", "73 commits · 48+ ADRs", "doc authority + prompt library"],
   ["hexguard", "2026-06 → 07", "507 commits · 105 packages", "scoped instructions + checklists"],
   ["hexguard-templates", "2026-07", "319 commits", "spec-first + story workflow"],
-  ["rift-forge", "2026-07 → 08", "3236 commits · 401 branches", "mechanical gates + concurrency"],
+  ["rift-forge", "2026-07-29 → 08-15", "3,585 commits · 433 branches", "mechanical gates + concurrency"],
 ] as const;
 
 const g = SITE.gates;

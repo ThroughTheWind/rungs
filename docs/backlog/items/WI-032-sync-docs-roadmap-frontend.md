@@ -2,8 +2,8 @@
 id: WI-032
 title: Sync public docs, roadmap, and frontend surfaces with the current product
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-032-sync-docs-roadmap-frontend
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-030, WI-031]
@@ -75,9 +75,10 @@ large feature branch.
 
 ## Execution
 
-Not started. Planning artifact only; execution should begin on `feature/WI-032-sync-docs-roadmap-frontend` after WI-031's public capability decisions are available.
+Execution started on `feature/WI-032-sync-docs-roadmap-frontend` after WI-031 merged. The claim
+inventory is `docs/design/WI-032-claim-inventory.md`; it records each changed fact, its authority,
+and the command/date used to re-check it.
 
 ## Review
 
 Not started.
-
