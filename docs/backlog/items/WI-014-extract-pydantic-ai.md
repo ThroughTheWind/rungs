@@ -2,8 +2,8 @@
 id: WI-014
 title: Extract Pydantic AI — typing, injection, and testable agents
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-014-extract-pydantic-ai
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010, WI-012]
@@ -98,8 +98,25 @@ extraction is an essay and will disagree with the other extraction.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-014-extract-pydantic-ai`, cut from `main` 2026-08-15.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** [`pydantic-ai.md`](../../research/frameworks/pydantic-ai.md) answers all eight template
+   sections and records the repository, pinned SHA, MIT licence, read date, and dated count
+   commands.
+2. **Pass.** Section 2 names `tests/test_deps.py` and traces exactly what its `TestModel` test
+   asserts; sections 2 and 7 separate deterministic loop evidence, response-specific
+   `FunctionModel` evidence, and recorded provider evidence, including what each cannot prove.
+3. **Pass.** Section 4 makes the structured-output-as-gate argument from
+   `test_result_pydantic_model_retry` and `test_output_validator`, and bounds the claim: structural
+   and encoded semantic checks do not prove truth.
+4. **Pass.** Section 7 labels every judgement **Opinion** and states the costs of the three testing
+   layers, typed schemas, runtime-unchecked dependency injection, durable serialization, and the
+   common model abstraction.
+5. **Pass.** The extraction contains no comparison to another corpus repository; bounded absence
+   checks cover only Pydantic AI's inspected package.
+6. **Pass.** `node src/cli.ts check` passed 20/20 gates. In `site`, `npm run build` generated 59
+   pages and `npm run check` reported 0 diagnostics and 515 internal links with 0 broken.

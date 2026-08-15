@@ -14,12 +14,12 @@ outputs, dependency injection, deterministic tests, and durable execution.
 
 ## In progress
 
-WI-014 — plan and pin the Pydantic AI source before entering through its tests.
+WI-014 — pin the Pydantic AI source and enter through its own test suite.
 
 ## Resume from
 
-Plan WI-014 on `main`, then create its feature branch and pin the canonical source outside this
-repository.
+Clone the canonical source outside this repository, pin its SHA and licence, then trace a named
+test through model substitution, dependency injection, and structured output validation.
 
 ## Up next
 
