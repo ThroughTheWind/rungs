@@ -2,8 +2,8 @@
 id: WI-033
 title: Assess repo quality, improvements, and external-adoption readiness
 type: spike
-status: planned
-branch:
+status: review
+branch: feature/WI-033-assess-quality-and-adoption-readiness
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-030, WI-031, WI-032]
@@ -82,9 +82,20 @@ separate work items so the assessment cannot grade its own fixes.
 
 ## Execution
 
-Not started. Planning artifact only; execute on `feature/WI-033-assess-quality-and-adoption-readiness` after WI-031/WI-032 are resolved or explicitly deferred.
+Execution started on `feature/WI-033-assess-quality-and-adoption-readiness` after WI-031 and WI-032
+merged. The dated evidence report will be [`docs/design/release-readiness.md`](../../design/release-readiness.md).
+
+- Packed `@rungs/cli@0.1.1` locally; install added 2 packages and found 0 runtime vulnerabilities.
+- A clean consumer's `npm exec ... rungs --help` is blocked by Node's
+  `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` for the package's `.ts` bin entry.
+- The same tarball, extracted outside `node_modules` with `smol-toml` installed, completed
+  `doctor`, `init`, `check`, `render`, `upgrade` preview, and `eject --dry-run`; the packed smoke
+  repo passed 18/18 gates.
+- Root audit is clean; site audit reports 3 vulnerabilities (2 high, 1 low). Site build/check pass
+  with 97 pages, 1,203 internal links, and 0 broken links/type diagnostics.
 
 ## Review
 
-Not started.
-
+Ready for review. The report is explicit that local source quality is green but external adoption is
+blocked by the installed TypeScript entry point and the site dependency audit. WI-034 owns those
+remediations; WI-035 owns registry publication, platform coverage, and the final release decision.
