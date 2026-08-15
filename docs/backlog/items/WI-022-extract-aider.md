@@ -2,7 +2,7 @@
 id: WI-022
 title: Extract Aider — git-first coding, repository context, and validation
 type: docs
-status: in_progress
+status: done
 branch: feature/WI-022-extract-aider
 created: 2026-08-15
 updated: 2026-08-15
