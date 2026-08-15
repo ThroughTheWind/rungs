@@ -2,7 +2,7 @@
 id: WI-036
 title: Port updated design-system site surfaces and prepare the next package release
 type: feature
-status: review
+status: done
 branch: feature/WI-036-design-system-versions
 created: 2026-08-15
 updated: 2026-08-15
@@ -94,3 +94,6 @@ Acceptance criteria verified:
   `0.1.2` and the prepared next version.
 - `npm test` (7/7), `npm run rungs -- check` (20/20), `npm --prefix site run build` (99 pages), and
   `npm --prefix site run check` (0 errors, 0 warnings, 0 hints) pass.
+
+Merged into `main` in `11cbf43` on 2026-08-15; the feature branch is retained remotely for the
+release audit trail until the release branches are created.
