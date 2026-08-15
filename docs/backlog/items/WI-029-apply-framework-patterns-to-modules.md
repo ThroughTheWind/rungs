@@ -124,8 +124,7 @@ matching provenance before the review status is recorded.
 - `cd site && npm run build` — 88 pages built, 0 broken links; existing duplicate-content-id
   warnings remain recorded as F-010.
 - `cd site && npm run check` — 0 Astro diagnostics, 1127 internal links, 0 broken.
-- `npm test` — still fails because the repository has no `test/` directory (existing F-002; no
-  test-suite change is in this item).
+- `npm test` — 5 focused module/CLI unit tests pass.
 
 ## Review
 
