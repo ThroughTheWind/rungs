@@ -2,7 +2,7 @@
 id: WI-035
 title: Prepare and execute the public rungs release
 type: chore
-status: in_progress
+status: review
 branch: feature/WI-035-public-release
 created: 2026-08-15
 updated: 2026-08-15
@@ -79,6 +79,26 @@ Execution started on `feature/WI-035-public-release` after WI-034 was merged. Th
 reachable, but `npm whoami` returns 401, so publication is currently limited to an authorized dry-run
 and local artifact verification.
 
+- The release candidate is `@rungs/cli@0.1.1`, preserving the package identity and MIT metadata;
+  `changelog.d/0.1.1.md` and the README candidate status agree with the manifest and lockfile.
+- Release-commit checks are green: `npm test` passes 7/7, `npm run rungs -- check` passes 20/20,
+  `cd site && npm run build` builds 97 pages, `cd site && npm run check` reports 0 diagnostics,
+  1,203 links, and 0 broken, and `cd site && npm audit` reports 0 vulnerabilities.
+- `npm pack --pack-destination C:\Temp\rungs-wi035-package --json` produced a 102-file,
+  197,602-byte `rungs-cli-0.1.1.tgz` with the bundled `dist/cli.js`, source, modules, README, and
+  LICENSE. `npm publish --dry-run --tag latest --access public` passed without metadata warnings.
+- A separate clean consumer installed that tarball and completed `doctor`, git-backed `init`,
+  `add release`, `check` (21/21), `render`, `upgrade` preview, `eject --dry-run`, and an unknown
+  module dry-run that exited 1 while leaving the repository clean.
+- Registry evidence is explicit: `npm view @rungs/cli version dist-tags --json` reports public
+  `latest` `0.1.0`; `npm whoami` returns 401 and the authorized `npm publish --tag latest --access
+  public` attempt returned 404 without changing the registry. No tag was created.
+- Supported target is Node `>=22.18` on Windows, Linux, and macOS; only Windows PowerShell with
+  Node `v22.22.3`/npm `10.9.8` is verified in this item, so the other OSes remain unverified.
+
 ## Review
 
-Not started.
+Ready for review as a release candidate. All local acceptance checks and the authorized dry-run pass;
+the only unmet external step is npm publication, blocked by missing credentials. The branch must not
+be tagged or merged as a public release until an authenticated maintainer reruns `npm publish`, then
+verifies `npm view @rungs/cli@0.1.1` and a fresh registry consumer. No public-release claim is made.
