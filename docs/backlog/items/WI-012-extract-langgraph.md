@@ -2,7 +2,7 @@
 id: WI-012
 title: Extract LangGraph — state, checkpoints, and long-running workflows
 type: docs
-status: review
+status: done
 branch: feature/WI-012-extract-langgraph
 created: 2026-08-15
 updated: 2026-08-15

@@ -12,18 +12,17 @@ WI-011 validated the fixed template; WI-012 now tests it against durable graph e
 
 ## In progress
 
-WI-012 — review the completed LangGraph extraction and integrate it before starting WI-013.
+None while WI-012 lands.
 
 ## Resume from
 
-The LangGraph extraction is complete on `feature/WI-012-extract-langgraph`; repository gates and the
-site suite pass. Commit the review state, mark the item done, merge it to `main`, and delete the
-branch.
+Start WI-013 from `main` and pin the OpenAI Agents SDK before tracing its deliberately small
+primitive surface.
 
 ## Up next
 
-1. Integrate WI-012.
-2. Execute WI-013 for the OpenAI Agents SDK, then continue the remaining children in numeric order.
+1. Execute WI-013 for the OpenAI Agents SDK.
+2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
 
