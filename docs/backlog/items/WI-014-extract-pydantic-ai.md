@@ -2,7 +2,7 @@
 id: WI-014
 title: Extract Pydantic AI — typing, injection, and testable agents
 type: docs
-status: review
+status: done
 branch: feature/WI-014-extract-pydantic-ai
 created: 2026-08-15
 updated: 2026-08-15

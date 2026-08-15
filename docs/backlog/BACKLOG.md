@@ -16,7 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-014](items/WI-014-extract-pydantic-ai.md) | Extract Pydantic AI — typing, injection, and testable agents | docs | `feature/WI-014-extract-pydantic-ai` |
+| — | | | |
 
 ## Planned
 
