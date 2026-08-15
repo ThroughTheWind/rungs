@@ -130,6 +130,33 @@ function cmdDoctor(target: string) {
   console.log(c.dim('  This reports presence, never quality. It cannot tell whether an adopted'));
   console.log(c.dim('  system is good, complete, or working — only that files are where a'));
   console.log(c.dim("  module's files would be. Signatures under-detect on purpose.\n"));
+
+  // `doctor` is the command the README makes the entry point, and it used to stop on the sentence
+  // above — fifteen `absent` lines and nothing to do next. The recommendation is deliberately a
+  // **single** command, and never the maximal one: the brief names selling rung 5 to a rung-1 repo
+  // as the most likely way this tool does harm, so a repo with nothing is pointed at `tracked`
+  // rather than at the fifteen things it could install (WI-005).
+  const theirs = byState('theirs');
+  console.log(c.bold('  Next\n'));
+  if (ours) {
+    const behind = results.some((r) => r.ours?.stale.length || r.ours?.missing.length);
+    console.log(
+      behind
+        ? `  ${c.cyan('rungs upgrade --apply')}  ${c.dim('— bring the stale and missing files up to date')}`
+        : `  ${c.cyan('rungs check')}           ${c.dim('— run the gates this repo already registered')}`,
+    );
+    console.log(c.dim(`  Add more with \`rungs add <module>\`; \`rungs modules\` lists the set.\n`));
+  } else if (theirs.length) {
+    const names = theirs.map((r) => r.module).slice(0, 3).join(' ');
+    console.log(`  ${c.cyan(`rungs add ${names}`)}  ${c.dim('— adopt what you already built, in place')}`);
+    console.log(c.dim('  Nothing is overwritten. Files you already have are kept and reported as'));
+    console.log(c.dim('  yours; only what is missing gets written.\n'));
+  } else {
+    console.log(`  ${c.cyan('rungs init . tracked')}   ${c.dim('— instructions · gates · backlog · findings · adr · session')}`);
+    console.log(c.dim('  `tracked` is the rung for more than one thing in flight. `minimal` is just'));
+    console.log(c.dim('  the entry document; higher profiles cost more than they return until the'));
+    console.log(c.dim('  problem they answer actually exists. `rungs modules` lists all fifteen.\n'));
+  }
   return 0;
 }
 
