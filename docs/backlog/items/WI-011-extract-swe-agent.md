@@ -2,7 +2,7 @@
 id: WI-011
 title: Extract SWE-agent — the minimal coding-agent loop
 type: docs
-status: review
+status: done
 branch: feature/WI-011-extract-swe-agent
 created: 2026-08-15
 updated: 2026-08-15
