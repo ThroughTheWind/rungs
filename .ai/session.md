@@ -8,15 +8,16 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Execute WI-009's public-framework research corpus sequentially. WI-010 establishes the fixed method;
-WI-011 is the first extraction and may correct that template with recorded reasons.
+WI-011 validated the fixed template; WI-012 now tests it against durable graph execution.
 
 ## In progress
 
-None while WI-011 lands.
+WI-012 — pin and inspect LangGraph, then write `docs/research/frameworks/langgraph.md`.
 
 ## Resume from
 
-Start WI-012 from `main` and pin LangGraph before measuring its state and checkpoint architecture.
+Confirm LangGraph's canonical repository, clone it outside this repo, and record the pinned SHA and
+bounded read surface.
 
 ## Up next
 

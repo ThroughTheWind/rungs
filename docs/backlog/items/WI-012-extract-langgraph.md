@@ -2,8 +2,8 @@
 id: WI-012
 title: Extract LangGraph — state, checkpoints, and long-running workflows
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-012-extract-langgraph
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010]
@@ -98,7 +98,7 @@ read that says so is evidence; one that does not is a claim about the whole repo
 
 ## Execution
 
-Not started.
+Branch `feature/WI-012-extract-langgraph`, cut from `main` 2026-08-15.
 
 ## Review
 
