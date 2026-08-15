@@ -8,19 +8,20 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Execute WI-009's public-framework research corpus sequentially. WI-010 establishes the fixed method;
-WI-011 is the first extraction and may correct that template with recorded reasons.
+WI-011 validated the fixed template; WI-012 now tests it against durable graph execution.
 
 ## In progress
 
-None while WI-011 lands.
+None while WI-012 lands.
 
 ## Resume from
 
-Start WI-012 from `main` and pin LangGraph before measuring its state and checkpoint architecture.
+Start WI-013 from `main` and pin the OpenAI Agents SDK before tracing its deliberately small
+primitive surface.
 
 ## Up next
 
-1. Execute WI-012 for LangGraph state, checkpoints, and long-running workflows.
+1. Execute WI-013 for the OpenAI Agents SDK.
 2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
@@ -44,7 +45,8 @@ Start WI-012 from `main` and pin LangGraph before measuring its state and checkp
 <!-- Things believed true and not verified this session. Being wrong here is normal; the value is
      that the next session knows which claims to distrust first. -->
 
-- The eight proposed template sections are sufficient until WI-011 tests them against SWE-agent.
+- The eight-section template was validated by WI-011 and remains sufficient after the materially
+  different LangGraph state/persistence extraction.
 
 ## Open questions
 
