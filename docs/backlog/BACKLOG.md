@@ -34,10 +34,22 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
+| [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
+| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs |
+| [WI-020](items/WI-020-extract-letta-code.md) | Extract Letta Code — durable memory, identity, and continual learning | docs |
+| [WI-021](items/WI-021-extract-inspect-ai.md) | Extract Inspect AI — reproducible agent evaluation and sandboxed evidence | docs |
+| [WI-022](items/WI-022-extract-aider.md) | Extract Aider — git-first coding, repository context, and validation | docs |
+| [WI-023](items/WI-023-extract-goose.md) | Extract goose — local extensibility, MCP/ACP, and session isolation | docs |
+| [WI-024](items/WI-024-extract-google-adk.md) | Extract Google ADK — multi-language evolution, task delegation, and evaluation | docs |
+| [WI-025](items/WI-025-extract-mcp.md) | Extract MCP — the tool and context interoperability boundary | docs |
+| [WI-026](items/WI-026-extract-a2a.md) | Extract A2A — remote agent discovery, tasks, and artifacts | docs |
+| [WI-027](items/WI-027-extract-dspy.md) | Extract DSPy — metric-driven agent program optimization | docs |
+| [WI-028](items/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
 | [WI-029](items/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
 
-All eight are one epic — [WI-009](items/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15.
-The four extracted repos share an author, so every convergence in
+WI-009's eight children are one fixed epic —
+[WI-009](items/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted
+repos share an author, so every convergence in
 [`pattern-catalog.md`](../research/pattern-catalog.md) is currently one operator agreeing with
 themselves; six independently-built public frameworks are the cheapest test of which patterns are
 portable. Order is template → SWE-agent (which corrects the template) → the middle four in any
@@ -46,6 +58,10 @@ order → OpenHands → synthesis.
 **The epic is the decision that matters.** These six are read for *architecture*, which
 [`research/README.md`](../research/README.md) names as the existing corpus's explicit non-goal — so
 this is a second research axis with its own directory and template, not more of the first.
+
+[WI-018](items/WI-018-follow-on-public-agent-research.md) is a proposed follow-on, not an expansion
+of WI-009. It begins after WI-017 and gives durable memory, evaluation/optimization, local products,
+and interoperability protocols separate evidence tracks before reconciling them once.
 
 **Done since:** [WI-008](items/WI-008-link-gate-checks-every-file.md) — promoted from F-005.
 Link checking covered 72 of 89 files; a single `{{token}}` anywhere in a document exempted every
