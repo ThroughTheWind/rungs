@@ -2,7 +2,7 @@
 id: WI-025
 title: Extract MCP — the tool and context interoperability boundary
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -25,7 +25,7 @@ human input, cancellation, and trust, and what it deliberately leaves to hosts a
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the tool/context protocol child of
+`accepted` — 2026-08-15. Captured as the tool/context protocol child of
 [WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
