@@ -2,7 +2,7 @@
 id: WI-028
 title: Synthesize the follow-on research and reconcile the catalogue
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-028-follow-on-synthesis
 created: 2026-08-15
 updated: 2026-08-15
@@ -85,4 +85,12 @@ and guarantee, and defer any module or CLI consequence to a new work item.
 
 ## Review
 
-Not started.
+Review completed 2026-08-15. The synthesis compares all four durable/local products, both
+evaluation/optimization subjects, and both interoperability protocols using complete within-track
+tables plus a ten-term cross-track boundary table. It contains exactly 46 candidate adjudication
+rows (every candidate from WI-020 through WI-027), each routed to a pinned extraction and labelled
+confirmed, contradicted, or track-specific. It records a contradiction (`test-substitution`) and
+multiple non-commensurable/track-specific results, explains why no catalogue edit is warranted, and
+keeps module/CLI consequences behind WI-029. Index states now match the completed items. `rungs
+check` passes 20/20; site build/check passes with 88 routes, 1,127 internal links, and 0 broken
+links. No `modules/` or CLI implementation files changed.

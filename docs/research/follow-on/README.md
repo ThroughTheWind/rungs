@@ -33,7 +33,7 @@ item records pinned evidence.
 | [MCP](protocols/mcp.md) · [WI-025](../../backlog/items/WI-025-extract-mcp.md) | Interoperability protocol | Which tool/context lifecycle, capabilities, errors, and trust responsibilities cross the client-server boundary? | Done · pinned `4df2d6b6e3588efb46e7542d98498e5c630a0a86` · normative `2025-11-25` |
 | [A2A](protocols/a2a.md) · [WI-026](../../backlog/items/WI-026-extract-a2a.md) | Interoperability protocol | Which discovery, task, artifact, streaming, and identity semantics cross independently operated agents? | Done · pinned `1eb4aa03b07589d3a00ce7deab0dde679120ed30` · protocol `1.0.0` |
 | [DSPy](evaluations/dspy.md) · [WI-027](../../backlog/items/WI-027-extract-dspy.md) | Evaluation/optimization | How do metrics, traces, examples, and optimizers turn an agent program into an improvement loop? | Done · pinned `80b118e52cb1f143a0d80d84685572000c59639e` |
-| Follow-on synthesis · [WI-028](../../backlog/items/WI-028-follow-on-research-synthesis.md) | All three | Which results reconcile within a track and which are not commensurable across tracks? | In progress |
+| [Follow-on synthesis](synthesis.md) · [WI-028](../../backlog/items/WI-028-follow-on-research-synthesis.md) | All three | Which results reconcile within a track and which are not commensurable across tracks? | In progress |
 
 ## Evidence labels
 
