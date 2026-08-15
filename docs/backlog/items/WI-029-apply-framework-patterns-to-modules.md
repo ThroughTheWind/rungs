@@ -2,7 +2,7 @@
 id: WI-029
 title: Apply framework-derived patterns to shipped modules
 type: docs
-status: review
+status: done
 branch: feature/WI-029-apply-framework-patterns
 created: 2026-08-15
 updated: 2026-08-15
@@ -128,7 +128,7 @@ matching provenance before the review status is recorded.
 
 ## Review
 
-`review` — 2026-08-15. The concern table is complete and each commensurable WI-017 pattern has one
+`done` — 2026-08-15. The concern table is complete and each commensurable WI-017 pattern has one
 disposition and an exact source-file set. The implemented patterns are present in module provenance,
 module versions, fragments, rules, skills, templates, and the catalogue; the intentionally
 catalogue-only rows explain why no generated capability is claimed. `replay-safe-side-effect` stays
