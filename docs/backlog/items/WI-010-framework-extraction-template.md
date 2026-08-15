@@ -2,7 +2,7 @@
 id: WI-010
 title: A fixed template and method for the public-framework corpus
 type: docs
-status: review
+status: done
 branch: feature/WI-010-framework-extraction-template
 created: 2026-08-15
 updated: 2026-08-15

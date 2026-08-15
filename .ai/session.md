@@ -7,22 +7,21 @@ Keep it short. This document is read at the start of every session, and a long o
 
 ## Current objective
 
-Execute WI-009's public-framework research corpus, beginning with the fixed extraction template and
-method in WI-010.
+Execute WI-009's public-framework research corpus sequentially. WI-010 establishes the fixed method;
+WI-011 is the first extraction and may correct that template with recorded reasons.
 
 ## In progress
 
-WI-010 — author `docs/research/frameworks/{README.md,TEMPLATE.md}` and distinguish the two research
-axes in `docs/research/README.md`.
+None while WI-010 lands.
 
 ## Resume from
 
-Land reviewed WI-010 on `main`, then start WI-011 as the template's first extraction.
+Start WI-011 from `main` and pin the SWE-agent source commit before measuring or writing claims.
 
 ## Up next
 
-1. Complete and land WI-010.
-2. Execute WI-011 as the template's first real test.
+1. Execute WI-011 as the template's first real test.
+2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
 
@@ -38,7 +37,7 @@ Land reviewed WI-010 on `main`, then start WI-011 as the template's first extrac
 - Every framework extraction pins a commit SHA and records its license because these sources move
   and are licensed (WI-009).
 - WI-009 changes no files under `modules/`; any evidence-backed product change is a later item.
-- WI-010 authors the method only; no framework extraction belongs in this branch.
+- WI-011 may correct the WI-010 template, but every correction records the evidence and reason.
 
 ## Working assumptions
 
