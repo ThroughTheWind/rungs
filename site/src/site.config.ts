@@ -13,6 +13,7 @@ export const SITE = {
   name: "rungs",
   tagline: "Installs and maintains a repository's agentic development system.",
   repo: "https://github.com/ThroughTheWind/rungs",
+  npm: "https://www.npmjs.com/package/@rungs/cli",
 
   /** The date every measurement below was taken. Absolute, never relative. */
   asOf: "2026-08-15",
@@ -34,5 +35,6 @@ export const SITE = {
 export const NAV = [
   { href: "/wiki/", label: "Wiki" },
   { href: "/contribute/", label: "Contribute" },
+  { href: SITE.npm, label: "npm package", external: true },
   { href: SITE.repo, label: "GitHub", external: true },
 ] as const;

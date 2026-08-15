@@ -84,7 +84,7 @@ const canonical = new URL(here, origin);
           ))
         }
         <span class="nav-gap"></span>
-        <span class="nav-status">{SITE.phase.label} · {SITE.asOf}</span>
+        <span class="nav-status">Updated · {SITE.asOf}</span>
         <button class="rgs-btn rgs-btn-secondary rgs-btn-sm" id="theme" type="button" aria-live="polite">
           Blueprint
         </button>
@@ -98,7 +98,8 @@ const canonical = new URL(here, origin);
 
     <footer class="foot" style={`max-width:${width}px`}>
       <div class="foot-text">
-        {SITE.phase.detail}<br />
+        {SITE.tagline}<br />
+        <a href={SITE.npm} rel="noopener" target="_blank">Install @rungs/cli from npm</a><br />
         {SITE.openTrigger}
       </div>
       <div class="foot-mark"><span class="mark" aria-hidden="true" set:html={logoSvg} />rungs</div>
