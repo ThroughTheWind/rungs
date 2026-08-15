@@ -2,8 +2,8 @@
 id: WI-028
 title: Synthesize the follow-on research and reconcile the catalogue
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-028-follow-on-synthesis
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-017, WI-019, WI-020, WI-021, WI-022, WI-023, WI-024, WI-025, WI-026, WI-027]
@@ -78,8 +78,19 @@ another means a remote protocol state machine.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-028-follow-on-synthesis`. The synthesis read boundary is the
+eight completed follow-on extractions, WI-019's shared spine and track templates, and the current
+pattern catalogue. It will compare within tracks first, classify cross-track vocabulary by owner
+and guarantee, and defer any module or CLI consequence to a new work item.
 
 ## Review
 
-Not started.
+Review completed 2026-08-15; item complete. The synthesis compares all four durable/local products, both
+evaluation/optimization subjects, and both interoperability protocols using complete within-track
+tables plus a ten-term cross-track boundary table. It contains exactly 46 candidate adjudication
+rows (every candidate from WI-020 through WI-027), each routed to a pinned extraction and labelled
+confirmed, contradicted, or track-specific. It records a contradiction (`test-substitution`) and
+multiple non-commensurable/track-specific results, explains why no catalogue edit is warranted, and
+keeps module/CLI consequences behind WI-029. Index states now match the completed items. `rungs
+check` passes 20/20; site build/check passes with 88 routes, 1,127 internal links, and 0 broken
+links. No `modules/` or CLI implementation files changed.
