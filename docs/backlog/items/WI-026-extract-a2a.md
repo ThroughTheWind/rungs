@@ -2,7 +2,7 @@
 id: WI-026
 title: Extract A2A — remote agent discovery, tasks, and artifacts
 type: docs
-status: review
+status: done
 branch: feature/WI-026-extract-a2a
 created: 2026-08-15
 updated: 2026-08-15
@@ -81,7 +81,7 @@ separately pinned and labelled.
 
 ## Review
 
-Review completed 2026-08-15. The extraction pins A2A commit
+Review completed 2026-08-15; item complete. The extraction pins A2A commit
 `1eb4aa03b07589d3a00ce7deab0dde679120ed30`, protocol `1.0.0`, Apache-2.0 licence, and the
 normative specification/protobuf read boundary; no SDK, TCK, sample, or endpoint claims are
 substituted. It traces Agent Card discovery through JSON-RPC task creation, state transitions,
