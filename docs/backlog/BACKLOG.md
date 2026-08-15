@@ -3,14 +3,14 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-036 -->
+<!-- NEXT-ID: WI-037 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-036](items/WI-036-design-system-versions.md) | Port updated design-system site surfaces and prepare the next package release | feature | `feature/WI-036-design-system-versions` |
 
 ## Review
 

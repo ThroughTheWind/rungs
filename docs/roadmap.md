@@ -16,7 +16,7 @@ depended on was measured.
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
 | **5** | CLI | ✅ Nine commands, 39 gates, ~2,800 lines |
 | **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; WI-034 verified a clean packed-consumer journey; **a source-repo/public-registry install remains** |
-| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; v0.1.1 in [`package.json`](../package.json) on 2026-08-15) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
+| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; public latest v0.1.2; v0.1.3 prepared in [`package.json`](../package.json)) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 
 ## What each phase produced that the next one needed
 
@@ -44,7 +44,7 @@ git-backed consumer from a packed artifact, including a safe failure path; the
 remaining test is an install from the public registry and a bounded platform matrix.
 
 **Phase 7.** Publishing and the docs site have landed: `@rungs/cli` is on npm
-(v0.1.0 first published 2026-08-14; local package metadata is v0.1.1 on
+(v0.1.0 first published 2026-08-14; public latest is v0.1.2 and local package metadata is v0.1.3 on
 2026-08-15) and [`site/`](../site/README.md) builds from a pristine checkout and
 deploys. What remains is the **module registry**, so third-party modules are
 possible — the format is a plain directory precisely so that does not need a
