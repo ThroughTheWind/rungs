@@ -2,7 +2,7 @@
 id: WI-027
 title: Extract DSPy — metric-driven agent program optimization
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-027-extract-dspy
 created: 2026-08-15
 updated: 2026-08-15
@@ -80,4 +80,12 @@ evaluation and artifact boundaries.
 
 ## Review
 
-Not started.
+Review completed 2026-08-15. The extraction pins `stanfordnlp/dspy` commit
+`80b118e52cb1f143a0d80d84685572000c59639e`, package `3.3.0`, MIT licence, and a measured
+563-file read boundary. It traces `ReAct` execution, `BootstrapFewShot` metric/trace/demo
+selection, `Evaluate` scoring/failure aggregation, and JSON/PKL/program saving. Trainset versus
+evaluation-set leakage, provider/cache/seed/cost limits, failure handling, and artifact provenance
+are explicit. `py -3.13 -m compileall -q` passed for the selected implementation and test files;
+the checkout had no pytest module, so tests were read rather than reported as executed. Repository
+`rungs check` passes 20/20; site build/check passes with 87 routes, 1,091 internal links, and 0
+broken links. No catalogue, module, or CLI files changed; cross-track comparison remains WI-028.
