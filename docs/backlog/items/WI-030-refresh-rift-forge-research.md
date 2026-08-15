@@ -2,7 +2,7 @@
 id: WI-030
 title: Refresh Rift Forge research from the candidate branch
 type: docs
-status: review
+status: done
 branch: feature/WI-030-refresh-rift-forge-research
 created: 2026-08-15
 updated: 2026-08-15
@@ -85,7 +85,7 @@ candidate ref as the authority and record the divergence rather than blending th
 
 ## Execution
 
-`in_progress` — 2026-08-15. Candidate anchor established before editing:
+`completed` — 2026-08-15. Candidate anchor established before editing:
 
 - Local `candidate/0.1.0` is `4a51848cfc9a2acbcdeddcd028418572406e2950`, 3,585 commits, dated
   2026-08-15, with tip `Merge WI-790: route coverage rows to live owners`.
@@ -125,7 +125,7 @@ Evidence gathered on 2026-08-15 from the temporary candidate worktree:
 
 ## Review
 
-`review` — 2026-08-15.
+`approved` — 2026-08-15.
 
 ### Acceptance review
 
