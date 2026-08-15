@@ -17,8 +17,9 @@ WI-013 — compare the Python and TypeScript OpenAI Agents SDK implementations a
 
 ## Resume from
 
-Create `feature/WI-013-extract-openai-agents-sdk`, then confirm the two canonical repositories from
-official OpenAI documentation, clone them outside this repo, and pin each source boundary.
+Official OpenAI documentation identifies the TypeScript and Python SDK repositories. Clone both
+outside this repo, pin each SHA and licence, then trace the primitive list implementation against
+the other language.
 
 ## Up next
 
