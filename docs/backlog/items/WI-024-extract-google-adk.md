@@ -2,7 +2,7 @@
 id: WI-024
 title: Extract Google ADK — multi-language evolution, task delegation, and evaluation
 type: docs
-status: review
+status: done
 branch: feature/WI-024-extract-google-adk
 created: 2026-08-15
 updated: 2026-08-15
@@ -81,7 +81,7 @@ confirmation mechanisms.
 
 ## Review
 
-Review complete 2026-08-15.
+Review complete 2026-08-15; status set to done after all acceptance criteria passed.
 
 - [x] Each source has its own pinned SHA, Apache-2.0 licence, read date, release context, scope,
   and reproducible checkout measurement.
