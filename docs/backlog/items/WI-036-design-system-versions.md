@@ -2,7 +2,7 @@
 id: WI-036
 title: Port updated design-system site surfaces and prepare the next package release
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-036-design-system-versions
 created: 2026-08-15
 updated: 2026-08-15
@@ -73,6 +73,24 @@ release checks pass.
 
 Branch created from `main`: `feature/WI-036-design-system-versions`.
 
+- Vendored the current design-system export with `npm run vendor`; the export was already
+  represented in the tracked component copy, so no generated component delta was needed.
+- Added `site/src/pages/versions.astro`, linked it from `NAV` and the shared footer, and adapted the
+  exported sample state to published `0.1.2` plus the prepared `0.1.3` package metadata.
+- Replaced the footer with the exported two-column composition while retaining the current docs,
+  npm, and GitHub destinations and removing stale phase/namespace copy.
+- Added `changelog.d/0.1.3.md`, bumped `package.json` and `package-lock.json`, and aligned the
+  current README and roadmap statements.
+
 ## Review
 
-Pending implementation and verification.
+Acceptance criteria verified:
+
+- `/versions/` is emitted by the Astro build and is linked from the shared navigation/footer; the
+  rendered page shows `0.1.2` as latest and `0.1.3` as pending from the root package metadata.
+- The footer contains Versions, npm, and GitHub destinations and no phase or stale namespace copy;
+  the link gate reports 1,415 internal links with 0 broken.
+- Package and lockfile agree on `0.1.3`; current README and roadmap claims agree with public latest
+  `0.1.2` and the prepared next version.
+- `npm test` (7/7), `npm run rungs -- check` (20/20), `npm --prefix site run build` (99 pages), and
+  `npm --prefix site run check` (0 errors, 0 warnings, 0 hints) pass.

@@ -10,13 +10,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-036](items/WI-036-design-system-versions.md) | Port updated design-system site surfaces and prepare the next package release | feature | `feature/WI-036-design-system-versions` |
+| — | | | |
 
 ## Review
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-036](items/WI-036-design-system-versions.md) | Port updated design-system site surfaces and prepare the next package release | feature | `feature/WI-036-design-system-versions` |
 
 ## Planned
 
