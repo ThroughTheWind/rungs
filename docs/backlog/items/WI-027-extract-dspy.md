@@ -2,7 +2,7 @@
 id: WI-027
 title: Extract DSPy — metric-driven agent program optimization
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -26,7 +26,7 @@ reproducibility are exposed to the author.
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the optimization child of
+`accepted` — 2026-08-15. Captured as the optimization child of
 [WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
