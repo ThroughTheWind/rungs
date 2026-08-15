@@ -29,8 +29,6 @@ Measured 2026-08-15:
 ```console
 $ node src/cli.ts add backlog --into ./repo --set backlog.root=mywork --dry-run
   unknown module(s): ./repo
-$ echo $?
-0
 ```
 
 The user is told their **path** is an unknown module, having named no such module. Nothing mentions
@@ -41,36 +39,75 @@ $ node src/cli.ts add backlog --into ./repo --set=backlog.root=mywork --dry-run
   set backlog.root = mywork
 ```
 
-Three separate defects meet here, which is why the failure is so opaque: a flag that accepts one of
-two conventional spellings, a positional-marker flag that silently absorbs whatever lands last, and
-a non-zero-worthy error path returning 0. The last one means a CI step wrapping `rungs add` passes
-while having installed nothing.
+Two defects meet here, which is why the failure is so opaque: a flag that accepts one of two
+conventional spellings, and a positional-marker flag that silently absorbs whatever lands last.
+
+> **Corrected 2026-08-15, before planning.** This item was opened claiming a third defect — that the
+> failure exits 0 — and the commit that opened it repeats the claim. **It is false.** `cmdAdd`
+> returns 1 and `process.exit` carries it; measured `1`. The original reading came from
+> `node … | head -8; echo $?`, where `$?` is the exit status of `head`, not of `node`.
+>
+> Kept rather than quietly deleted, because the way it was wrong is the same failure
+> [ADR-0006](../../decisions/ADR-0006-the-name.md) records: a command was named, it ran, it returned
+> a clean result, and it answered a question nobody had asked. `echo $?` after a pipeline tests the
+> **last stage of the pipeline**, not the program. Evidence must test the property the claim is
+> about — measure an exit code with the process unpiped.
 
 Found while assessing first-user documentation completeness on 2026-08-15.
 
 ## Decision
 
-*Empty until decided.*
+`accepted` — 2026-08-15, with the scope reduced to two defects by the correction above. Both
+survive: the flag still parses one spelling of two, and `--into` still absorbs whatever lands last.
 
 ## Plan
 
-> Filled once `accepted`.
-
 ### Requirements
 
-*Filled once `accepted`.*
+- `--set k=v` and `--set=k=v` both register the override.
+- A `k=v`-shaped positional that reached `args` because a flag did not consume it is **refused with
+  a message naming it**, never silently treated as a path or a module.
+- `--into` resolves the same target whether or not `--set` is present.
+- The refusal exits non-zero.
+- No existing invocation changes meaning — `--set=k=v`, bare `add <mod>`, and `add <mod> --into p`
+  behave exactly as before.
 
 ### Impacts
 
-*Filled once `accepted`.*
+- [`src/cli.ts`](../../../src/cli.ts) — the top-level `flags`/`args` split at 363–365, and the
+  override loop plus `--into` resolution inside `cmdAdd`.
+- No module, manifest or emitted file changes. Nothing in a scaffolded repo moves.
+- **No ADR.** This is not a CLI surface change: it widens what an existing flag accepts and turns a
+  silent misread into an error. Criterion 1 of the admission rule fails — it describes current
+  intent rather than constraining future work.
 
 ### Approach
 
-*Filled once `accepted`.*
+Parse value-carrying flags **once, at the top level**, instead of having `cmdAdd` re-scan `rest` for
+a prefix. A single `VALUE_FLAGS` set (`--set`, `--into`) drives one pass that pairs each such flag
+with its value — from `=` when attached, otherwise from the next token — and removes both from the
+positionals. `cmdAdd` then reads resolved values rather than re-deriving them.
+
+That fixes both defects with one change, because the reason `--into` absorbed the orphan is that the
+orphan was never claimed by `--set`. It also makes `--into` a conventional flag-with-value, which
+WI-002's proposal listed as a possible follow-up: it becomes free here rather than a separate
+change, and **the last-positional behaviour is retained as a fallback** so documented invocations
+keep working.
+
+Considered and rejected: **accepting `--set k=v` inside `cmdAdd` only.** It is three lines, but it
+leaves the top-level splitter still producing a stray positional for every other value-carrying flag
+added later — the same trap, re-armed.
 
 ### Acceptance criteria / tests
 
-*Filled once `accepted`.*
+1. `add backlog --into <tmp> --set backlog.root=mywork --dry-run` reports `set backlog.root = mywork`
+   and targets `<tmp>`.
+2. `add backlog --into <tmp> --set=backlog.root=mywork --dry-run` behaves identically to 1.
+3. `add backlog --into <tmp> --set --dry-run` (value missing) exits non-zero naming `--set`.
+4. A stray `k=v` positional that no flag claimed exits non-zero and names the token.
+5. `add instructions --into <tmp>` with no `--set` still installs to `<tmp>`.
+6. `rungs init <tmp> tracked` and `rungs check` are unaffected — 20 pass, 0 fail.
+7. Exit codes measured **unpiped**, per the correction above.
 
 ### Out of scope
 
