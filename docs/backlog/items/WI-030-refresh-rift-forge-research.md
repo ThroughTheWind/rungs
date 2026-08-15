@@ -2,7 +2,7 @@
 id: WI-030
 title: Refresh Rift Forge research from the candidate branch
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -24,8 +24,9 @@ not a module or product change.
 
 ## Decision
 
-`proposed` — 2026-08-15. Opened at the user's request because the first inspection no longer
-describes the active candidate branch.
+`accepted` — 2026-08-15. The local `candidate/0.1.0` branch is the requested authority; its full
+SHA and divergence from the stale remote-tracking ref will be recorded before any conclusion is
+drawn.
 
 ## Plan
 
