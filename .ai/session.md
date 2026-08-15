@@ -8,21 +8,20 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Execute WI-009's public-framework research corpus sequentially. WI-010 established the fixed
-method; WI-011 and WI-012 validated it against a coding-agent loop and durable graph execution;
-WI-013 now tests a deliberately small primitive surface across two language implementations.
+method; WI-011 through WI-013 validated it against a coding-agent loop, durable graph execution,
+and a deliberately small primitive surface expressed in two languages.
 
 ## In progress
 
-WI-013 — compare the Python and TypeScript OpenAI Agents SDK implementations at pinned commits.
+None while WI-013 lands.
 
 ## Resume from
 
-Create `feature/WI-013-extract-openai-agents-sdk`, then confirm the two canonical repositories from
-official OpenAI documentation, clone them outside this repo, and pin each source boundary.
+Start WI-014 from `main` and pin Pydantic AI before tracing its typed dependency and test surfaces.
 
 ## Up next
 
-1. Execute WI-013 for the OpenAI Agents SDK in Python and TypeScript.
+1. Execute WI-014 for Pydantic AI.
 2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen

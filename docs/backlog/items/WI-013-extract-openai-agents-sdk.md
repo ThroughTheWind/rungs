@@ -2,8 +2,8 @@
 id: WI-013
 title: Extract the OpenAI Agents SDK — a deliberately small primitive surface
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-013-extract-openai-agents-sdk
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010]
@@ -100,8 +100,21 @@ hatches, the "advanced" surface, and the issue tracker's shape rather than in th
 
 ## Execution
 
-Not started.
+Branch `feature/WI-013-extract-openai-agents-sdk`, cut from `main` 2026-08-15.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** [`openai-agents-sdk.md`](../../research/frameworks/openai-agents-sdk.md) answers all
+   eight template sections and records a pinned SHA, licence, and read date for both repositories.
+2. **Pass.** Section 2 defines the inventory boundary, enumerates every documented concept family
+   plus the runner/state execution pair, and records an escape hatch for each.
+3. **Pass.** Section 7 classifies four Python/TypeScript differences as language idiom or design
+   surface, without inferring intent from a parity gap.
+4. **Pass.** Section 4 traces handoff execution into the runner's ownership-changing state
+   transition and contrasts it with the nested runner created by agent-as-tool.
+5. **Pass.** Measurements are dated with commands, implementation claims cite pinned source, and
+   judgement is labelled **Opinion.**
+6. **Pass.** `node src/cli.ts check` passed 20/20 gates. In `site`, `npm run build` generated 58
+   pages and `npm run check` reported 0 diagnostics and 510 internal links with 0 broken.
