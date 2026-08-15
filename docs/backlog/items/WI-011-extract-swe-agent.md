@@ -2,8 +2,8 @@
 id: WI-011
 title: Extract SWE-agent — the minimal coding-agent loop
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-011-extract-swe-agent
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010]
@@ -95,8 +95,32 @@ trace rather than a summary.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-011-extract-swe-agent`, cut from `main` 2026-08-15.
+
+- Confirmed the canonical repository as `SWE-agent/SWE-agent` and pinned
+  `3ea751c087f32b16e039a2233dd6eefecef325d5` before inspecting or measuring it.
+- Traced the default turn through `DefaultAgent.run` → `step` → `forward_with_handling` →
+  `forward` → `ToolHandler.parse_actions` → `handle_action`, then followed history and trajectory
+  writes back out of the turn.
+- Wrote `docs/research/frameworks/swe-agent.md` with all eight sections, pinned permalinks, dated
+  PowerShell measurements, two bounded absence checks, and five catalogue verdicts/candidates.
+- Updated the frameworks index to point at the pinned extraction.
+- **No template corrections were required.** The distinction between replay and resume fit section
+  3's existing prompt, and the `ShellAgent` takeover path fit section 6 without changing its scope.
 
 ## Review
 
-Not started.
+Checked 2026-08-15.
+
+1. **Pass.** `docs/research/frameworks/swe-agent.md` answers all eight template sections; none is
+   blank or deferred.
+2. **Pass.** Snapshot records the full SHA, MIT licence, read date, and the exact PowerShell command
+   and scope behind each of the three counts.
+3. **Pass.** Section 2 names and links `DefaultAgent.run`, `step`, `forward_with_handling`, `forward`,
+   and `handle_action` at the pinned SHA.
+4. **Pass.** Judgement is written in the first person and prefixed **Opinion.**; implementation
+   claims use pinned permalinks and absence claims give the dated `rg` command and directory scope.
+5. **Pass.** Section 8 contains five take / take-as-warning verdicts with reasons, including two
+   candidate patterns reserved for WI-017.
+6. **Pass.** `node src/cli.ts check` → 20 pass, 0 fail, 101 links examined. `npm run build && npm
+   run check` under `site/` → 56 routes, 501 internal links, 0 broken, and 0 Astro diagnostics.

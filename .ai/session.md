@@ -12,15 +12,15 @@ WI-011 is the first extraction and may correct that template with recorded reaso
 
 ## In progress
 
-None while WI-010 lands.
+None while WI-011 lands.
 
 ## Resume from
 
-Start WI-011 from `main` and pin the SWE-agent source commit before measuring or writing claims.
+Start WI-012 from `main` and pin LangGraph before measuring its state and checkpoint architecture.
 
 ## Up next
 
-1. Execute WI-011 as the template's first real test.
+1. Execute WI-012 for LangGraph state, checkpoints, and long-running workflows.
 2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
