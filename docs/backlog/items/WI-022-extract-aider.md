@@ -2,7 +2,7 @@
 id: WI-022
 title: Extract Aider — git-first coding, repository context, and validation
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -25,8 +25,10 @@ assume; the project description alone is not implementation evidence.
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the git-native product child of
-[WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
+`accepted` then `planned` — 2026-08-15. The user directed the follow-on research to continue after
+WI-019 and WI-020/WI-021 established the product and evaluation extraction workflow. This item is
+the git-native product child of [WI-018](WI-018-follow-on-public-agent-research.md); its written
+requirements and acceptance criteria are now the execution contract.
 
 ## Plan
 
