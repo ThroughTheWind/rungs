@@ -2,7 +2,7 @@
 id: WI-019
 title: Define methods for the follow-on public-agent research
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-019-follow-on-research-method
 created: 2026-08-15
 updated: 2026-08-15
@@ -80,8 +80,38 @@ extraction may propose corrections, but must record the reason.
 
 ## Execution
 
-Started 2026-08-15 on `feature/WI-019-follow-on-research-method`.
+Completed 2026-08-15 on `feature/WI-019-follow-on-research-method`.
+
+- Created [`research/follow-on/`](../../research/follow-on/README.md) as a third corpus location,
+  leaving the fixed six-framework corpus unchanged.
+- Defined one [shared comparison spine](../../research/follow-on/SHARED-SPINE.md) and separate
+  [product](../../research/follow-on/PRODUCT-TEMPLATE.md),
+  [evaluation](../../research/follow-on/EVALUATION-TEMPLATE.md), and
+  [protocol](../../research/follow-on/PROTOCOL-TEMPLATE.md) addenda.
+- Made claim authority explicit through Normative, Implemented, Executed, Measured, Documented,
+  and Opinion labels, including a cross-track rule that admits analogy and non-commensurability.
+- Exercised each template against one accepted selection question without reading the source or
+  creating premature findings; the fit checks are recorded in the follow-on index.
+- Validation: `node src/cli.ts check` — 20 pass, 0 fail; site `npm run build` — 79 routes; site
+  `npm run check` — 0 Astro diagnostics and 779 internal links, 0 broken.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** The shared spine exists, and all three track templates name the evidence labels they
+   admit and the subjects that consume them.
+2. **Pass.** Every track composes with the shared Snapshot and counter-evidence sections, which
+   require a full SHA, licence, read date, included/excluded scope, measurement commands, explicit
+   evidence labels, and the strongest falsifying result.
+3. **Pass.** The protocol authority table separates normative requirements, negotiated optional
+   capabilities, reference implementation behaviour, and application policy; requirement levels
+   and independent pins are mandatory.
+4. **Pass.** The evaluation contract has distinct required rows for task/sample, execution
+   environment/tools, evidence log, scorer, aggregation/uncertainty, and optimizer feedback, with a
+   reasoned not-applicable route for evaluation-only subjects.
+5. **Pass.** The product continuity matrix keeps conversation history, recovery state, documentary
+   intent, repository state, and agent-managed long-term memory separate and requires traced
+   write/read and retention boundaries.
+6. **Pass.** Repository gates, site build, Astro diagnostics, and internal-link validation all pass
+   with the counts recorded above.

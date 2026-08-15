@@ -10,13 +10,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs | `feature/WI-019-follow-on-research-method` |
+| — | | | |
 
 ## Review
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs | `feature/WI-019-follow-on-research-method` |
 
 ## Planned
 
