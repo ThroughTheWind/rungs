@@ -3,7 +3,7 @@ id: WI-029
 title: Apply framework-derived patterns to shipped modules
 type: docs
 status: planned
-branch:
+branch: feature/WI-029-apply-framework-patterns
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-017]
@@ -77,7 +77,32 @@ requirements, create child items and keep this item as their decision/coordinati
 
 ## Execution
 
-Not started.
+`in_progress` — 2026-08-15. The implementation boundary is the generated repository contract:
+instructions, workflows, skills, and session guidance may change; no product runtime, sandbox,
+transport, or model-provider capability is added.
+
+### Concern table
+
+| Admitted or strengthened pattern | Disposition | Exact target file set | Version / upgrade consequence |
+| --- | --- | --- | --- |
+| `isolation-boundary-declaration` | Update | `modules/instructions/module.toml`, `modules/instructions/fragments/AGENTS.md` | Bump instructions `1.0.0` → `1.1.0`; existing installs receive the fragment on `rungs upgrade`. |
+| `bounded-agent-loop` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/bounded-invocation.md`, `modules/workflows/skills/decompose/SKILL.md`, `modules/workflows/fragments/AGENTS.md` | Bump workflows `1.0.0` → `1.1.0`; new rule and skill text are emitted by `rungs upgrade`. |
+| `agent-facing-interface` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md`, `modules/workflows/skills/decompose/SKILL.md`, `modules/skills/module.toml`, `modules/skills/rules/skill-authoring.md`, `modules/skills/fragments/AGENTS.md` | Bump workflows and skills to `1.1.0`; generated guidance changes on upgrade. |
+| `ownership-changing-handoff` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md` | Workflows `1.1.0`; no CLI surface change. |
+| `protocol-with-escape-hatch` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md` | Workflows `1.1.0`; review-only guidance is emitted on upgrade. |
+| `resumable-approval-state` + `approval-bound-to-request` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md` | Workflows `1.1.0`; review-only guidance is emitted on upgrade. |
+| `explicit-output-designation` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md`, `modules/skills/rules/skill-authoring.md` | Workflows and skills `1.1.0`; generated authoring guidance changes on upgrade. |
+| `skill-neighbours` (strengthened with ownership/return semantics) | Update | `modules/skills/module.toml`, `modules/skills/rules/skill-authoring.md`, `modules/skills/fragments/AGENTS.md` | Skills `1.1.0`; no new invocation mechanism. |
+| `prompt-writes-artifact` (strengthened with status/recovery contract) | Update | `modules/skills/rules/skill-authoring.md`, `modules/workflows/skills/decompose/SKILL.md` | Skills/workflows `1.1.0`; existing generated files are refreshed by `rungs upgrade`. |
+| `session-handoff` (narrowed to narrative continuity) + `event-stream-not-audit-log` | Update | `modules/session/module.toml`, `modules/session/fragments/AGENTS.md`, `modules/session/skills/close-session/SKILL.md` | Bump session `1.0.0` → `1.1.0`; session template/skill are refreshed by `rungs upgrade`. |
+| `replay-safe-side-effect` | Catalogue-only | None; remains a rung-3 research candidate in `frameworks/synthesis.md` | Workflows is a rung-2 module; implementing durable replay semantics would require a separate version/profile decision. |
+| `typed-output-gate`, `structural-gates` comparison | Catalogue-only | None; generic gates cannot validate domain-specific output types | No module change; avoid claiming a capability the gate engine cannot enforce. |
+| `contract-test-base`, `deterministic-model-substitution` | Catalogue-only | None; `testing` module was intentionally dropped from the catalogue | No module change; language-specific test harnesses remain downstream concerns. |
+| `worktree-lifecycle`, `narrowest-anchor-loop`, `scope-discipline` | Leave as-is / catalogue mapping | Existing concurrency/instructions definitions or non-commensurable analogy | No version change; existing shipped definitions already cover the repository-level expression. |
+| Product-only durable-superstep, event-log-plus-live-tail, run-control-surface, shared-workspace-subagents | Out of scope | None | No installed capability or CLI change. |
+
+The module versions above are the pre-edit versions. Each changed manifest and fragment will carry
+matching provenance before the review status is recorded.
 
 ## Review
 
