@@ -150,11 +150,18 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   // that already had a backlog would have created a second one beside it —
   // `docs/backlog/` next to `docs/.ai/backlog/` — which is the "two places to
   // look" failure this whole tool is against, arriving through the installer.
+  //
+  // Values arrive already split from their flag, in either spelling. A malformed
+  // key is refused rather than skipped: `--set root=x` used to be dropped in
+  // silence, so the install proceeded with the default and looked successful.
   const overrides: Record<string, Record<string, unknown>> = {};
-  for (const raw of rest.filter((r) => r.startsWith('--set='))) {
-    const [key, ...rhs] = raw.slice('--set='.length).split('=');
+  for (const raw of flagValues['--set'] ?? []) {
+    const [key, ...rhs] = raw.split('=');
     const [modName, param] = key.split('.');
-    if (!modName || !param) continue;
+    if (!modName || !param || !rhs.length) {
+      console.log(c.red(`\n  --set expects module.param=value, got: ${raw}\n`));
+      return 1;
+    }
     (overrides[modName] ??= {})[param] = rhs.join('=');
   }
   const params = resolveParams(mods, overrides, root);
@@ -360,16 +367,75 @@ function cmdEject(root: string, dryRun: boolean) {
   return 0;
 }
 
+/**
+ * Flags that carry a value, and therefore consume the token after them unless it is attached with
+ * `=`. Everything else is a bare switch.
+ *
+ * This exists because the split below used to be two filters — `startsWith('--')` into flags,
+ * everything else into positionals — which has no concept of a value. `--set backlog.root=x` then
+ * left `backlog.root=x` sitting in the positionals, `--into` took the last positional as its
+ * target, and the user's actual path was reported back to them as an unknown module. Both
+ * spellings now work, and the value never reaches `args` (WI-002).
+ */
+const VALUE_FLAGS = new Set(['--set']);
+
 const [, , cmd, ...rest] = process.argv;
-const flags = new Set(rest.filter((r) => r.startsWith('--')));
-const args = rest.filter((r) => !r.startsWith('--'));
-//  carries a value, so it is neither a bare flag nor a positional.
+
+const flags = new Set<string>();
+const args: string[] = [];
+const flagValues: Record<string, string[]> = {};
+/** A value-flag left without a value. Reported by the command, so `--help` still works. */
+let missingValue: string | null = null;
+
+for (let i = 0; i < rest.length; i++) {
+  const token = rest[i];
+  if (!token.startsWith('--')) {
+    args.push(token);
+    continue;
+  }
+  const eq = token.indexOf('=');
+  const name = eq === -1 ? token : token.slice(0, eq);
+  if (!VALUE_FLAGS.has(name)) {
+    // The bare name, not the raw token, so `--copilot=yes` still answers `flags.has('--copilot')`.
+    flags.add(name);
+    continue;
+  }
+  // Attached form first; otherwise the next token, unless that is itself a flag — `--set --dry-run`
+  // is a missing value, not a value of `--dry-run`.
+  const next = rest[i + 1];
+  const value = eq === -1 ? (next === undefined || next.startsWith('--') ? undefined : rest[++i]) : token.slice(eq + 1);
+  if (value === undefined) missingValue = name;
+  else (flagValues[name] ??= []).push(value);
+}
+
+/**
+ * A positional shaped like `module.param=value` was meant to be an override and was not claimed by
+ * `--set`. No path, module, profile or tier has that shape, so it is unambiguously a mistake —
+ * refuse it by name rather than letting a command interpret it as something else.
+ */
+const strayOverride = args.find((a) => /^[a-z][a-z0-9_-]*\.[a-z][a-z0-9_]*=/.test(a));
+
 // Dates come from the caller, never from inside a render: a timestamp baked
 // into generated output makes every run a diff.
 const STAMP = process.env.RUNGS_DATE ?? new Date().toISOString().slice(0, 10);
 const HARNESSES: Harness[] = flags.has('--copilot')
   ? ['claude', 'copilot', 'agents-md']
   : (['claude', 'agents-md'] as Harness[]);
+
+// Both refusals run before dispatch, because either one means the argv the user typed is not the
+// argv any command would act on. Silently proceeding is what made the original failure so opaque.
+if (missingValue) {
+  console.log(c.red(`\n  ${missingValue} expects a value — ${missingValue} module.param=value\n`));
+  process.exit(1);
+}
+if (strayOverride) {
+  console.log(
+    c.red(`\n  stray override: ${strayOverride}`) +
+      c.dim(`\n  Nothing claimed it, so it would be read as a path or a module name.`) +
+      c.dim(`\n  Did you mean: --set ${strayOverride}\n`),
+  );
+  process.exit(1);
+}
 
 switch (cmd) {
   case 'modules':

@@ -2,8 +2,8 @@
 id: WI-002
 title: Accept --set k=v, and refuse an unparsed positional instead of silently retargeting
 type: chore
-status: proposed
-branch:
+status: done
+branch: feature/WI-002-set-flag-parsing
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-001, WI-004, WI-006]
@@ -14,8 +14,9 @@ children: []
 ## Proposal (rationale)
 
 `--set` is the only way to place a module anywhere but its default path, and the only way to fix
-the blank `project_name` (WI-001). It parses **one** form. The other form fails silently, corrupts
-an unrelated argument, and exits 0.
+the blank `project_name` (WI-001). It parses **one** form. The other form fails silently and
+corrupts an unrelated argument. *(As opened, this sentence also claimed the failure exits 0 — see
+the correction below.)*
 
 `cmdAdd` reads overrides with `rest.filter((r) => r.startsWith('--set='))`
 ([`src/cli.ts:154`](../../../src/cli.ts)), so `--set` and its value separated by a space is never
@@ -84,19 +85,22 @@ survive: the flag still parses one spelling of two, and `--into` still absorbs w
 ### Approach
 
 Parse value-carrying flags **once, at the top level**, instead of having `cmdAdd` re-scan `rest` for
-a prefix. A single `VALUE_FLAGS` set (`--set`, `--into`) drives one pass that pairs each such flag
-with its value — from `=` when attached, otherwise from the next token — and removes both from the
-positionals. `cmdAdd` then reads resolved values rather than re-deriving them.
+a `--set=` prefix. A `VALUE_FLAGS` set — `--set` alone today — drives one pass that pairs each such
+flag with its value, from `=` when attached and otherwise from the next token, and removes **both**
+from the positionals. `cmdAdd` reads resolved values rather than re-deriving them.
 
-That fixes both defects with one change, because the reason `--into` absorbed the orphan is that the
-orphan was never claimed by `--set`. It also makes `--into` a conventional flag-with-value, which
-WI-002's proposal listed as a possible follow-up: it becomes free here rather than a separate
-change, and **the last-positional behaviour is retained as a fallback** so documented invocations
-keep working.
+**`--into` is not touched.** The first draft of this plan made it a flag-with-value in the same
+change, which contradicted this item's own Out of scope. Re-tested and unnecessary: `--into`
+misbehaves only because `--set` leaves an orphan for it to absorb. Once the orphan cannot exist,
+last-positional resolution is correct as written and as the README documents it. The smaller change
+is also the one that keeps the boundary.
 
-Considered and rejected: **accepting `--set k=v` inside `cmdAdd` only.** It is three lines, but it
-leaves the top-level splitter still producing a stray positional for every other value-carrying flag
-added later — the same trap, re-armed.
+A `k=v`-shaped positional that survives the pass is then unambiguously a mistake — no flag claimed
+it — so `cmdAdd` refuses it by name instead of treating it as a module or a path.
+
+Considered and rejected: **accepting `--set k=v` inside `cmdAdd` only.** Three lines, but it leaves
+the top-level splitter producing a stray positional for the next value-carrying flag anyone adds —
+the same trap, re-armed one flag along.
 
 ### Acceptance criteria / tests
 
@@ -121,8 +125,50 @@ added later — the same trap, re-armed.
 
 ## Execution
 
-*Not started.*
+Branch `feature/WI-002-set-flag-parsing`, cut from `main` 2026-08-15. All in
+[`src/cli.ts`](../../../src/cli.ts); no other file changed.
+
+- `VALUE_FLAGS` plus a single left-to-right pass replacing the two `startsWith('--')` filters. A
+  value-carrying flag takes its value from `=` when attached, otherwise from the next token — and
+  **not** if that token is itself a flag, so `--set --dry-run` is a missing value rather than a
+  value of `--dry-run`.
+- `flags` now stores the bare name, so `--copilot=yes` answers `flags.has('--copilot')`. Previously
+  the raw token went in and an attached value made the flag invisible.
+- `strayOverride` refuses a leftover positional matching `module.param=`. Both refusals run before
+  dispatch: either one means the argv the user typed is not the argv any command would act on.
+- `cmdAdd` reads `flagValues['--set']` instead of re-scanning `rest`.
+
+**Deviation from the plan, resolved in the plan rather than in the code:** the first draft made
+`--into` a flag-with-value in the same change, which this item's own Out of scope had reserved for a
+separate item. Re-tested and found unnecessary — `--into` misbehaves only because `--set` left an
+orphan for it to absorb — so `--into` is untouched and the plan was rewritten before any code was
+written. Recorded because the plan is what the next reader audits.
+
+**Scope taken deliberately, beyond the two defects:** a malformed `--set` key (`--set root=x`, no
+module prefix) was previously `continue`d in silence, so the install proceeded on defaults and
+looked successful. It is now refused. This is the same failure class as the item — an override the
+user asked for and did not get, without being told — and fixing it separately would have meant
+touching the same eight lines twice.
+
+**F-001 recurred**, as predicted: 19 pass · 1 fail between `git switch -c` and the first commit,
+`backlog-merged-status` on a branch whose tip was still `main`'s. Second occurrence in two items.
+Not fixed here; the finding stands and now has two data points.
 
 ## Review
 
-*Not started.*
+Each acceptance criterion, checked 2026-08-15. Exit codes measured **unpiped**, redirecting to a
+file — the mistake the Proposal's correction records.
+
+1. **Pass.** `--set backlog.root=mywork` reports `set backlog.root = mywork` and targets `…/a`. The
+   path is no longer read as a module name.
+2. **Pass.** `--set=backlog.root=mywork` produces identical output against `…/b`.
+3. **Pass.** `--set` with no value → exit 1, *"--set expects a value — --set module.param=value"*.
+4. **Pass.** A bare `backlog.root=mywork` positional → exit 1, naming the token and suggesting
+   `--set backlog.root=mywork`.
+5. **Pass.** `add instructions --into …/c` with no `--set` → exit 0, `AGENTS.md` written, heading
+   `# AGENTS.md — c` (WI-001's derivation still working through the new parser).
+6. **Pass.** `init …/d tracked` → exit 0, 25 files. `rungs check` → 20 pass, 0 fail once the branch
+   carried a commit; 19/1 before it, which was F-001 and is recorded above rather than assumed away.
+7. **Pass.** Every exit code above was captured without a pipeline.
+
+Additionally verified beyond the criteria: `--set root=x` → exit 1 rather than a silent default.
