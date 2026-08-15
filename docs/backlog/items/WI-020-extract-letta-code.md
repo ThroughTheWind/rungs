@@ -2,8 +2,8 @@
 id: WI-020
 title: Extract Letta Code — durable memory, identity, and continual learning
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-020-extract-letta-code
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-017, WI-019, WI-028]
@@ -80,7 +80,7 @@ practice with its documented reason when the source establishes one.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-020-extract-letta-code`.
 
 ## Review
 

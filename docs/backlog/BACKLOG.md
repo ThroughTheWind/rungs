@@ -10,7 +10,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-020](items/WI-020-extract-letta-code.md) | Extract Letta Code — durable memory, identity, and continual learning | docs | `feature/WI-020-extract-letta-code` |
 
 ## Review
 
@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-020](items/WI-020-extract-letta-code.md) | Extract Letta Code — durable memory, identity, and continual learning | docs |
 
 ## Accepted
 
