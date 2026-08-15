@@ -2,7 +2,7 @@
 id: WI-002
 title: Accept --set k=v, and refuse an unparsed positional instead of silently retargeting
 type: chore
-status: review
+status: done
 branch: feature/WI-002-set-flag-parsing
 created: 2026-08-15
 updated: 2026-08-15
@@ -14,8 +14,9 @@ children: []
 ## Proposal (rationale)
 
 `--set` is the only way to place a module anywhere but its default path, and the only way to fix
-the blank `project_name` (WI-001). It parses **one** form. The other form fails silently, corrupts
-an unrelated argument, and exits 0.
+the blank `project_name` (WI-001). It parses **one** form. The other form fails silently and
+corrupts an unrelated argument. *(As opened, this sentence also claimed the failure exits 0 — see
+the correction below.)*
 
 `cmdAdd` reads overrides with `rest.filter((r) => r.startsWith('--set='))`
 ([`src/cli.ts:154`](../../../src/cli.ts)), so `--set` and its value separated by a space is never
