@@ -1,6 +1,6 @@
 [module]
 name    = "findings"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 1
 summary = "A register for what is noticed before it is decided, with a triage path into work items."
 
@@ -44,6 +44,14 @@ why    = """
 A finding closed without a written reason is indistinguishable from one nobody looked at, and it
 is the same observation the next session will record again. The reason is what the register is for.
 """
+
+[[gates]]
+id     = "findings-self-declared-closure"
+kind   = "declared"
+engine = "self-declared-closure"
+table  = "gates/findings.toml"
+tier   = "fast"
+why    = "An open finding whose own detail says it is fixed contradicts the register; this narrow text check catches drift without pretending to prove code-level closure."
 
 # ── skills ────────────────────────────────────────────────────────────────────
 

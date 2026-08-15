@@ -168,6 +168,7 @@ const tableKey = (engine: string) =>
     'id-integrity': '__whole__',
     'render-freshness': 'render_freshness',
     'register-schema': 'register_schema',
+    'self-declared-closure': 'self_declared_closure',
     'filename-schema': 'filename_schema',
     'cross-reference': 'cross_reference',
     'git-status-reconcile': 'merged_status',
