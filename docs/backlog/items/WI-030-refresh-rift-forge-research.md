@@ -3,7 +3,7 @@ id: WI-030
 title: Refresh Rift Forge research from the candidate branch
 type: docs
 status: planned
-branch:
+branch: feature/WI-030-refresh-rift-forge-research
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-017, WI-029]
@@ -85,7 +85,15 @@ candidate ref as the authority and record the divergence rather than blending th
 
 ## Execution
 
-Not started.
+`in_progress` — 2026-08-15. Candidate anchor established before editing:
+
+- Local `candidate/0.1.0` is `4a51848cfc9a2acbcdeddcd028418572406e2950`, 3,585 commits, dated
+  2026-08-15, with tip `Merge WI-790: route coverage rows to live owners`.
+- `origin/candidate/0.1.0` is the older `159f9f030c32df6828c16b3637ae572513d34d4e` (3,262
+  commits). The requested local candidate is authoritative; the remote-tracking divergence is
+  recorded rather than blended.
+- The existing source checkout is detached at `472d45ed`; research will use a temporary worktree at
+  the candidate ref and will not switch or mutate that checkout.
 
 ## Review
 
