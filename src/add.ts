@@ -262,7 +262,14 @@ export function writeInstallRecord(
   wroteByModule?: Map<string, Set<string>>,
 ) {
   const lines = [
-    '# Installed by `rungs`. Edit parameters here and re-run `rungs render`.',
+    '# Installed by `rungs`. This is a record of what was written, not a control panel:',
+    '# editing a parameter here does not rewrite a file that already exists. `rungs render`',
+    '# re-emits path-scoped rules from `.ai/rules/`, and `rungs upgrade --apply` replaces',
+    '# module files you have not edited — neither re-substitutes parameters. AGENTS.md,',
+    '# CLAUDE.md, .gitignore, .gitattributes and .ai/gates.toml are shared between modules,',
+    '# so only their `rungs:begin`/`rungs:end` blocks are ever updated; anything outside a',
+    '# block, including the entry document\'s title, is yours to edit directly.',
+    '#',
     '# Hashes are what rungs emitted; a file whose hash no longer matches is a',
     '# divergence rungs reports and never overwrites.',
     '',

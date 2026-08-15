@@ -2,8 +2,8 @@
 id: WI-003
 title: Stop .ai/rungs.toml instructing a fix that rungs render cannot perform
 type: chore
-status: proposed
-branch:
+status: done
+branch: feature/WI-003-render-honest
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-001, WI-002]
@@ -113,8 +113,38 @@ same experiment. Saying where they still apply is what stops it.
 
 ## Execution
 
-*Not started.*
+Branch `feature/WI-003-render-honest`, cut from `main` 2026-08-15.
+
+- [`src/add.ts`](../../../src/add.ts) `writeRecord` — the header now says the file is a record of
+  what was written, not a control panel; names `render` and `upgrade --apply` with what each does;
+  and states that the five co-owned files are updated block-by-block only, so anything outside a
+  block — including the entry document's title — is the user's to edit directly.
+- [`src/cli.ts`](../../../src/cli.ts) `cmdRender` — the zero case says what it did **not** do. That
+  is the exact output a user gets after following the old instruction, so a bare
+  `0 rendering(s)` was the sentence completing the deception.
+
+No behaviour changed. Nothing new is written, moved, or overwritten.
+
+**F-001 recurred**, third occurrence in three items: 19 pass · 1 fail on
+`backlog-merged-status` before the branch carried a commit. The finding now has three data points
+and is unambiguously systematic rather than incidental.
 
 ## Review
 
-*Not started.*
+Checked 2026-08-15.
+
+1. **Pass.** A fresh `minimal` install's header makes no claim that editing a parameter and running
+   `render` changes anything; it states the opposite in its second line.
+2. **Pass.** The five files are named together with the reason — shared between modules, so only
+   their `rungs:begin`/`rungs:end` blocks are updated — rather than as a list to be taken on trust.
+3. **Pass.** `render` on a repo with no rules prints *"Nothing to render."* and two lines saying it
+   does not re-substitute parameters. Verified against the exact reproduction from the Proposal:
+   change `project_name`, run `render`, and the output now explains the unchanged file.
+4. **Pass with a corrected number.** `rungs check` → 20 pass, 0 fail once the branch carried a
+   commit. `render` on this repo emits **4** renderings, not the 3 this criterion predicted — the
+   figure was written from memory rather than measured, and the criterion is recorded here as
+   failed-as-written and passed-as-measured rather than quietly adjusted. Nothing regressed; 4 is
+   what it emitted before this change too.
+5. **Pass.** The Approach's table reproduces: after changing `project_name`, `render` emits nothing
+   and `upgrade --apply` reports `0 to update · 0 diverged`, with the entry document unchanged by
+   both — which is now what the tool says will happen.
