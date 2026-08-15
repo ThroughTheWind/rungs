@@ -2,7 +2,7 @@
 id: WI-020
 title: Extract Letta Code — durable memory, identity, and continual learning
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -28,8 +28,8 @@ expected. The extraction must trace the implementation and record any mismatch.
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the durable-memory child of
-[WI-018](WI-018-follow-on-public-agent-research.md), after the method in WI-019.
+`accepted` — 2026-08-15. The follow-on method in WI-019 is complete and the user directed the
+research to continue. This is the first durable/local-product extraction under WI-018.
 
 ## Plan
 
