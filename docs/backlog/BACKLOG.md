@@ -32,21 +32,35 @@ The board. One row per live work item, grouped by status. Items live in
 
 ## Proposed
 
-All seven opened 2026-08-15 from one assessment: the path a first user walks, from
-`npx @rungs/cli doctor` to their first work item. Each was reproduced by running the tool, and each
-names its evidence. Accepted as a set on 2026-08-15 and being worked in id order, which also
-satisfies the one sequencing constraint — WI-006 sits behind WI-002.
-
-**Done:** [WI-001](items/WI-001-infer-project-name.md) ·
-[WI-002](items/WI-002-set-flag-parsing.md) ·
-[WI-003](items/WI-003-render-reports-what-it-cannot-reemit.md).
-
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-004](items/WI-004-help-completeness.md) | Reconcile `rungs --help` with the README's command table | docs |
-| [WI-005](items/WI-005-doctor-next-step.md) | End `doctor` with a recommended next command | feature |
-| [WI-006](items/WI-006-parameter-reference.md) | A parameter reference, generated from the manifests | docs |
-| [WI-007](items/WI-007-first-hour-guide.md) | A first-hour guide — the surface between install and the first work item | docs |
+| — | *nothing proposed* | |
+
+---
+
+## The first-user path — WI-001…007, closed 2026-08-15
+
+Opened from one assessment of what a person meets between `npx @rungs/cli doctor` and their first
+work item, worked in id order, all merged. Each was reproduced by running the tool before it was
+opened and re-verified before it was closed.
+
+| Id | What it fixed |
+| --- | --- |
+| [WI-001](items/WI-001-infer-project-name.md) | Every scaffold's entry document opened `# AGENTS.md — ` with a dangling dash. The default now states its own derivation |
+| [WI-002](items/WI-002-set-flag-parsing.md) | `--set k=v` silently became a positional and `--into` ate it, reporting the user's path as an unknown module |
+| [WI-003](items/WI-003-render-reports-what-it-cannot-reemit.md) | `.ai/rungs.toml` told every scaffolded repo to do something no command performs |
+| [WI-004](items/WI-004-help-completeness.md) | `--help` omitted a real command and three real flags, and exited 1 |
+| [WI-005](items/WI-005-doctor-next-step.md) | The advertised entry point ended on fifteen `absent` lines with nothing to do next |
+| [WI-006](items/WI-006-parameter-reference.md) | 43 parameters documented nowhere; now rendered from the manifests by `rungs modules --params` |
+| [WI-007](items/WI-007-first-hour-guide.md) | No page addressed the reader holding a fresh scaffold |
+
+Three of the items corrected a measurement in their own proposal during execution — an exit code
+read from a pipeline, a count read from a truncated `head`, a link count taken on memory. Those
+corrections are in the items, marked, rather than amended away.
+
+Five findings were opened rather than folded in: F-001 (the merged-status gate fires on a
+commitless branch, hit on four of seven items) and F-005 (`gates-links-resolve` passes on a broken
+relative link) are the two worth acting on next. See [FINDINGS.md](FINDINGS.md).
 
 ## Deferred
 
