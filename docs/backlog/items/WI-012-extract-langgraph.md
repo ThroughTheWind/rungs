@@ -2,7 +2,7 @@
 id: WI-012
 title: Extract LangGraph — state, checkpoints, and long-running workflows
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-012-extract-langgraph
 created: 2026-08-15
 updated: 2026-08-15
@@ -100,6 +100,26 @@ read that says so is evidence; one that does not is a claim about the whole repo
 
 Branch `feature/WI-012-extract-langgraph`, cut from `main` 2026-08-15.
 
+- Confirmed the canonical source as `langchain-ai/langgraph`, cloned it outside this repository,
+  and pinned the clean checkout at `644815f9e5bc52ad8f7a5227a456227e9c3e639b`.
+- Bounded the implementation read to the Python `StateGraph` compiler, Pregel runtime and loop,
+  checkpoint base and in-memory saver, interrupt/command types, and nested-interrupt/callback tests.
+- Added [`langgraph.md`](../../research/frameworks/langgraph.md) and promoted the frameworks index
+  row from proposal to pinned extraction.
+- Verified with `node src/cli.ts check` (20 pass), then `npm run build` and `npm run check` under
+  `site/` (57 routes, 505 internal links, 0 broken; 0 Astro diagnostics).
+
 ## Review
 
-Not started.
+Acceptance criteria reviewed 2026-08-15:
+
+1. Pass — all eight fixed sections are present; the Snapshot records repository, full SHA,
+   licence, date, four reproducible commands, and the bounded read surface.
+2. Pass — section 3 answers checkpoint contents, runtime-owned superstep boundary, resume replay
+   and side-effect exposure, and the durable interrupt state with pinned file/test evidence.
+3. Pass — section 7 names state modelling, identity, saver operation, durability, superstep, and
+   replay-safe-side-effect costs.
+4. Pass — section 3 explicitly judges checkpointing and documentary handoff as overlapping but
+   different continuity problems, marked **Opinion.**
+5. Pass — every count is the result of a stated `git ls-files` PowerShell command at the pin.
+6. Pass — repository gates and the complete site build/check suite pass as recorded above.

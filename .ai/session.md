@@ -12,17 +12,18 @@ WI-011 validated the fixed template; WI-012 now tests it against durable graph e
 
 ## In progress
 
-WI-012 — pin and inspect LangGraph, then write `docs/research/frameworks/langgraph.md`.
+WI-012 — review the completed LangGraph extraction and integrate it before starting WI-013.
 
 ## Resume from
 
-Confirm LangGraph's canonical repository, clone it outside this repo, and record the pinned SHA and
-bounded read surface.
+The LangGraph extraction is complete on `feature/WI-012-extract-langgraph`; repository gates and the
+site suite pass. Commit the review state, mark the item done, merge it to `main`, and delete the
+branch.
 
 ## Up next
 
-1. Execute WI-012 for LangGraph state, checkpoints, and long-running workflows.
-2. Continue the remaining extraction children in numeric order.
+1. Integrate WI-012.
+2. Execute WI-013 for the OpenAI Agents SDK, then continue the remaining children in numeric order.
 
 ## Active constraints — do not reopen
 
@@ -45,7 +46,8 @@ bounded read surface.
 <!-- Things believed true and not verified this session. Being wrong here is normal; the value is
      that the next session knows which claims to distrust first. -->
 
-- The eight proposed template sections are sufficient until WI-011 tests them against SWE-agent.
+- The eight-section template was validated by WI-011 and remains sufficient after the materially
+  different LangGraph state/persistence extraction.
 
 ## Open questions
 
