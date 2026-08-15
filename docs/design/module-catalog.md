@@ -174,7 +174,7 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 - **params:** `id_prefix` (default `F`) · `path` (default `docs/{{backlog.root}}/FINDINGS.md`)
 - **files:** the register + its README
 - **skills:** `record-finding` — record, and triage (promote · fix · dismiss **with a reason**)
-- **gates:** `findings-ids` (declared) · `dismissed-has-reason` (declared) ·
+- **gates:** `findings-ids` (declared) · `findings-disposition-has-reason` (declared) ·
   `self-declared-closure` (declared — an open detail section cannot declare its own finding fixed)
 - **cost:** near-zero per finding — that is the point
 - **implements:** `findings-log` `record-without-derailing` `finding-promotion` `audit-to-register`
