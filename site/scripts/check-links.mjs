@@ -50,6 +50,13 @@ for (const file of files) {
   for (const m of html.matchAll(/href="(\/[^"]*)"/g)) {
     if (m[1].startsWith("/_astro/")) continue; // build assets, not routes
     const [path, hash] = m[1].split("#");
+    // A static file copied from public/ — favicons, robots.txt — is a real target but not a
+    // route, so it would otherwise read as broken. Still checked: the file has to be in dist.
+    if (/\.[a-z0-9]+$/i.test(path)) {
+      checked++;
+      if (!existsSync(join(DIST, path))) broken.push(`${relative(DIST, file)} → ${m[1]}  (no such file in dist/)`);
+      continue;
+    }
     checked++;
     const target = norm(path);
     if (!routes.has(target)) broken.push(`${relative(DIST, file)} → ${m[1]}  (no such route)`);

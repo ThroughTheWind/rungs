@@ -1,5 +1,8 @@
 ---
 import "../design-system/styles.css";
+// The bar mark, inline rather than an <img>: it is drawn in `currentColor`, so one file serves
+// both themes and both placements. Vendored from the design system — never edited here.
+import logoSvg from "../design-system/assets/logo.svg?raw";
 import { SITE, NAV } from "../site.config";
 
 interface Props {
@@ -32,8 +35,15 @@ const canonical = new URL(here, origin);
     <link rel="canonical" href={canonical} />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
 
-    {/* No image: the repo ships no logo and ADR-0006's mark is the name set in type. A generated
-        OG card would be an asset nobody designed, so the tags stay text-only. */}
+    {/* Icons are generated from the design system's `assets/logo.svg` by `npm run vendor`; the
+        .ico carries its own paper ground because a tab icon cannot follow the page theme. */}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    {/* Still no og:image. The design system now ships a mark (2026-08-15), but a 1200×630 share
+        card is a composition nobody has drawn — cropping the mark into one would be an asset
+        invented here, not extracted. Text-only tags until that card exists. */}
     <meta property="og:type" content={here === "/" ? "website" : "article"} />
     <meta property="og:site_name" content={SITE.name} />
     <meta property="og:title" content={title} />
@@ -59,7 +69,9 @@ const canonical = new URL(here, origin);
 
     <nav class="nav">
       <div class="nav-in" style={`max-width:${width}px`}>
-        <a class="wordmark" href="/">rungs</a>
+        <a class="wordmark" href="/" aria-label={`${SITE.name} — home`}>
+          <span class="mark" aria-hidden="true" set:html={logoSvg} />rungs
+        </a>
         {
           NAV.map((item) => (
             <a
@@ -89,7 +101,7 @@ const canonical = new URL(here, origin);
         {SITE.phase.detail}<br />
         {SITE.openTrigger}
       </div>
-      <div class="foot-mark">rungs</div>
+      <div class="foot-mark"><span class="mark" aria-hidden="true" set:html={logoSvg} />rungs</div>
     </footer>
 
     <script is:inline>
@@ -157,6 +169,21 @@ const canonical = new URL(here, origin);
         text-decoration: none;
         padding: 14px 12px 14px 0;
         margin-right: 8px;
+        display: inline-flex;
+        align-items: center;
+        /* Brand clear space: ≥ one bottom bar, which is 6 of the mark's 32 units. */
+        gap: 9px;
+      }
+      /* The mark is injected with `set:html`, so Astro's scoping never lands on the <svg> itself
+         — `:global()` here is required, not a shortcut. `fill="currentColor"` does the theming. */
+      .mark {
+        display: block;
+        flex: none;
+      }
+      .wordmark .mark :global(svg) {
+        display: block;
+        width: 20px;
+        height: 20px;
       }
       .nav-link {
         font: 600 12px var(--font-label);
@@ -207,6 +234,14 @@ const canonical = new URL(here, origin);
       .foot-mark {
         font: 700 28px var(--font-display);
         color: var(--ink);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .foot-mark .mark :global(svg) {
+        display: block;
+        width: 28px;
+        height: 28px;
       }
       @media (max-width: 560px) {
         .nav-status {
