@@ -70,19 +70,19 @@ gate   = "gates-links-resolve"
 expect = "pass"
 input  = "See [this table](./structural.toml)."
 
-# WI-008. A `{{token}}` used to exempt the whole file, so a document explaining templating stopped
+# WI-008. A `${{token}}` used to exempt the whole file, so a document explaining templating stopped
 # being link-checked entirely — 16 files here, eight of them shipped. These two fix the boundary:
 # a broken link is caught even with a token elsewhere in the file, and a link that is *itself* a
 # template is not.
 [[self_test]]
 gate   = "gates-links-resolve"
 expect = "fail"
-input  = "Set `{{repo.dirname}}` first, then see [the plan](./does-not-exist.md)."
+input  = "Set `${{repo.dirname}}` first, then see [the plan](./does-not-exist.md)."
 
 [[self_test]]
 gate   = "gates-links-resolve"
 expect = "pass"
-input  = "The module writes [its readme]({{path}}/README.md) once installed."
+input  = "The module writes [its readme](${{path}}/README.md) once installed."
 
 [[self_test]]
 gate   = "gates-paths-exist"

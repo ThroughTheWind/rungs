@@ -1,4 +1,4 @@
-<!-- rungs:begin workflows@1.0.0 -->
+<!-- rungs:begin workflows@1.1.0 -->
 ## Planning
 
 Handed something larger than one change? **`/decompose`** — split into technical concerns, decide

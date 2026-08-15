@@ -1,6 +1,6 @@
 [module]
 name    = "workflows"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 2
 summary = "Decision procedures: how to decompose work, whether to reuse or build, and how much planning a piece of work earns."
 
@@ -54,7 +54,7 @@ paths   = ["docs/plans/**/*.md", "docs/**/plan-*.md", "docs/.ai/backlog/plan-*.m
 markers = ["rungs:begin workflows"]
 
 [provenance]
-sources  = ["hexguard-templates", "hexguard", "rift-forge"]
+sources  = ["hexguard-templates", "hexguard", "rift-forge", "swe-agent", "pydantic-ai", "openai-agents-sdk", "microsoft-agent-framework"]
 patterns = [
   "reuse-decision-table",
   "second-consumer-threshold",
@@ -65,6 +65,13 @@ patterns = [
   "phase-checklist",
   "lifecycle-verbs",
   "controlled-performance-comparison",
+  "agent-facing-interface",
+  "bounded-agent-loop",
+  "ownership-changing-handoff",
+  "protocol-with-escape-hatch",
+  "resumable-approval-state",
+  "approval-bound-to-request",
+  "explicit-output-designation",
 ]
 incident = """
 hexguard-templates wrote the best decision procedure in the corpus — a nine-step workflow whose
@@ -72,4 +79,8 @@ tier table is introduced with "Use this table instead of 'use judgment'" — and
 invocation surface at all. Its AGENTS.md prompts table reads, verbatim: "No custom prompts or
 agents defined yet for this repo. This table is a placeholder for future additions." The procedure
 loads only when a matching file is edited, which is after the decisions it governs have been made.
+The framework synthesis adds an invocation contract: bounded work must expose its terminal artifact
+and status, handoffs must name continuation ownership and mutation rights, approval must bind to the
+exact pending request, and small protocols must state their escape hatch rather than imply that the
+repository owns runtime transport or authority.
 """

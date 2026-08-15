@@ -1,4 +1,4 @@
-<!-- rungs:begin skills@1.0.0 -->
+<!-- rungs:begin skills@1.1.0 -->
 ## Skills
 
 Multi-step procedures live in [`{{dir}}/`]({{dir}}/) and load only when used. Authoring rules are

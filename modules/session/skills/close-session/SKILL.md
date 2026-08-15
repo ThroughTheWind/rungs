@@ -13,6 +13,10 @@ description: >-
 The test for everything below: **could a session starting cold tomorrow, with no memory of this
 conversation, pick up from the document alone?** If not, it is not closed.
 
+The handoff is narrative continuity, not a checkpoint, conversation memory, event stream, or audit
+record. An archive can point to evidence, but events and persisted history do not establish actor
+identity, retention, access control, request binding, or decision reasons by themselves.
+
 ## 1. Write the archive note
 
 `{{archive}}/YYYY-MM-DD_session-NN_<what-closed>-and-<what-is-next>.md`. The filename carries both

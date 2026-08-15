@@ -1,7 +1,8 @@
 # Session state
 
 The live handoff. **Rewritten as work moves, not appended to.** Everything here is present tense;
-history belongs in [`{{archive}}/`](archive/README.md).
+history belongs in [`{{archive}}/`](archive/README.md). This is narrative continuity, not a
+checkpoint, event stream, conversation memory, or audit record.
 
 Keep it short. This document is read at the start of every session, and a long one is skimmed.
 

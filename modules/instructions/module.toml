@@ -1,6 +1,6 @@
 [module]
 name    = "instructions"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 0
 summary = "The agent entry point, the harness bridge, path-scoped rule sources, and the render pipeline. The one module every repo installs."
 
@@ -107,7 +107,7 @@ paths   = { claude = ".claude/", copilot = ".github/instructions/", cursor = ".c
 # ── provenance (required, validated) ──────────────────────────────────────────
 
 [provenance]
-sources  = ["axiom-mesh", "hexguard", "hexguard-templates", "rift-forge"]
+sources  = ["axiom-mesh", "hexguard", "hexguard-templates", "rift-forge", "openhands"]
 patterns = [
   "entry-point",
   "agents-md-bridge",
@@ -120,6 +120,7 @@ patterns = [
   "comms-style",
   "shell-editing-rules",
   "instruction-hardening",
+  "isolation-boundary-declaration",
 ]
 incident = """
 All four source repos converged on a single canonical entry document, and all four put content in
@@ -128,4 +129,7 @@ targets was a dead redirect. hexguard-templates' repo map grew five duplicated e
 every session reads first, in the repo whose conventions forbid restating scope. rift-forge reached
 1513 lines with no path scoping at all, while hexguard had solved that with applyTo globs a month
 earlier. Nobody had both completeness and scope.
+OpenHands adds the missing execution boundary: a repository instruction can name the execution unit,
+the filesystem/environment/credential/network crossings, and the controls it does not supply, but
+it cannot install a sandbox or a rollback guarantee.
 """

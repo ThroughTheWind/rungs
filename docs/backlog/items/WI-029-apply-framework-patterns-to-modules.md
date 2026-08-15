@@ -91,6 +91,7 @@ transport, or model-provider capability is added.
 | `ownership-changing-handoff` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md` | Workflows `1.1.0`; no CLI surface change. |
 | `protocol-with-escape-hatch` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md` | Workflows `1.1.0`; review-only guidance is emitted on upgrade. |
 | `resumable-approval-state` + `approval-bound-to-request` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md` | Workflows `1.1.0`; review-only guidance is emitted on upgrade. |
+| `interrupt-as-state` (merged into `resumable-approval-state`) | Update | `modules/workflows/rules/invocation-boundaries.md` | No separate catalogue id or version; stable pending identity and continuation state are part of workflows `1.1.0`. |
 | `explicit-output-designation` | Update | `modules/workflows/module.toml`, `modules/workflows/rules/invocation-boundaries.md`, `modules/skills/rules/skill-authoring.md` | Workflows and skills `1.1.0`; generated authoring guidance changes on upgrade. |
 | `skill-neighbours` (strengthened with ownership/return semantics) | Update | `modules/skills/module.toml`, `modules/skills/rules/skill-authoring.md`, `modules/skills/fragments/AGENTS.md` | Skills `1.1.0`; no new invocation mechanism. |
 | `prompt-writes-artifact` (strengthened with status/recovery contract) | Update | `modules/skills/rules/skill-authoring.md`, `modules/workflows/skills/decompose/SKILL.md` | Skills/workflows `1.1.0`; existing generated files are refreshed by `rungs upgrade`. |
@@ -99,10 +100,32 @@ transport, or model-provider capability is added.
 | `typed-output-gate`, `structural-gates` comparison | Catalogue-only | None; generic gates cannot validate domain-specific output types | No module change; avoid claiming a capability the gate engine cannot enforce. |
 | `contract-test-base`, `deterministic-model-substitution` | Catalogue-only | None; `testing` module was intentionally dropped from the catalogue | No module change; language-specific test harnesses remain downstream concerns. |
 | `worktree-lifecycle`, `narrowest-anchor-loop`, `scope-discipline` | Leave as-is / catalogue mapping | Existing concurrency/instructions definitions or non-commensurable analogy | No version change; existing shipped definitions already cover the repository-level expression. |
+| Existing gates self-test fixture hygiene (`gate-self-test`) | Update | `modules/gates/gates/structural.toml` | No gates version bump; `${{...}}` passthrough keeps the existing self-test intent while satisfying the manifest audit. |
 | Product-only durable-superstep, event-log-plus-live-tail, run-control-surface, shared-workspace-subagents | Out of scope | None | No installed capability or CLI change. |
 
 The module versions above are the pre-edit versions. Each changed manifest and fragment will carry
 matching provenance before the review status is recorded.
+
+### Implementation notes
+
+- `instructions`, `workflows`, `skills`, and `session` are now `1.1.0`; their manifests, fragments,
+  rules, skills, and templates agree on the adopted vocabulary and provenance.
+- The `gates` self-test fixture now uses the repository's `${{...}}` passthrough form, preserving the
+  link-template test while making `rungs modules`' parameter audit clean. The existing gates version
+  remains `1.0.0` because no gate behavior changed.
+- The catalogue records the new pattern-to-module mapping and the deliberately catalogue-only
+  patterns. A temporary `disciplined` scaffold confirmed that the new workflow rules and updated
+  skills render, and its `rungs upgrade` preview reported zero stale or divergent files.
+
+### Verification
+
+- `node src/cli.ts modules` — 15 modules, audit clean.
+- `node src/cli.ts check` — 20 pass, 0 fail, 0 unimplemented, 0 error.
+- `cd site && npm run build` — 88 pages built, 0 broken links; existing duplicate-content-id
+  warnings remain recorded as F-010.
+- `cd site && npm run check` — 0 Astro diagnostics, 1127 internal links, 0 broken.
+- `npm test` — still fails because the repository has no `test/` directory (existing F-002; no
+  test-suite change is in this item).
 
 ## Review
 

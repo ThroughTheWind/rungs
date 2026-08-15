@@ -59,6 +59,14 @@ A skill that only produces conversation evaporates. **Say in the body where the 
 register row, a document at a known path, a status field. This is what makes a skill set compound
 instead of being re-derived every session.
 
+## Make the agent-facing contract explicit
+
+Describe the action shape, the state and observations the agent can see, and the bounded forms of
+empty, truncated, and failed output. Name who owns continuation, what state crosses the skill
+boundary, and what the skill may mutate. Public output is an allow-list of artifacts and statuses;
+internal tool visibility, graph connectivity, and event emission do not make something public by
+accident. If the skill delegates a capability, name the protocol or callback escape hatch.
+
 ## Write standing instructions, not one-time steps
 
 The rendered body enters the conversation once and stays for the session; it is not re-read on

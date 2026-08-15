@@ -1,6 +1,6 @@
 [module]
 name    = "session"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 1
 summary = "A handoff document carrying state between sessions: resume point, active constraints, and a dated archive."
 
@@ -61,12 +61,15 @@ paths = [
 markers = ["rungs:begin session"]
 
 [provenance]
-sources  = ["axiom-mesh"]
-patterns = ["session-handoff", "settled-decisions-lock", "dated-session-archive"]
+sources  = ["axiom-mesh", "microsoft-agent-framework", "openhands"]
+patterns = ["session-handoff", "settled-decisions-lock", "dated-session-archive", "event-stream-not-audit-log"]
 incident = """
 axiom-mesh kept 21 dated handoff notes and a live session document with fixed sections, and its
 resume state is genuinely readable cold — the only repo of the four where a new session can start
 without reconstructing context from git. The section that earns its keep is "Active constraints /
 decisions since last archive", whose wording is a standing instruction not to reopen settled
 questions: "do not reopen helper ownership, topology, host-boundary … unless explicitly re-planned."
+The framework comparison narrows this handoff to narrative continuity: events and persisted history
+may inform an archive, but they are not an audit record without durability, retention, access control,
+actor identity, request binding, and decision reasons.
 """

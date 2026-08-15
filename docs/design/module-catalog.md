@@ -91,6 +91,8 @@ entire output surface.
 
 **Authored 2026-08-14 — [`modules/instructions/`](../../modules/instructions/).**
 
+**Current version: `1.1.0`.**
+
 - **params:** `harnesses` (list: `claude`, `copilot`, `cursor`, `agents-md`) · `core_budget`
   (default `200` lines — vendor guidance, see [harness-landscape §3](../research/harness-landscape.md))
 - **files:** `AGENTS.md` skeleton (identity · non-negotiables · repo map · **validation matrix** ·
@@ -101,9 +103,10 @@ entire output surface.
 - **cost:** one file to keep true; re-render on rule edits
 - **implements:** `entry-point` `agents-md-bridge` `scoped-instructions` `core-size-budget`
   `validation-matrix` `repo-map` `narrowest-anchor-loop` `negative-conventions` `comms-style`
-  `shell-editing-rules`
+  `shell-editing-rules` `isolation-boundary-declaration`
 - **provenance:** 4/4 repos for the entry point; `hexguard` for scoping; `rift-forge` for the
-  bridge and the shell rules — *documented, then broken three more times, then made a hook*
+  bridge and the shell rules; `openhands` for the isolation boundary — *documented, then broken
+  three more times, then made a hook*
 
 ### `gates`
 
@@ -179,7 +182,7 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 
 ### `adr`
 
-**Rung 1 · deps: none · conflicts: none**
+**Rung 1 · deps: none · conflicts: none · current version: `1.1.0`**
 
 - **params:** `path` (default `docs/decisions`) · `id_format` (default `ADR-####`)
 - **files:** `index.md` with the **admission rule** · `TEMPLATE.md`
@@ -191,16 +194,17 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 
 ### `session`
 
-**Rung 1 · deps: none · conflicts: none**
+**Rung 1 · deps: none · conflicts: none · current version: `1.1.0`**
 
-- **params:** `mode` — `file` (an `axiom-mesh`-style handoff doc) or `board` (derive from the
-  backlog; cheaper, less narrative). Default `board` when `backlog` is installed
+- **params:** `path` (default `.ai/session.md`) · `archive` (default `.ai/archive`)
 - **files:** `.ai/session.md` with fixed sections · `.ai/archive/`
 - **gates:** `session-sections-present` (declared) · `archive-named` (declared)
 - **cost:** a few minutes per session close, in `file` mode
-- **implements:** `session-handoff` `settled-decisions-lock` `dated-session-archive` `board-as-state`
-- **provenance:** `axiom-mesh` — 21 dated archives, and the *"Active Constraints / Decisions Since
-  Last Archive"* section that stops a fresh session relitigating settled questions
+- **implements:** `session-handoff` `settled-decisions-lock` `dated-session-archive`
+  `event-stream-not-audit-log` (narrative continuity, not an event log or audit record)
+- **provenance:** `axiom-mesh` plus the `microsoft-agent-framework`/`openhands` accountability
+  warning — 21 dated archives, and the *"Active Constraints / Decisions Since Last Archive"*
+  section that stops a fresh session relitigating settled questions
 
 ### `ci`
 
@@ -232,24 +236,28 @@ during authoring: `ids-unique` and `generated-current` were listed here but are 
 
 ### `workflows`
 
-**Rung 2 · deps: `instructions`**
+**Rung 2 · deps: `instructions` · current version: `1.1.0`**
 
 Decision procedures. Content, not mechanism — the mechanism is `skills`.
 
-- **params:** `upstream_repo` (enables the extend-upstream branch of the reuse table)
-- **rules:** the reuse decision table · doc-tier selection · per-concern decomposition
-- **skills:** `implement-story` (or `implement-item`) — the numbered end-to-end procedure
-- **docs:** the authority doc the rules cite
+- **params:** `path` (default `docs/workflows`) · `plan_path` (default `docs/plans`) · `upstream_repo`
+  (enables the extend-upstream branch of the reuse table)
+- **rules:** the reuse decision table · doc-tier selection · per-concern decomposition · bounded
+  invocation · invocation boundaries
+- **skills:** `decompose` — the numbered per-concern planning procedure
 - **cost:** authoring only; Tier 0 means trivial work stays undocumented
 - **implements:** `reuse-decision-table` `second-consumer-threshold` `doc-tier-selection`
   `per-concern-decomposition` `multi-story-batching` `numbered-workflow-steps` `phase-checklist`
-  `lifecycle-verbs` `controlled-performance-comparison`
-- **provenance:** `hexguard-templates` — *"Use this table instead of 'use judgment'"*, and **Tier 0
-  must exist** or the process gets routed around
+  `lifecycle-verbs` `controlled-performance-comparison` `agent-facing-interface`
+  `bounded-agent-loop` `ownership-changing-handoff` `protocol-with-escape-hatch`
+  `resumable-approval-state` `approval-bound-to-request` `explicit-output-designation`
+- **provenance:** `hexguard-templates`, `swe-agent`, `pydantic-ai`, `openai-agents-sdk`, and
+  `microsoft-agent-framework` — *"Use this table instead of 'use judgment'"*, and **Tier 0 must
+  exist** or the process gets routed around
 
 ### `skills`
 
-**Rung 2 · deps: `instructions`**
+**Rung 2 · deps: `instructions` · current version: `1.1.0`**
 
 Not "the ability to have skills" — every module ships skills via ADR-0003. This is the **authoring
 discipline and the gates that hold it.**
@@ -261,10 +269,11 @@ discipline and the gates that hold it.**
   `skill-writes-artifact` (declared — a skill's body names where its output lands)
 - **cost:** near-zero
 - **implements:** `invocable-procedure` `skill-neighbours` `prompt-writes-artifact`
-  `operating-skills` `prompt-index-routing` `external-reasoning-prompt` `model-selection-prompt`
+  `operating-skills` `prompt-index-routing` `agent-facing-interface` `explicit-output-designation`
 - **provenance:** `rift-forge` (13 skills, each naming its neighbours because at that count
   descriptions alone stop disambiguating) · `axiom-mesh` (21 playbooks with no invocation surface,
-  whose content is directly portable now that SKILL.md is a standard)
+  whose content is directly portable now that SKILL.md is a standard) · `openai-agents-sdk` and
+  `microsoft-agent-framework` for explicit ownership and output boundaries
 
 ### `audit`
 

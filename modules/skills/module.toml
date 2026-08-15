@@ -1,6 +1,6 @@
 [module]
 name    = "skills"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 2
 summary = "Skill-authoring discipline and the gates that hold it: spec-pure frontmatter, descriptions that route, neighbours named, and output that lands somewhere."
 
@@ -78,12 +78,15 @@ an open standard, so the portability objection that justified staying with plain
 """
 
 [provenance]
-sources  = ["rift-forge", "axiom-mesh", "hexguard"]
-patterns = ["invocable-procedure", "skill-neighbours", "prompt-writes-artifact", "operating-skills", "prompt-index-routing"]
+sources  = ["rift-forge", "axiom-mesh", "hexguard", "openai-agents-sdk", "microsoft-agent-framework"]
+patterns = ["invocable-procedure", "skill-neighbours", "prompt-writes-artifact", "operating-skills", "prompt-index-routing", "agent-facing-interface", "explicit-output-designation"]
 incident = """
 axiom-mesh wrote 21 prompt playbooks, several with no equivalent anywhere else, and gave them no
 invocation surface at all — they must be found, opened and pasted. hexguard-templates shipped the
 best decision procedure in the corpus behind a placeholder table. rift-forge, at 13 skills, had to
 invent the neighbour-naming convention because descriptions alone had stopped disambiguating
 /curate-mechanic from /curate-champion from /patch-ingest.
+The framework synthesis strengthens that convention: a skill must state who owns continuation, what
+state crosses its boundary, what it may mutate, what bounded output/status it leaves, and where an
+empty or failed result is recorded.
 """

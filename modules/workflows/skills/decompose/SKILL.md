@@ -5,7 +5,8 @@ description: >-
   extend upstream / hand-roll), pick the planning tier, and sequence by dependency. Use when handed
   something larger than a single change, when asked to "plan this", "how should we approach this",
   "break this down", "scope this out", or before starting work whose shape is not obvious. Also use
-  across a batch of related work to catch shared concerns once. Executing a tracked item is
+  across a batch of related work to catch shared concerns once. For agentic or delegated work, it
+  also names the bounds, continuation owner, state crossings, and terminal output/status. Executing a tracked item is
   /work-item; recording an out-of-scope observation is /record-finding.
 ---
 
@@ -60,11 +61,18 @@ out of time for.
 
 Following the repo's engineering guidance, not this skill.
 
+For an agentic invocation, implementation is not complete until the plan or work item records the
+iteration/cost/time/context/retry bounds, the continuation owner, the state and mutation boundary,
+and the terminal artifact/status for completion, truncation, empty output, and failure.
+
 ## 9. Close
 
 Reconcile: does the spec still describe what was built? Did any concern's branch change during
 execution, and is that recorded with its reason? A plan that silently stopped matching reality
 reads as verified.
+
+Name the public output allow-list and any protocol escape hatch in the close reconciliation. Internal
+events or connected tools are not public output unless the contract says they are.
 
 ## Two failure modes to watch for
 
