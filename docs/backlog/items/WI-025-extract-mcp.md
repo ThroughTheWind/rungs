@@ -2,8 +2,8 @@
 id: WI-025
 title: Extract MCP — the tool and context interoperability boundary
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-025-extract-mcp
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-013, WI-017, WI-019, WI-023, WI-026, WI-028]
@@ -76,7 +76,9 @@ silently describing only the survivor.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-025-extract-mcp`. The stable `2025-11-25` specification and
+its versioned JSON schema are the normative read boundary; draft and later-version material is
+labelled separately.
 
 ## Review
 
