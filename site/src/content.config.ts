@@ -29,7 +29,17 @@ const wiki = defineCollection({
   schema: z.object({
     id: z.string().optional(),
     title: z.string().optional(),
-    status: z.enum(["accepted", "proposed", "superseded", "rejected"]).optional(),
+    // Two vocabularies share this field. ADRs use the decision statuses; backlog items use the
+    // lifecycle declared in `docs/backlog/TEMPLATE.md`, whose union is enumerated here rather
+    // than relaxed to `z.string()` — a typo'd status should still fail the build.
+    // The enum listed the ADR half only, so the first item to reach `done` broke the build
+    // (WI-001, 2026-08-15) in a file nobody had touched.
+    status: z
+      .enum([
+        "accepted", "proposed", "superseded", "rejected",
+        "deferred", "planned", "in_progress", "review", "done",
+      ])
+      .optional(),
     // TEMPLATE.md files are part of the corpus — contributors link to them — and they carry a
     // literal `YYYY-MM-DD` placeholder. Allowing exactly that token keeps them in the wiki
     // without loosening the field: any other malformed date still fails the build.
