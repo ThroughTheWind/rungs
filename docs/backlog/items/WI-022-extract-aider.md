@@ -2,8 +2,8 @@
 id: WI-022
 title: Extract Aider — git-first coding, repository context, and validation
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-022-extract-aider
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-011, WI-016, WI-017, WI-019, WI-028]
@@ -73,7 +73,9 @@ edit formats only where they materially change ownership or validation boundarie
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-022-extract-aider`, cut from `main` after the item was planned.
+The extraction boundary is the pinned public Aider repository; no model conversation or repository
+mutation is run here.
 
 ## Review
 
