@@ -6,7 +6,7 @@ import type { APIRoute } from "astro";
  * wrong origin the moment the site moves.
  */
 export const GET: APIRoute = ({ site }) => {
-  const origin = (site ?? new URL("https://rungscli.com")).origin;
+  const origin = (site ?? new URL("https://docs.rungscli.com")).origin;
 
   return new Response(
     [

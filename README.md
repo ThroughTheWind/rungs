@@ -105,7 +105,7 @@ reported as diverged and left alone.
 
 ## Commands
 
-| | |
+| Command | Description |
 | --- | --- |
 | `rungs init [path] [profile]` | Scaffold — `minimal` · `tracked` · `disciplined` · `hardened` · `fleet` |
 | `rungs doctor [path]` | What does this repo already have? Works on repos that never installed anything |
@@ -117,7 +117,7 @@ reported as diverged and left alone.
 | `rungs setup git [path]` | Install the merge drivers `.gitattributes` names |
 | `rungs modules` | List the set and audit the manifests |
 
-| | |
+| Option | Effect |
 | --- | --- |
 | `--dry-run` | Report what would happen, write nothing. Any write command |
 | `--into <path>` | `add`: install into this repo rather than the working directory |
@@ -205,7 +205,7 @@ nobody paid for does not ship.
 
 ## Repository
 
-| | |
+| Location | Contents |
 | --- | --- |
 | [`docs/research/`](docs/research/README.md) | The four repo autopsies, the synthesis, the pattern catalogue |
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |

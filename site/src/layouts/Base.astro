@@ -21,7 +21,7 @@ const { title, description = SITE.tagline, width = 1060, srHeading } = Astro.pro
 const here = Astro.url.pathname;
 const isHere = (href: string) => here === href || (href !== "/" && here.startsWith(href));
 
-const origin = Astro.site ?? new URL("https://rungscli.com");
+const origin = Astro.site ?? new URL("https://docs.rungscli.com");
 const canonical = new URL(here, origin);
 ---
 
