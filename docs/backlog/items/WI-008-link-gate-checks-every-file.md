@@ -2,8 +2,8 @@
 id: WI-008
 title: Stop a template token switching off link checking for a whole file
 type: chore
-status: proposed
-branch:
+status: done
+branch: feature/WI-008-link-gate-checks-every-file
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-006, WI-007]
@@ -106,8 +106,43 @@ every file, and a per-link skip costs one line while removing the need to be sur
 
 ## Execution
 
-*Not started.*
+Branch `feature/WI-008-link-gate-checks-every-file`, cut from `main` 2026-08-15.
+
+- [`src/engines.ts`](../../../src/engines.ts) `linkIntegrity` — the token test moved from the file
+  to the individual link, and inline code spans are blanked before scanning. Blanked with spaces
+  rather than removed, so every offset after a code span is unchanged and the reported link text
+  still matches what the author sees.
+- `modules/gates/gates/structural.toml` — two self-tests fixing the boundary: a broken link **is**
+  caught with a token elsewhere in the file, and a link that is itself a template is not.
+
+**The corpus contained exactly one hidden defect**, and it was not a broken path. `FINDINGS.md`
+quoted `gates-links-resolve`'s own fixture — `See [the plan](./does-not-exist.md).` — in *italics*,
+which is a real markdown link that does not resolve. Fixed by moving the quotation into a code span,
+which is the correct authoring, rather than by widening the stripper to emphasis: a link inside
+emphasis is an ordinary link and should stay checked.
+
+**Deviation from the plan, in the numbers.** The Proposal predicted `examined` would go 72 → 88.
+It is **89**, because WI-008's own item file was added to the corpus between measuring and fixing.
+Recorded rather than amended: the prediction was made against a corpus that no longer exists, and
+89 is what the check reports today.
+
+**F-001 recurred**, fifth occurrence.
 
 ## Review
 
-*Not started.*
+Checked 2026-08-15.
+
+1. **Pass, with the count corrected.** Both link gates examine **89** files, up from 72 — 16 files
+   were exempt, plus this item's own file. See the deviation above for why not 88.
+2. **Pass, and this is the criterion that matters.** Re-breaking the exact link F-005 was filed on —
+   `](../design/parameters.md)` in WI-006's item, a file dense with `{{tokens}}` — now fails both
+   gates by name. It reported green before this change.
+3. **Pass.** WI-007's item quotes a broken link inside backticks as an example and is not reported.
+4. **Pass.** A probe link of `[readme]({{path}}/README.md)` beside a resolvable one was not
+   reported; the probe was reverted with `git checkout`, verified by diff.
+5. **Pass.** `rungs check` → 20 pass, 0 fail once the branch carried a commit. The site's
+   independent checker → 44 routes, 491 links, 0 broken.
+6. **Pass as a declaration, not as an assertion.** Two self-tests added and
+   `gates-self-tests-both-directions` is green over 21 gates — but F-006 records that nothing
+   executes a fixture, so these assert nothing until that lands. Stated plainly here because a
+   self-test that reads as verification and is inert is the same failure this item is about.

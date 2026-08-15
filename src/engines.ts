@@ -148,14 +148,20 @@ const linkIntegrity: Engine = (t, root, files) => {
   for (const rel of scan) {
     if (excluded.has(rel)) continue;
     const text = read(root, rel);
-    // A file with unsubstituted placeholders is a **template**, and its links
-    // resolve only once installed. Found by running this against the rungs repo
-    // itself, where `modules/*/fragments/AGENTS.md` was reported for a broken
-    // link to `{{path}}/README.md` — a path that is not meant to exist here.
-    if (/\{\{[a-z_.]+\}\}/.test(text)) continue;
     examined++;
     if (/path-ok:\s*\S/.test(text)) continue;
-    for (const m of text.matchAll(/\]\((?!https?:|#|mailto:)([^)\s#]+)/g)) {
+    // A link written inside a code span is prose *quoting* a link — most often a document
+    // explaining that some link is wrong. Blanked rather than removed, so every offset after it
+    // is unchanged and the reported text still matches what the author sees.
+    const scannable = text.replace(/`+[^`\n]*`+/g, (s) => ' '.repeat(s.length));
+    for (const m of scannable.matchAll(/\]\((?!https?:|#|mailto:)([^)\s#]+)/g)) {
+      // An unsubstituted placeholder makes a **template** link, which resolves only once
+      // installed. This test used to sit on the whole file, and one token anywhere in a document
+      // exempted every link in it: 16 non-excluded files, including eight that ship to consumer
+      // repos, silently stopped being checked. A green gate and a skipped file looked identical.
+      // The case the file-level skip was written for — `modules/*/fragments/AGENTS.md` linking
+      // `{{path}}/README.md` — is already excluded by path in `link_integrity.exclude` (WI-008).
+      if (/\{\{[a-z_.]+\}\}/.test(m[1])) continue;
       const target = resolve(root, dirname(rel), decodeURIComponent(m[1]));
       if (!existsSync(target)) findings.push({ file: rel, message: `broken link → ${m[1]}` });
     }
