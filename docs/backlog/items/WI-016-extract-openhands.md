@@ -2,7 +2,7 @@
 id: WI-016
 title: Extract OpenHands — a shipped autonomous agent, sandboxing and scale
 type: docs
-status: review
+status: done
 branch: feature/WI-016-extract-openhands
 created: 2026-08-15
 updated: 2026-08-15

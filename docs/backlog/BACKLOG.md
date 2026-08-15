@@ -16,7 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-016](items/WI-016-extract-openhands.md) | Extract OpenHands — a shipped autonomous agent, sandboxing and scale | docs | `feature/WI-016-extract-openhands` |
+| — | | | |
 
 ## Planned
 
