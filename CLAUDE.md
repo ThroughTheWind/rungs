@@ -78,6 +78,13 @@ Two rules from the same root:
 2. **Chain with `&&`, never `;`**, when a later step consumes an earlier one. A failed producer
    followed by `;` yields an empty variable, and an empty variable written into a file is not a
    crash — it is a wrong value that passes review.
+3. **Never end an `&&` chain with `|| <cleanup>`.** `A && B && C || D` runs `D` when **any** of
+   `A`, `B`, `C` fails — not only `C`. So a restore-or-cleanup fallback fires against a repo where
+   the earlier steps never ran, and a `sed -i '$ d'` meant to undo an append instead deletes the
+   last line of a file nothing had touched. That is a silent one-line truncation in a file the diff
+   will show as legitimately edited. Put the fallback in its own command, or guard it with `if`.
+   Measured here 2026-08-15: a failed `cp` on the first link of the chain truncated
+   `docs/design/parameters.md` mid-sentence.
 
 Inherited verbatim from `rift-forge`, which measured six occurrences and six repair passes in a
 single session, then had to add a `PreToolUse` hook because the documentation was not enough.

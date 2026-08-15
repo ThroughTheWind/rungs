@@ -121,8 +121,9 @@ reported as diverged and left alone.
 | `--fast` / `--full` | `check`: pick the gate tier, as the positional also does |
 | `--copilot` | Also emit Copilot instruction files |
 
-`rungs --help` prints the same two tables. What each parameter *is* comes from
-each module's manifest — see [`modules/README.md`](modules/README.md).
+`rungs --help` prints the same two tables. For module parameters run `rungs
+modules --params`, which renders them from the manifests; what a parameter *is*
+and how to set one is [`docs/design/parameters.md`](docs/design/parameters.md).
 
 ## Modules
 
