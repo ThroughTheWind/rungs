@@ -1,9 +1,10 @@
 # Research
 
-The research has two axes: four repositories surveyed for **workflow**, condensed into the material
-the CLI ships, and a [second corpus of public agent frameworks](frameworks/README.md) read for
-**architecture**. The axes have separate templates and share one
-[`pattern-catalog.md`](pattern-catalog.md).
+The research has three evidence corpora: four repositories surveyed for **workflow**, a
+[public-framework corpus](frameworks/README.md) read for **architecture**, and a
+[follow-on corpus](follow-on/README.md) separating **durable/local products**,
+**evaluation/optimization**, and **interoperability protocols**. The corpora have separate methods
+and share one [`pattern-catalog.md`](pattern-catalog.md).
 
 ## Read in this order
 
@@ -15,12 +16,14 @@ the CLI ships, and a [second corpus of public agent frameworks](frameworks/READM
 | [`repos/rift-forge.md`](repos/rift-forge.md) | Skills + mechanical gates + concurrency. 2026-07→08, 401 branches |
 | [`frameworks/README.md`](frameworks/README.md) | Public-framework architecture corpus: question, method, template, and index |
 | [`frameworks/synthesis.md`](frameworks/synthesis.md) | Six-framework comparison · convergences · divergences · unsolved boundaries · catalogue reconciliation |
+| [`follow-on/README.md`](follow-on/README.md) | Follow-on corpus: shared comparison spine · product/evaluation/protocol methods · eight-subject index |
 | [`synthesis.md`](synthesis.md) | The learning curve · convergences · divergences · **the 8 failure modes** · the maturity ladder · what nobody solved |
 | [`pattern-catalog.md`](pattern-catalog.md) | Canonical definition of every pattern, with source, rung, and target module. **The input to Phase 4** |
 | [`harness-landscape.md`](harness-landscape.md) | Phase 3 addendum: what each harness actually reads, measured 2026-08-14. **The four primitives**, and what changed under the source repos |
 
 Reading only the workflow corpus: `synthesis.md` then `pattern-catalog.md`. Reading only the public
-framework result: `frameworks/synthesis.md` then `pattern-catalog.md`.
+framework result: `frameworks/synthesis.md` then `pattern-catalog.md`. Starting follow-on research:
+`follow-on/README.md`, then its shared spine and the relevant track template.
 
 > `harness-landscape.md` was added during Phase 3 and **amends** synthesis §3.1 in place. The
 > source repos were built 2026-03 → 08 and predate the Agent Skills standardization; where a
