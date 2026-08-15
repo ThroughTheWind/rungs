@@ -2,7 +2,7 @@
 id: WI-024
 title: Extract Google ADK — multi-language evolution, task delegation, and evaluation
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-024-extract-google-adk
 created: 2026-08-15
 updated: 2026-08-15
@@ -81,4 +81,20 @@ confirmation mechanisms.
 
 ## Review
 
-Not started.
+Review complete 2026-08-15.
+
+- [x] Each source has its own pinned SHA, Apache-2.0 licence, read date, release context, scope,
+  and reproducible checkout measurement.
+- [x] The Python runtime path follows runner setup, session/user event, event queue, delegation
+  scope, tool call, non-partial persistence, and termination through implementation and tests.
+- [x] The v0 pickle to v1 JSON migration path covers schema detection, metadata, migration runner,
+  compatibility window, stale-writer checks, and migration/session tests.
+- [x] Tool confirmation identifies function-call binding, original arguments, persistence boundary,
+  resume behavior, and the host-owned/authentication gap.
+- [x] Evaluation is bounded to ADK's local inference/metric-result path and explicitly separated
+  from WI-021's Inspect AI evidence boundary; A2A is limited to the adapter note and WI-026.
+- [x] Java parity differences are classified as idiom, design divergence, migration timing, or
+  not established; no whole-family parity claim is made.
+- [x] No catalogue, module, or CLI files changed.
+- [x] Verification: `node src/cli.ts check` (20 pass); `git diff --check`; `site/npm run build`
+  (84 pages); `site/npm run check` (0 Astro diagnostics, 1,067 internal links, 0 broken).
