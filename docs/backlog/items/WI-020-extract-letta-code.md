@@ -2,7 +2,7 @@
 id: WI-020
 title: Extract Letta Code — durable memory, identity, and continual learning
 type: docs
-status: review
+status: done
 branch: feature/WI-020-extract-letta-code
 created: 2026-08-15
 updated: 2026-08-15
