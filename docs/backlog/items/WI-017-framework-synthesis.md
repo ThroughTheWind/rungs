@@ -2,8 +2,8 @@
 id: WI-017
 title: Synthesize the framework corpus and reconcile it with the pattern catalogue
 type: docs
-status: proposed
-branch:
+status: planned
+branch: feature/WI-017-framework-synthesis
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-010, WI-011, WI-012, WI-013, WI-014, WI-015, WI-016]
@@ -41,8 +41,8 @@ catalogue that module authoring reads as workflow evidence.
 
 ## Decision
 
-`proposed` — 2026-08-15. Last child of [WI-009](WI-009-public-agent-framework-corpus.md); requires
-all six extractions done.
+`accepted` — 2026-08-15. The user directed the remaining WI-009 elements to proceed sequentially;
+all six required extractions are now done, so the final child is unblocked.
 
 ## Plan
 
@@ -84,6 +84,11 @@ avoid.
 
 **Demotions get the same evidence standard as confirmations.** It is easier to add a source than to
 remove a pattern, and an unchecked catalogue drifts toward everything-is-a-pattern.
+
+**No ADR.** The admission rule is not met: this work item and the canonical catalogue already own
+the reconciliation, and reversing a documentation-only classification later is not materially more
+expensive than making it now. The rejected alternative—an ADR that duplicates the reconciliation
+table—would create a second authority for the same decision.
 
 ### Acceptance criteria / tests
 
