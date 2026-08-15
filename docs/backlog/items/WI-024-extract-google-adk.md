@@ -2,7 +2,7 @@
 id: WI-024
 title: Extract Google ADK — multi-language evolution, task delegation, and evaluation
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -25,7 +25,7 @@ extraction must pin the actual version, compatibility contract, and one bounded 
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the evolving multi-language framework child of
+`accepted` — 2026-08-15. Captured as the evolving multi-language framework child of
 [WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
