@@ -239,6 +239,14 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
     console.log(`  ${e.rule.padEnd(24)} ${e.harness.padEnd(10)} ${e.target ?? c.yellow('not emitted')}${lost}`);
   }
   console.log(c.dim(`\n  ${entries.length} rendering(s) → .ai/render-report.md\n`));
+  // A bare `0 rendering(s)` reads as a completed edit. It is the answer a user gets after editing a
+  // parameter in `.ai/rungs.toml` and running this — the thing the record's header used to tell
+  // them to do — so the zero case has to say what it did not do, not just how much of it (WI-003).
+  if (entries.length === 0) {
+    console.log(c.yellow('  Nothing to render.') + c.dim(' This command re-emits path-scoped rules from `.ai/rules/`.'));
+    console.log(c.dim('  It does not re-substitute parameters — a changed value in `.ai/rungs.toml`'));
+    console.log(c.dim('  does not rewrite a file that already exists.\n'));
+  }
   return 0;
 }
 
