@@ -2,8 +2,8 @@
 id: WI-024
 title: Extract Google ADK — multi-language evolution, task delegation, and evaluation
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-024-extract-google-adk
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-013, WI-015, WI-017, WI-019, WI-026, WI-028]
@@ -75,7 +75,9 @@ event boundary because silent incompatibility in persisted state is more consequ
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-024-extract-google-adk`. The Python repository is the primary
+source; the Java repository is the bounded parity source for runner, event/session, and tool
+confirmation mechanisms.
 
 ## Review
 
