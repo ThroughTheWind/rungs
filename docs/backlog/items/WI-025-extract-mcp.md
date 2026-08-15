@@ -2,7 +2,7 @@
 id: WI-025
 title: Extract MCP — the tool and context interoperability boundary
 type: docs
-status: review
+status: done
 branch: feature/WI-025-extract-mcp
 created: 2026-08-15
 updated: 2026-08-15
@@ -82,7 +82,7 @@ labelled separately.
 
 ## Review
 
-Review complete 2026-08-15.
+Review complete 2026-08-15; status set to done after all acceptance criteria passed.
 
 - [x] The normative repository SHA, stable protocol version (`2025-11-25`), schema files, read
   date, licence transition, scope, and reproducible measurement are recorded.
