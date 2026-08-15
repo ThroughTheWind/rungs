@@ -2,7 +2,7 @@
 id: WI-009
 title: Extract a second research corpus — six public agent frameworks
 type: epic
-status: planned
+status: review
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -134,8 +134,27 @@ Ordered smallest to largest so the template hardens on cheap repos before meetin
 
 ## Execution
 
-Not started.
+Executed sequentially 2026-08-15 through children WI-010–WI-017. Each non-trivial child planned on
+`main`, executed and reviewed on its own feature branch, passed its gates/site checks, and was
+merged before the next began. The synthesis opened WI-029 rather than changing shipped modules.
 
 ## Review
 
-Not started.
+Epic review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** A frontmatter scan reports `status: done` for all eight children, WI-010 through
+   WI-017.
+2. **Pass.** [`docs/research/frameworks/`](../../research/frameworks/README.md) contains one applied
+   template, six framework extractions, their index, and the cross-framework synthesis. Every
+   extraction Snapshot records at least one full commit SHA; the two-repository subjects record
+   both pins.
+3. **Pass.** The synthesis matrix and reconciliation link every extracted mechanism to one of the
+   six documents, which resolves onward to pinned source. Synthesis judgement is marked
+   **Opinion** in the first person. All 17 candidate ids are adjudicated exactly once.
+4. **Pass.** On the merged `main` tree, `node src/cli.ts check` passed 20/20 gates. In `site`,
+   `npm run build` generated 63 pages and `npm run check` reported 0 diagnostics and 662 internal
+   links with 0 broken.
+
+The proposal's optional ADR was not admitted: WI-017 and the canonical catalogue already own the
+documentation classification, and no pattern rung changed. Module implementation remains the
+separate proposed [WI-029](WI-029-apply-framework-patterns-to-modules.md).
