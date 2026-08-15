@@ -24,7 +24,7 @@ the tracked input to the build. Authored-vs-generated is visible from the path
 | `components/components.css` | Added — each component's runtime-injected stylesheet extracted to static CSS | Markdown rendered by rehype emits the same class names without mounting React; static CSS lets the wiki ship zero JS |
 | `components/index.js` | Added — barrel | Convenience; no content change |
 
-Nothing else is altered. Component sources are byte-for-byte copies.
+Nothing else is altered. Component sources and `assets/logo.svg` are byte-for-byte copies.
 
 ## Files
 
@@ -59,4 +59,22 @@ Nothing else is altered. Component sources are byte-for-byte copies.
 - `components/provenance/SourceMark.d.ts` · `5e2d00278d42`
 - `components/components.css` · `f76039118daf`
 - `components/index.js` · `0e906f6e1d9d`
+- `assets/logo.svg` · `e9e4665c1551`
 - `styles.css` · `83aeeb35cf18`
+
+## Browser icons — generated, outside this directory
+
+Rasterised from `assets/logo.svg` by the same run, into `site/public/`. They are **derived, not
+authored**: edit the mark in the design system and re-run `npm run vendor`. Hand-editing one of
+these puts the tab icon out of step with the mark in the nav, which is exactly what generating
+them prevents.
+
+| File | What it is |
+| --- | --- |
+| `public/favicon.svg` | The mark, ink pinned per `prefers-color-scheme` (a favicon inherits no `currentColor`) |
+| `public/favicon.ico` | 16 · 32 · 48px PNG entries, ink on paper — an `.ico` cannot follow the theme, so it carries its ground |
+| `public/apple-touch-icon.png` | 180px, padded to the brand clear space (≥ one bottom bar) |
+
+- `public/favicon.svg` · `1d906b3f0f4d` · 361 bytes
+- `public/favicon.ico` · `32b34a15c752` · 434 bytes
+- `public/apple-touch-icon.png` · `d78242352fe7` · 519 bytes
