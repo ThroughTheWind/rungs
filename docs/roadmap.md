@@ -15,8 +15,8 @@ depended on was measured.
 | **3** | Product definition | ✅ [Product brief](design/product-brief.md) + [ADRs 0001–0005](decisions/README.md) |
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
 | **5** | CLI | ✅ Nine commands, 39 gates, ~2,800 lines |
-| **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; **a real install into a source repo is outstanding** |
-| **7** | Distribution | 🟡 Published as `@rungs/cli` (2026-08-14, v0.1.0; v0.1.1 current) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
+| **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; **a real install into a source repo is outstanding** |
+| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; v0.1.1 in [`package.json`](../package.json) on 2026-08-15) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 
 ## What each phase produced that the next one needed
 
@@ -35,16 +35,19 @@ depended on was measured.
 
 ## What is left
 
-**Phase 6.** `rungs add` has been dry-run against `rift-forge` (adopts 16
-validators) and `axiom-mesh` (adopts 7 PowerShell validators, no root
-`package.json` added). Neither has been written to. The remaining test is a real
-install, diffed against what that repo built by hand.
+**Phase 6.** `rungs add` was dry-run against the refreshed `rift-forge` candidate
+(the 2026-08-15 research records the candidate's 85 scripts and the validators
+that are eligible for adoption) and `axiom-mesh` (7 PowerShell validators, no
+root `package.json` added). Neither has been written to. WI-031 integrated the
+portable self-declared-finding-closure gate; the remaining test is a real install,
+diffed against what that repo built by hand.
 
 **Phase 7.** Publishing and the docs site have landed: `@rungs/cli` is on npm
-(v0.1.0 on 2026-08-14, v0.1.1 current) and [`site/`](../site/README.md) builds
-from a pristine checkout and deploys. What remains is the **module registry**, so
-third-party modules are possible — the format is a plain directory precisely so
-that does not need a format change.
+(v0.1.0 first published 2026-08-14; local package metadata is v0.1.1 on
+2026-08-15) and [`site/`](../site/README.md) builds from a pristine checkout and
+deploys. What remains is the **module registry**, so third-party modules are
+possible — the format is a plain directory precisely so that does not need a
+format change.
 
 ## A second corpus — proposed, not a phase
 

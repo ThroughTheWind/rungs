@@ -19,7 +19,7 @@ $ rungs init . tracked
   adr            2 create · 1 merge
   session        2 create · 1 skill · 1 merge
 
-  registered 18 gates from 6 module(s)
+  registered 19 gates from 6 module(s)
   rendered 2 file(s) · 0 degraded → .ai/render-report.md
 
 $ rungs check
@@ -39,8 +39,8 @@ Every rule in here was **paid for once already**.
 
 The content is extracted from four repositories built over six months in
 different stacks — a .NET ingestion platform, a 105-package Angular monorepo, a
-set of reference apps, and a full-stack product with 3,236 commits across 401
-branches. Each solved part of this by hand. Each also failed in ways the others
+set of reference apps, and a full-stack product whose refreshed candidate measured
+3,585 commits across 433 branches on 2026-08-15. Each solved part of this by hand. Each also failed in ways the others
 did too.
 
 So rungs does not ship a good idea about how to work. It ships **what four repos
