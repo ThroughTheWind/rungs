@@ -23,6 +23,7 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
+| [WI-012](items/WI-012-extract-langgraph.md) | Extract LangGraph — state, checkpoints, and long-running workflows | docs |
 
 ## Accepted
 
@@ -34,7 +35,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-012](items/WI-012-extract-langgraph.md) | Extract LangGraph — state, checkpoints, and long-running workflows | docs |
 | [WI-013](items/WI-013-extract-openai-agents-sdk.md) | Extract the OpenAI Agents SDK — a deliberately small primitive surface | docs |
 | [WI-014](items/WI-014-extract-pydantic-ai.md) | Extract Pydantic AI — typing, injection, and testable agents | docs |
 | [WI-015](items/WI-015-extract-microsoft-agent-framework.md) | Extract the Microsoft Agent Framework — enterprise .NET and multi-agent workflows | docs |
