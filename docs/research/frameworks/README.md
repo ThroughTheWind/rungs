@@ -19,14 +19,14 @@ product recommendations are outside [the epic's scope](../../backlog/items/WI-00
 
 | Work | Subject | State |
 | --- | --- | --- |
-| [Template](TEMPLATE.md) | Fixed extraction structure and evidence prompts | Ready for WI-011 to test |
+| [Template](TEMPLATE.md) | Fixed extraction structure and evidence prompts | Applied to all six extractions |
 | [SWE-agent](swe-agent.md) · [WI-011](../../backlog/items/WI-011-extract-swe-agent.md) | Minimal coding-agent loop and agent-computer interface | Pinned at `3ea751c087f32b16e039a2233dd6eefecef325d5` |
 | [LangGraph](langgraph.md) · [WI-012](../../backlog/items/WI-012-extract-langgraph.md) | Checkpointed graph state and resumable interrupts | Pinned at `644815f9e5bc52ad8f7a5227a456227e9c3e639b` |
 | [OpenAI Agents SDK](openai-agents-sdk.md) · [WI-013](../../backlog/items/WI-013-extract-openai-agents-sdk.md) | Small primitive surface across Python and TypeScript | Pinned at `1a0c08868aec2a18eba964e5a07da4270a490c25` and `d85dd2c144cd99bfdfa0111975cc759c00d56a77` |
 | [Pydantic AI](pydantic-ai.md) · [WI-014](../../backlog/items/WI-014-extract-pydantic-ai.md) | Typing, injection, deterministic tests, and durable-execution adapters | Pinned at `9a602b3216b2cde46bfe29c1d32927eb36c501d6` |
 | [Microsoft Agent Framework](microsoft-agent-framework.md) · [WI-015](../../backlog/items/WI-015-extract-microsoft-agent-framework.md) | .NET-first workflows, approval binding, checkpoints, and observability | Pinned at `12621e0a746517068300f7b9445225c3ee2406ea` |
 | [OpenHands](openhands.md) · [WI-016](../../backlog/items/WI-016-extract-openhands.md) | Shipped run control, worktrees, sandbox boundaries, recovery, and concurrency | Pinned at `dc99e98615de4ace821692773b00a7f50d476e50` and `46ad3d43dc385b2e7975c0935f157153930ebb16` |
-| [WI-017](../../backlog/items/WI-017-framework-synthesis.md) | Cross-framework synthesis and catalogue reconciliation | Proposed |
+| [Synthesis](synthesis.md) · [WI-017](../../backlog/items/WI-017-framework-synthesis.md) | Cross-framework comparison and catalogue reconciliation | Complete |
 
 ## Method
 

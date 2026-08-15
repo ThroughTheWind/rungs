@@ -137,6 +137,14 @@ scratch integration refs. Below roughly 5 concurrent sessions it is pure overhea
 → **CLI position:** `concurrency` is an **opt-in module with a stated threshold**, and the CLI
 should say the threshold out loud rather than let people adopt it aspirationally.
 
+> **Confirmed and bounded 2026-08-15.** The independent OpenHands product also creates a dedicated
+> Git worktree and branch for a Canvas conversation by default
+> ([framework extraction](frameworks/openhands.md#concurrent-top-level-runs)). That is independent
+> support for worktrees as repository-coordination machinery. It is not support for treating a
+> worktree as a sandbox: the same extraction shows that local tools retain host filesystem access,
+> and OpenHands does not supply `rift-forge`'s multi-owner land protocol. The concurrency threshold
+> and module boundary therefore do not change.
+
 ### 3.6 Enforcement level
 
 Review-only (`templates`) · CI build (`hexguard`) · structural validators (`axiom-mesh`, 8) ·
@@ -306,6 +314,14 @@ Open problems. The CLI should not pretend these are answered.
    is not a script's call"* — correct, and 51 accumulated.
 6. **Nothing is recorded across runs.** No repo keeps any per-run history, so no question about
    change over time can be asked at all.
+
+> **Amended 2026-08-15 — “No repo” names the four workflow-source repositories, not the later
+> architecture corpus.** SWE-agent writes trajectories, LangGraph writes checkpoints, and
+> OpenHands persists conversation events
+> ([framework synthesis](frameworks/synthesis.md#continuity-has-at-least-three-independent-layers)).
+> Those records solve machine-run reconstruction within their own runtimes. They do not record
+> repository-workflow outcomes across harness sessions—such as which instruction/gate version was
+> present for a change—so the rungs instrumentation gap remains, with the narrower scope now stated.
 
 > **Amended 2026-08-14 — this item originally read "measuring whether any of this works… no repo
 > tracks agent-session outcomes: rework rate, gate hit rate, which instruction prevented what…

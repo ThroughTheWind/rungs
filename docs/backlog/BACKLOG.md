@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-018 -->
+<!-- NEXT-ID: WI-030 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
-| [WI-017](items/WI-017-framework-synthesis.md) | Synthesize the framework corpus and reconcile it with the pattern catalogue | docs |
 
 ## Accepted
 
@@ -35,7 +34,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| — | | | |
+| [WI-029](items/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
 
 All eight are one epic — [WI-009](items/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15.
 The four extracted repos share an author, so every convergence in
