@@ -2,7 +2,7 @@
 id: WI-011
 title: Extract SWE-agent — the minimal coding-agent loop
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -42,7 +42,8 @@ The specific questions:
 
 ## Decision
 
-`proposed` — 2026-08-15.
+`accepted` — 2026-08-15. The user directed the remaining WI-009 children to proceed sequentially;
+WI-010 is complete and this is the next planned child.
 
 ## Plan
 
