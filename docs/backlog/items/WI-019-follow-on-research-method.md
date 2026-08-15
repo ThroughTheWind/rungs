@@ -2,7 +2,7 @@
 id: WI-019
 title: Define methods for the follow-on public-agent research
 type: docs
-status: review
+status: done
 branch: feature/WI-019-follow-on-research-method
 created: 2026-08-15
 updated: 2026-08-15
