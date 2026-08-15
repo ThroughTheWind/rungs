@@ -10,13 +10,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-020](items/WI-020-extract-letta-code.md) | Extract Letta Code — durable memory, identity, and continual learning | docs | `feature/WI-020-extract-letta-code` |
+| — | | | |
 
 ## Review
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-020](items/WI-020-extract-letta-code.md) | Extract Letta Code — durable memory, identity, and continual learning | docs | `feature/WI-020-extract-letta-code` |
 
 ## Planned
 
