@@ -16,7 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-015](items/WI-015-extract-microsoft-agent-framework.md) | Extract the Microsoft Agent Framework — enterprise .NET and multi-agent workflows | docs | `feature/WI-015-extract-microsoft-agent-framework` |
+| — | | | |
 
 ## Planned
 
