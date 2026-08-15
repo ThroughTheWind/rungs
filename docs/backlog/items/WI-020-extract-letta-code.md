@@ -2,8 +2,8 @@
 id: WI-020
 title: Extract Letta Code — durable memory, identity, and continual learning
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-020-extract-letta-code
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-017, WI-019, WI-028]
@@ -80,8 +80,37 @@ practice with its documented reason when the source establishes one.
 
 ## Execution
 
-Not started.
+Completed 2026-08-15 on `feature/WI-020-extract-letta-code`.
+
+- Pinned `letta-ai/letta-code` at `ec4e23a85d4aa2a449ed5c7fb0801a0be1bd68d0`, recorded Apache-2.0,
+  and measured the checkout at 1,963 tracked files, 1,706 TypeScript/JavaScript files, and 692
+  test-named files.
+- Added the durable/local-product extraction at
+  [`follow-on/products/letta-code.md`](../../research/follow-on/products/letta-code.md), tracing
+  local MemFS initialization, agent-scoped Git memory commits, committed prompt projection,
+  revision-triggered recompilation, subagent ownership, permissions, and secrets.
+- Kept hosted services and real model execution outside the read boundary; implementation and
+  executable-test evidence are cited at the pinned SHA, with opinions labelled and catalogue edits
+  deferred to WI-028.
+- Validation: `node src/cli.ts check` — 20 pass, 0 fail; site `npm run build` — 80 routes; site
+  `npm run check` — 0 Astro diagnostics and 1,027 internal links, 0 broken.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** The Snapshot records the active canonical source, full SHA, Apache-2.0 licence, read
+   date, measured scale, local/hosted boundary, and exact inspected directories.
+2. **Pass.** The extraction traces a Markdown memory write through Git initialization/commit and
+   `memfsRevision` prompt invalidation into the later turn; the pinned local-backend test executes
+   the commit and asserts the changed persona reaches the executor.
+3. **Pass.** Conversation history, recovery metadata, documentary intent, repository/workspace
+   state, and agent-managed long-term memory are separate rows, each with an explicit durability
+   limit.
+4. **Pass.** Agent/current/parent memory roots, cross-agent denial, stateless fresh subagents,
+   local/cloud secret ownership, and model/provider/environment limits are evidenced or bounded as
+   outside the checkout.
+5. **Pass.** Judgement is marked **Opinion**; section verdicts cite existing and candidate ids; the
+   canonical catalogue was not edited.
+6. **Pass.** Repository gates, site build, Astro diagnostics, and link validation all pass with the
+   counts recorded above.
