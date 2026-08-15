@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
-| [WI-015](items/WI-015-extract-microsoft-agent-framework.md) | Extract the Microsoft Agent Framework — enterprise .NET and multi-agent workflows | docs |
 
 ## Accepted
 
