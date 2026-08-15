@@ -2,7 +2,7 @@
 id: WI-013
 title: Extract the OpenAI Agents SDK — a deliberately small primitive surface
 type: docs
-status: review
+status: done
 branch: feature/WI-013-extract-openai-agents-sdk
 created: 2026-08-15
 updated: 2026-08-15

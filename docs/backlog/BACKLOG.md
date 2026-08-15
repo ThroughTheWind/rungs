@@ -16,7 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-013](items/WI-013-extract-openai-agents-sdk.md) | Extract the OpenAI Agents SDK — a deliberately small primitive surface | docs | `feature/WI-013-extract-openai-agents-sdk` |
+| — | | | |
 
 ## Planned
 

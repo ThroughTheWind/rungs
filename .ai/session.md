@@ -13,16 +13,16 @@ and a deliberately small primitive surface expressed in two languages.
 
 ## In progress
 
-WI-013 is in review; its extraction and parity analysis pass the repository and site checks.
+None while WI-013 lands.
 
 ## Resume from
 
-Review and integrate `feature/WI-013-extract-openai-agents-sdk`, then plan WI-014 on `main`.
+Start WI-014 from `main` and pin Pydantic AI before tracing its typed dependency and test surfaces.
 
 ## Up next
 
-1. Integrate WI-013.
-2. Execute WI-014 for Pydantic AI, then continue the remaining children in numeric order.
+1. Execute WI-014 for Pydantic AI.
+2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
 
