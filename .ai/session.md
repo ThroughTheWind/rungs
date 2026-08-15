@@ -8,22 +8,23 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Execute WI-009's public-framework research corpus sequentially. WI-010 established the fixed
-method; WI-011 through WI-013 validated it against a coding-agent loop, durable graph execution,
-and a deliberately small primitive surface expressed in two languages. WI-014 now tests typed
-outputs, dependency injection, deterministic tests, and durable execution.
+method; WI-011 through WI-014 validated it against a coding-agent loop, durable graph execution,
+a deliberately small primitive surface expressed in two languages, and typed/testable agents.
+WI-015 now tests audit, approval, workflow composition, and cross-language divergence.
 
 ## In progress
 
-WI-014 — pin the Pydantic AI source and enter through its own test suite.
+WI-015 — pin Microsoft Agent Framework and trace one non-trivial .NET workflow end to end.
 
 ## Resume from
 
-Clone the canonical source outside this repository, pin its SHA and licence, then trace a named
-test through model substitution, dependency injection, and structured output validation.
+Clone the canonical source outside this repository, pin its SHA and licence, then locate the .NET
+workflow, audit-trail, approval, and predecessor-retirement boundaries before checking Python
+divergence.
 
 ## Up next
 
-1. Execute WI-014 for Pydantic AI.
+1. Execute WI-015 for Microsoft Agent Framework.
 2. Continue the remaining extraction children in numeric order.
 
 ## Active constraints — do not reopen
