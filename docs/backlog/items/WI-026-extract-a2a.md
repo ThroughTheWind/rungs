@@ -2,7 +2,7 @@
 id: WI-026
 title: Extract A2A — remote agent discovery, tasks, and artifacts
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -25,7 +25,7 @@ ownership without transferring internal state.
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the remote-agent protocol child of
+`accepted` — 2026-08-15. Captured as the remote-agent protocol child of
 [WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
