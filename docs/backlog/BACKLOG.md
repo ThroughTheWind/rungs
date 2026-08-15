@@ -10,7 +10,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | *nothing in flight* | | |
+| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs | `feature/WI-010-framework-extraction-template` |
 
 ## Review
 
@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-009](items/WI-009-public-agent-framework-corpus.md) | Extract a second research corpus — six public agent frameworks | epic |
-| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs |
 
 ## Accepted
 

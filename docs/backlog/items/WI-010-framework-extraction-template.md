@@ -2,8 +2,8 @@
 id: WI-010
 title: A fixed template and method for the public-framework corpus
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-010-framework-extraction-template
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-009, WI-011, WI-017]
@@ -104,7 +104,7 @@ concept and keeps the workflow corpus's non-goal true as written.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-010-framework-extraction-template`, cut from `main` 2026-08-15.
 
 ## Review
 
