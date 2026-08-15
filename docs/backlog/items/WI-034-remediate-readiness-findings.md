@@ -2,7 +2,7 @@
 id: WI-034
 title: Remediate release-readiness findings
 type: chore
-status: review
+status: done
 branch: feature/WI-034-remediate-readiness-findings
 created: 2026-08-15
 updated: 2026-08-15
@@ -91,6 +91,7 @@ included.
 
 ## Review
 
-Ready for review. Implementation is committed in `e095885`; the two WI-033 pre-release findings
-are closed, the local packed-consumer journey passes, and no publish/tag/release action was taken.
-WI-035 owns the public-registry artifact, provenance, platform matrix, and final release decision.
+Reviewed and merged to `main` in `2b585d0`. Implementation was committed in `e095885`; the two
+WI-033 pre-release findings are closed, the local packed-consumer journey passes, and no
+publish/tag/release action was taken. WI-035 owns the public-registry artifact, provenance,
+platform matrix, and final release decision.
