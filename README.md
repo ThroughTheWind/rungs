@@ -67,7 +67,8 @@ command to run next. Once you have run that:
 **[your first hour](docs/getting-started.md)** — which of the new files matter,
 what the installed skills are for, and what to do when a gate goes red.
 
-Requires **Node 22.18+** — it runs TypeScript directly, no build step.
+Requires **Node 22.18+**. The published package ships a bundled JavaScript entry point; the source
+checkout still runs the TypeScript sources directly with `node`.
 
 Published as **`@rungs/cli`**, not `rungs`: the unscoped name is unpublishable,
 being one edit from both `rung` and `runjs`, which npm's typosquat filter
@@ -185,9 +186,10 @@ Four promises that shape everything else:
 [`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli).
 
 rungs is installed in its own repo and its gates run on every change — 20 pass,
-0 fail (`rungs check`, 2026-08-15). Detection is [verified against all four
-source repos](docs/design/detection-verification.md). Not yet done: installing
-into a source repo for real rather than in dry run.
+0 fail (`rungs check`, 2026-08-15). A clean consumer has also installed the packed
+artifact and completed the doctor → init → add → check → render → upgrade/eject
+journey locally. Detection is [verified against all four source repos](docs/design/detection-verification.md).
+Not yet done: an install from the public registry and a cross-platform release matrix.
 
 Expect module *contents* to move. The command surface is settled.
 

@@ -13,7 +13,7 @@
   },
   "type": "module",
   "bin": {
-    "rungs": "./src/cli.ts"
+    "rungs": "./dist/cli.js"
   },
   "publishConfig": {
     "access": "public"
@@ -22,12 +22,18 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
     "rungs": "node src/cli.ts",
     "test": "node --test test/*.test.js"
   },
   "files": [
+    "dist",
     "src",
-    "modules"
+    "modules",
+    "LICENSE",
+    "README.md"
   ],
   "keywords": [
     "agents",
@@ -38,5 +44,8 @@
   "license": "MIT",
   "dependencies": {
     "smol-toml": "^1.8.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
   }
 }

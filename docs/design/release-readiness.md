@@ -5,7 +5,7 @@
 > Node `v22.22.3`, npm `10.9.8`, and the local package metadata at `@rungs/cli` `0.1.1`.
 > Publication and external announcements were not performed.
 
-## Verdict
+## Verdict at assessment time
 
 **Not ready for external adoption or a public-release push.** The repository source and extracted
 package pass their local checks, but a clean consumer install cannot execute the published package's
@@ -74,7 +74,23 @@ unknown. Those are explicit release-checklist inputs for WI-035, not accepted fa
 
 ## Release recommendation
 
-Hold public-release work at WI-035 until WI-034 either fixes or explicitly accepts (with a written
-reason) the installed TypeScript entry-point blocker, the site audit findings, and the duplicate
-content-id warning. Then replay this report from a fresh consumer directory using the published
-artifact and record the supported Node/platform matrix before announcing readiness.
+WI-034 has now fixed the installed entry-point blocker, the site audit findings, and the duplicate
+content-id warning. WI-035 may proceed with the release procedure, but must still verify the public
+registry artifact, credentials/provenance, and the supported Node/platform matrix before announcing
+readiness.
+
+## WI-034 remediation update
+
+The assessment blockers were replayed on `feature/WI-034-remediate-readiness-findings` on 2026-08-15
+with the same Windows/Node 22.22.3 environment:
+
+| Finding | Before | Remediation evidence | Current disposition |
+| --- | --- | --- | --- |
+| Installed package entry point | `npm exec ... rungs --help` failed with `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` because the bin pointed at `src/cli.ts` | `package.json` now points at `dist/cli.js`; `prepack` bundles `src/cli.ts` with esbuild. A fresh tarball installed in `C:\Temp\rungs-wi034-consumer` and `npm exec --prefix ... -- rungs --help` passed. | fixed; WI-035 must verify the registry artifact |
+| F-009 site audit | 3 vulnerabilities (2 high, 1 low) | Astro `7.2.2`, compatible integrations, and the lock were refreshed; `cd site && npm audit` reports 0 vulnerabilities. | fixed |
+| F-010 duplicate ids | Astro build warned that collection ids were overwritten | The Astro 7 unified processor and cwd-based source map now build 97 pages with no duplicate-id warnings; `cd site && npm run check` reports 0 errors, 0 warnings, 0 hints, 1,203 links, 0 broken. | fixed |
+
+The clean consumer journey now passes locally: packed install, `doctor`, git-backed `init tracked`,
+`add release`, `check` (21/21), `render`, `upgrade` preview, `eject --dry-run`, and an unknown-module
+dry-run that exits 1 without changing the repository. This clears WI-033's local blockers but is
+not evidence of a public-registry install or cross-platform compatibility.
