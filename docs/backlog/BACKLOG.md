@@ -34,11 +34,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 All seven opened 2026-08-15 from one assessment: the path a first user walks, from
 `npx @rungs/cli doctor` to their first work item. Each was reproduced by running the tool, and each
-names its evidence.
+names its evidence. Accepted as a set on 2026-08-15 and being worked in id order, which also
+satisfies the one sequencing constraint — WI-006 sits behind WI-002.
+
+**Done:** [WI-001](items/WI-001-infer-project-name.md).
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-001](items/WI-001-infer-project-name.md) | Infer `project_name` from the repo directory, as its own default already promises | chore |
 | [WI-002](items/WI-002-set-flag-parsing.md) | Accept `--set k=v`, and refuse an unparsed positional instead of silently retargeting | chore |
 | [WI-003](items/WI-003-render-reports-what-it-cannot-reemit.md) | Stop `.ai/rungs.toml` instructing a fix that `rungs render` cannot perform | chore |
 | [WI-004](items/WI-004-help-completeness.md) | Reconcile `rungs --help` with the README's command table | docs |
