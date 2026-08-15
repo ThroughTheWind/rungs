@@ -2,7 +2,7 @@
 id: WI-017
 title: Synthesize the framework corpus and reconcile it with the pattern catalogue
 type: docs
-status: planned
+status: in_progress
 branch: feature/WI-017-framework-synthesis
 created: 2026-08-15
 updated: 2026-08-15
@@ -118,7 +118,7 @@ table—would create a second authority for the same decision.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-017-framework-synthesis`.
 
 ## Review
 
