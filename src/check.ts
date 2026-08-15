@@ -141,7 +141,7 @@ let paramCache: { root: string; params: Params } | null = null;
 /** Parameters as the repo installed them, falling back to module defaults. */
 function installedParams(repoRoot: string): Params {
   if (paramCache?.root === repoRoot) return paramCache.params;
-  const defaults = resolveParams(loadAllModules(MODULES));
+  const defaults = resolveParams(loadAllModules(MODULES), {}, repoRoot);
   const recordPath = join(repoRoot, '.ai', 'rungs.toml');
   if (existsSync(recordPath)) {
     try {

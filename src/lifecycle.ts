@@ -56,7 +56,7 @@ export interface UpgradeItem {
  * clobber deliberate edits or refuse to move anything.
  */
 export function planUpgrade(repoRoot: string, mods: Manifest[], record: InstallRecord): UpgradeItem[] {
-  const params = resolveParams(mods, paramsFrom(record));
+  const params = resolveParams(mods, paramsFrom(record), repoRoot);
   const skillsDir = record.harnesses.includes('claude') ? '.claude/skills' : '.agents/skills';
   const items: UpgradeItem[] = [];
 
@@ -86,7 +86,7 @@ export function planUpgrade(repoRoot: string, mods: Manifest[], record: InstallR
 
 /** Applies only `stale` and `missing`. Divergence is a decision, not an error. */
 export function applyUpgrade(repoRoot: string, mods: Manifest[], record: InstallRecord, plan: UpgradeItem[]) {
-  const params = resolveParams(mods, paramsFrom(record));
+  const params = resolveParams(mods, paramsFrom(record), repoRoot);
   const skillsDir = record.harnesses.includes('claude') ? '.claude/skills' : '.agents/skills';
   let written = 0;
   for (const item of plan) {
@@ -145,7 +145,7 @@ export function eject(repoRoot: string, mods: Manifest[], dryRun = false) {
   // — which is the same promise ADR-0002 makes about installation, kept on the
   // way out. Parameters are substituted now, for the same reason.
   const record = readRecord(repoRoot);
-  const params = resolveParams(mods, record ? paramsFrom(record) : {});
+  const params = resolveParams(mods, record ? paramsFrom(record) : {}, repoRoot);
   for (const t of tables) {
     const [mod, file] = t.split('/');
     const src = join(SRC, '..', 'modules', mod, 'gates', file);

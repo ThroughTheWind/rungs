@@ -14,7 +14,11 @@ modules = []
 
 [params.project_name]
 description = "Name used in the entry document's first line"
-default     = ""            # inferred from the repo directory when blank
+default     = "{{repo.dirname}}"
+# `repo` is the reserved namespace, not a module — see modules/README.md rule 9b. This default was
+# `""` with a comment saying it was inferred from the directory, which nothing implemented, so every
+# scaffold's first line read `# AGENTS.md — ` with a dangling dash. Stating the inference where the
+# default is read is what makes it checkable (WI-001).
 
 [params.harnesses]
 description  = "Which coding agents to emit for. Drives the ADR-0001 render matrix."

@@ -67,7 +67,7 @@ function cmdDoctor(target: string) {
 
   const params = resolveParams(mods, Object.fromEntries(
     Object.entries(record?.modules ?? {}).flatMap(([n, e]) => (e.params ? [[n, e.params]] : [])),
-  ));
+  ), root);
   const skillsDir = record?.harnesses.includes('claude') === false ? '.agents/skills' : '.claude/skills';
   const results = mods.map((m) => {
     const installed = record?.modules[m.name];
@@ -157,7 +157,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     if (!modName || !param) continue;
     (overrides[modName] ??= {})[param] = rhs.join('=');
   }
-  const params = resolveParams(mods, overrides);
+  const params = resolveParams(mods, overrides, root);
   for (const [m, vals] of Object.entries(overrides)) {
     for (const [k, v] of Object.entries(vals)) console.log(c.dim(`  set ${m}.${k} = ${v}`));
   }

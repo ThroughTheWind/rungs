@@ -111,6 +111,13 @@ whether its guard has ever actually fired.
 9b. **A parameter may reference a declared dependency's parameters** as `{{<module>.<param>}}` —
    `findings` places its register at `docs/{{backlog.root}}/FINDINGS.md` so it lands next to the
    backlog it feeds. Only declared dependencies; anything else is an undeclared coupling.
+9b-i. **`repo` is a reserved namespace, not a module**, and is therefore exempt from the rule above:
+   there is no dependency to declare, because every module already sits in a repository. One key
+   today — `{{repo.dirname}}`, the target directory's name, which is how `instructions` names the
+   entry document. A module may read it; nothing may define a module called `repo`. Added by
+   WI-001, where the same inference existed as a comment beside a `""` default, was implemented
+   nowhere, and shipped a dangling `# AGENTS.md — ` into every scaffold. **A default that states
+   its own derivation is checkable; a comment that states it is not.**
 9c. **A path parameter may contain separators**, so one parameter places a whole subtree —
    `files/{{path}}/README.md` with `path = "docs/decisions"`. A second "leaf" parameter is never
    needed, and adding one was caught and reverted during authoring.
