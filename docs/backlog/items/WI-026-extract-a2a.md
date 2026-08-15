@@ -2,8 +2,8 @@
 id: WI-026
 title: Extract A2A — remote agent discovery, tasks, and artifacts
 type: docs
-status: planned
-branch:
+status: done
+branch: feature/WI-026-extract-a2a
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-013, WI-015, WI-017, WI-019, WI-024, WI-025, WI-028]
@@ -75,8 +75,18 @@ requirements are located in normative text or executable checks.
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-026-extract-a2a`. The normative read set is the released
+`1.0.0` specification and `specification/a2a.proto`; no SDK or TCK behavior is used unless
+separately pinned and labelled.
 
 ## Review
 
-Not started.
+Review completed 2026-08-15; item complete. The extraction pins A2A commit
+`1eb4aa03b07589d3a00ce7deab0dde679120ed30`, protocol `1.0.0`, Apache-2.0 licence, and the
+normative specification/protobuf read boundary; no SDK, TCK, sample, or endpoint claims are
+substituted. It traces Agent Card discovery through JSON-RPC task creation, state transitions,
+streaming/push, artifacts, continuation, cancellation, retries, duplicate delivery, and terminal
+recovery. Authentication declarations are separated from identity and authorization, and opaque
+content/injection boundaries are labelled. `node src/cli.ts check` passes 20/20; site build and
+link checks pass with 86 routes, 1,083 internal links, and 0 broken links. Catalogue, module, and
+CLI files were not changed; comparison remains WI-028.
