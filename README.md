@@ -182,8 +182,9 @@ Four promises that shape everything else:
 
 ## Status
 
-**Pre-release, v0.1.1** — published as
-[`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli).
+**Release candidate, v0.1.1** — prepared locally as
+[`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli); the public `latest` tag remains v0.1.0
+until registry credentials are available.
 
 rungs is installed in its own repo and its gates run on every change — 20 pass,
 0 fail (`rungs check`, 2026-08-15). A clean consumer has also installed the packed
