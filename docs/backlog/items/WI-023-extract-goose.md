@@ -2,7 +2,7 @@
 id: WI-023
 title: Extract goose — local extensibility, MCP/ACP, and session isolation
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-023-extract-goose
 created: 2026-08-15
 updated: 2026-08-15
@@ -75,6 +75,28 @@ extension ecosystem. Treat ACP as a change of loop ownership and make that bound
 Started 2026-08-15 on `feature/WI-023-extract-goose`. Read-only source snapshot is pinned
 to goose commit `3810898a7447ec3299be72e223d3570a7aabf0ab` while the extraction is written.
 
+Completed 2026-08-15. The extraction records the pinned Apache-2.0 source boundary, measured
+scale, direct-provider/MCP/ACP ownership, one calculator MCP request/result path, approval,
+secret/environment/working-directory boundaries, recipe persistence, and session isolation.
+
 ## Review
 
-Not started.
+Review complete 2026-08-15:
+
+- Criterion 1 — pass: `products/goose.md` names `StateMachine::run`, `InferenceRunner`,
+  `ToolExecutionOperation`, `ExtensionManager::dispatch_tool_call`, `McpClient::call_tool`,
+  `SessionManager::apply_effects`, and the calculator plus `basic_tool_calling`/
+  reconstruction tests.
+- Criterion 2 — pass: the ownership table distinguishes direct provider, ACP-backed provider,
+  and MCP-backed extension loop/state/failure boundaries.
+- Criterion 3 — pass: permission, confirmation, keyring/file secrets, environment denylist,
+  working-directory propagation, and absent general sandbox are labelled with source evidence.
+- Criterion 4 — pass: recipe persistence, parameterization, structured output, session ids,
+  working directories, copy/reconstruction, and cross-session isolation are evidenced.
+- Criterion 5 — pass: opinions and deferred catalogue candidates are labelled; no module/CLI or
+  catalogue changes were made; repository gates and site links pass.
+
+Verification: `node src/cli.ts check` (20 pass); `git diff --check`; `site/npm run build`
+(83 pages); `site/npm run check` (0 Astro diagnostics, 1,059 internal links, 0 broken). The
+root `npm run build`/`npm run check` commands are not defined (known F-002 boundary); site warnings
+are the existing duplicate-content ids recorded by F-009.
