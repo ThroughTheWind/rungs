@@ -2,7 +2,7 @@
 id: WI-028
 title: Synthesize the follow-on research and reconcile the catalogue
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -24,7 +24,7 @@ tracks. It is the only child authorized to reconcile the follow-on evidence with
 
 ## Decision
 
-`proposed` — 2026-08-15. Last child of
+`accepted` — 2026-08-15. Last child of
 [WI-018](WI-018-follow-on-public-agent-research.md); execution follows all eight extractions.
 
 ## Plan
