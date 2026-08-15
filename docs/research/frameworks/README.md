@@ -23,7 +23,7 @@ product recommendations are outside [the epic's scope](../../backlog/items/WI-00
 | [SWE-agent](swe-agent.md) · [WI-011](../../backlog/items/WI-011-extract-swe-agent.md) | Minimal coding-agent loop and agent-computer interface | Pinned at `3ea751c087f32b16e039a2233dd6eefecef325d5` |
 | [LangGraph](langgraph.md) · [WI-012](../../backlog/items/WI-012-extract-langgraph.md) | Checkpointed graph state and resumable interrupts | Pinned at `644815f9e5bc52ad8f7a5227a456227e9c3e639b` |
 | [OpenAI Agents SDK](openai-agents-sdk.md) · [WI-013](../../backlog/items/WI-013-extract-openai-agents-sdk.md) | Small primitive surface across Python and TypeScript | Pinned at `1a0c08868aec2a18eba964e5a07da4270a490c25` and `d85dd2c144cd99bfdfa0111975cc759c00d56a77` |
-| [WI-014](../../backlog/items/WI-014-extract-pydantic-ai.md) | Pydantic AI | Proposed |
+| [Pydantic AI](pydantic-ai.md) · [WI-014](../../backlog/items/WI-014-extract-pydantic-ai.md) | Typing, injection, deterministic tests, and durable-execution adapters | Pinned at `9a602b3216b2cde46bfe29c1d32927eb36c501d6` |
 | [WI-015](../../backlog/items/WI-015-extract-microsoft-agent-framework.md) | Microsoft Agent Framework | Proposed |
 | [WI-016](../../backlog/items/WI-016-extract-openhands.md) | OpenHands | Proposed |
 | [WI-017](../../backlog/items/WI-017-framework-synthesis.md) | Cross-framework synthesis and catalogue reconciliation | Proposed |
