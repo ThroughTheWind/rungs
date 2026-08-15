@@ -1,3 +1,4 @@
+import { basename, resolve } from 'node:path';
 import type { Manifest } from './types.ts';
 
 export type Params = Record<string, Record<string, unknown>>;
@@ -26,9 +27,31 @@ function format(v: unknown): string {
   return String(v);
 }
 
-/** Defaults from every manifest, with explicit overrides applied on top. */
-export function resolveParams(mods: Manifest[], overrides: Params = {}): Params {
-  const out: Params = {};
+/**
+ * Facts about the target repository, addressable from a default as `{{repo.<key>}}`.
+ *
+ * `repo` is a **reserved namespace, not a module**, which is what keeps it clear of
+ * `modules/README.md` rule 9b — referencing a module you have not declared is an undeclared
+ * coupling, but every module already sits in a repository, so there is nothing to declare.
+ *
+ * Deliberately one key. `git_remote` and `branch` were considered and left out: nothing consumes
+ * them, and rule 9e is about the knob wired to nothing that stays invisible until someone compares
+ * every module at once.
+ */
+function repoFacts(repoRoot?: string): Record<string, unknown> {
+  return repoRoot ? { dirname: basename(resolve(repoRoot)) } : {};
+}
+
+/**
+ * Defaults from every manifest, with explicit overrides applied on top.
+ *
+ * `repoRoot` is optional only so a caller with no repository in hand can still read defaults. When
+ * it is absent `{{repo.dirname}}` does not resolve, and `substitute` leaves the token visible
+ * rather than emitting an empty string — the same bias as every other unresolved reference, and
+ * the reason a missing root shows up as a wrong-looking file instead of a silently blank heading.
+ */
+export function resolveParams(mods: Manifest[], overrides: Params = {}, repoRoot?: string): Params {
+  const out: Params = { repo: repoFacts(repoRoot) };
   for (const m of mods) {
     out[m.name] = {};
     for (const [k, spec] of Object.entries(m.params)) out[m.name][k] = spec.default;
