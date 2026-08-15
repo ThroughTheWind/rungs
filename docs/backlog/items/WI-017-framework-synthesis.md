@@ -2,7 +2,7 @@
 id: WI-017
 title: Synthesize the framework corpus and reconcile it with the pattern catalogue
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-017-framework-synthesis
 created: 2026-08-15
 updated: 2026-08-15
@@ -118,8 +118,33 @@ table—would create a second authority for the same decision.
 
 ## Execution
 
-Started 2026-08-15 on `feature/WI-017-framework-synthesis`.
+Branch `feature/WI-017-framework-synthesis`, cut from `main` 2026-08-15. Compared the six completed
+extractions without re-reading their source repositories, reconciled all candidates once, amended
+the workflow synthesis where the second corpus narrowed an older statement, and opened WI-029 for
+the separately scoped module work.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** [`frameworks/synthesis.md`](../../research/frameworks/synthesis.md) opens with a
+   six-framework matrix over template sections 2–7. Every cell is filled; the two absent
+   composition primitives and SWE-agent's absent pre-effect approval are explicitly not-applicable
+   with bounded reasons.
+2. **Pass.** A table-row comparison found 17 unique backticked `candidate:` ids across the six
+   extraction documents and the same 17 in the reconciliation table, with no missing or extra id.
+3. **Pass.** Every catalogue edit has a matching reconciliation row and source link. The synthesis
+   resolves those links through each extraction's pinned Snapshot; the catalogue defines the six
+   source abbreviations through the synthesis rather than duplicating pins.
+4. **Pass.** Four candidates are not commensurable with the workflow catalogue and
+   `shared-workspace-subagents` is demoted/rejected. The synthesis preserves the product findings
+   while refusing to represent UI/live-tail/container implementation as installed rungs features.
+5. **Pass.** The original workflow synthesis now carries dated amendments: OpenHands independently
+   confirms worktrees for Git coordination but not sandboxing or the land protocol, and framework
+   trajectories/checkpoints/events narrow the old “nothing recorded across runs” statement without
+   solving repository-workflow outcome history. No harness-landscape claim was contradicted.
+6. **Pass.** No file under `modules/` changed. Proposed
+   [WI-029](WI-029-apply-framework-patterns-to-modules.md) owns disposition, versioning, fixtures,
+   and upgrade behavior for the affected shipped modules.
+7. **Pass.** `node src/cli.ts check` passed 20/20 gates. In `site`, `npm run build` generated 63
+   pages and `npm run check` reported 0 diagnostics and 660 internal links with 0 broken.
