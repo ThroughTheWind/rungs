@@ -2,7 +2,7 @@
 id: WI-023
 title: Extract goose — local extensibility, MCP/ACP, and session isolation
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -25,7 +25,7 @@ silently using an obsolete URL.
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the local extensibility child of
+`accepted` — 2026-08-15. Accepted as the local extensibility child of
 [WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
