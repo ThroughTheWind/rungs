@@ -2,7 +2,7 @@
 id: WI-016
 title: Extract OpenHands — a shipped autonomous agent, sandboxing and scale
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-016-extract-openhands
 created: 2026-08-15
 updated: 2026-08-15
@@ -104,8 +104,31 @@ questions at a much higher cost, and a screenshot is not evidence about architec
 
 ## Execution
 
-Started 2026-08-15 on `feature/WI-016-extract-openhands`.
+Branch `feature/WI-016-extract-openhands`, cut from `main` 2026-08-15. The source read pinned Agent
+Canvas at `dc99e98615de4ace821692773b00a7f50d476e50` and `software-agent-sdk` at
+`46ad3d43dc385b2e7975c0935f157153930ebb16`.
 
 ## Review
 
-Not started.
+Self-review completed 2026-08-15 against every acceptance criterion:
+
+1. **Pass.** [`openhands.md`](../../research/frameworks/openhands.md) answers all eight template
+   sections. Its two-repository Snapshot records both pinned SHAs, MIT licences, read date, seven
+   measured path counts with commands, and an explicit boundary that excludes hosted Cloud,
+   automation internals, provider transports, most frontend surfaces, and running the product.
+2. **Pass.** Section 4 distinguishes the default direct-host `LocalWorkspace`, the all-in-one Canvas
+   Docker deployment, and the optional per-workspace SDK container. It traces filesystem access,
+   absolute editor paths, mounted host projects, selected environment/network/port crossings,
+   container lifecycle, and a bounded absence check for resource/read-only flags.
+3. **Pass.** Section 5 compares Canvas' default per-conversation Git worktree with the shared host
+   and optional container boundaries without ranking them. The 16-conversation stress test is
+   bounded to the scheduling, persistence, leakage, wall-time, and RSS properties its fixture can
+   establish; real tool/model capacity and cost remain unclaimed.
+4. **Pass.** Section 7's residue list links all five sibling extractions and identifies the composed
+   backend control, persistence/streaming, repository/worktree, live run-control, and packaging
+   surfaces found in the product layer.
+5. **Pass.** Judgement is labelled **Opinion**. Measurements are dated, absence claims name their
+   search boundary, implementation claims use pinned file permalinks, and current counter-evidence
+   replaces the item's initial container-versus-worktree expectation.
+6. **Pass.** `node src/cli.ts check` passed 20/20 gates. In `site`, `npm run build` generated 61
+   pages and `npm run check` reported 0 diagnostics and 530 internal links with 0 broken.
