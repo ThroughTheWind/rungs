@@ -40,27 +40,51 @@ Found while assessing first-user documentation completeness on 2026-08-15.
 
 ## Decision
 
-*Empty until decided.*
+`accepted` — 2026-08-15, as part of the first-user path.
 
 ## Plan
 
-> Filled once `accepted`.
-
 ### Requirements
 
-*Filled once `accepted`.*
+- `--help` lists every command the switch dispatches, including `setup git`.
+- It lists every flag the parser honours: `--dry-run`, `--apply`, `--copilot`, `--confirm-threshold`,
+  `--set`, `--fast`, `--full`, `--into`.
+- `rungs --help` exits **0**. An unknown command still exits 1.
+- The README's table names the same commands, with no entry `--help` lacks and none it invents.
+- Commands are defined **once** in code, so the help text cannot drift from the dispatcher.
 
 ### Impacts
 
-*Filled once `accepted`.*
+- [`src/cli.ts`](../../../src/cli.ts) — a `COMMANDS` table, the help renderer, and the `default:`
+  branch that currently doubles as the help screen.
+- [`README.md`](../../../README.md) — the command table and the flag line.
+- **No ADR.** Criterion 2: no reasonable alternative was rejected — this is reconciling two lists
+  with the code that already decides the answer.
 
 ### Approach
 
-*Filled once `accepted`.*
+Define commands once, as a `COMMANDS` array of `{ usage, blurb }`, and render `--help` from it. The
+dispatcher keeps its `switch`, because a table of handlers would be a refactor this item did not ask
+for; what matters is that the *text* has one source and sits beside the switch it describes.
+
+Split help from failure. `rungs`, `rungs --help` and `rungs help` print help and exit 0; an unknown
+command prints help to stderr and exits 1. Today both paths are the `default:` branch, which is why
+a successful `--help` reports failure.
+
+**The README table stays hand-kept**, and is reconciled here rather than generated. Generating it
+would mean either a rungs-specific gate — which does not belong in the `gates` module, since that
+ships to consumer repos that have no such README — or a managed block in our own README, which is a
+larger change than "the two lists disagree" justifies. Recorded as a known cost: this is the second
+inventory, and it can drift again. WI-006's generated parameter reference is the precedent to follow
+if it does.
 
 ### Acceptance criteria / tests
 
-*Filled once `accepted`.*
+1. `rungs --help` exits 0, measured unpiped. `rungs frobnicate` exits 1.
+2. Help output contains `setup git` and all eight flags named in Requirements.
+3. Every `case` in the dispatch switch appears in help output — checked by listing both.
+4. The README's command rows and help's command lines name the same set.
+5. `rungs check` → 20 pass, 0 fail.
 
 ### Out of scope
 
