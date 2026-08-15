@@ -2,8 +2,8 @@
 id: WI-023
 title: Extract goose — local extensibility, MCP/ACP, and session isolation
 type: docs
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-023-extract-goose
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-016, WI-017, WI-019, WI-025, WI-028]
@@ -72,7 +72,8 @@ extension ecosystem. Treat ACP as a change of loop ownership and make that bound
 
 ## Execution
 
-Not started.
+Started 2026-08-15 on `feature/WI-023-extract-goose`. Read-only source snapshot is pinned
+to goose commit `3810898a7447ec3299be72e223d3570a7aabf0ab` while the extraction is written.
 
 ## Review
 
