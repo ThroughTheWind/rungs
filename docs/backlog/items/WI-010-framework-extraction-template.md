@@ -2,7 +2,7 @@
 id: WI-010
 title: A fixed template and method for the public-framework corpus
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-010-framework-extraction-template
 created: 2026-08-15
 updated: 2026-08-15
@@ -123,9 +123,14 @@ research item; landing another branch's site fix is outside WI-010. For isolatio
 exact status union temporarily made the full site build and check pass: 55 routes, 497 internal
 links, 0 broken, with both new framework routes rendered. The temporary change was then removed.
 
+**F-008 resolved.** At the user's direction, the already-authored fix was cherry-picked onto
+`main` as `655eacb`, where the site built 53 routes and checked 469 internal links with 0 broken.
+This branch then rebased onto `main`; its normal, unmodified site build produced 55 routes and the
+link check covered 497 internal links with 0 broken.
+
 ## Review
 
-Checked 2026-08-15; the item remains `in_progress` because criterion 5 is blocked on F-008.
+Checked 2026-08-15.
 
 1. **Pass.** `docs/research/frameworks/TEMPLATE.md` has all eight planned sections, each opening
    with the purpose of that section.
@@ -135,7 +140,6 @@ Checked 2026-08-15; the item remains `in_progress` because criterion 5 is blocke
    method, commit-pinning rule, and licence and quotation rules.
 4. **Pass.** `docs/research/README.md` now names the workflow and architecture axes and links the
    framework index.
-5. **Open on the branch; isolated content check passes.** `node src/cli.ts check` is 20/20. A normal
-   site build fails on the pre-existing F-008 schema defect before loading the new routes. With the
-   already-authored fix from commit `4acb73d` temporarily applied, `npm run build && npm run check`
-   builds 55 routes, including both framework pages, and checks 497 internal links with 0 broken.
+5. **Pass.** `node src/cli.ts check` is 20/20. After F-008's existing fix landed on `main`, the
+   branch's unmodified `npm run build && npm run check` built 55 routes, including both framework
+   pages, and checked 497 internal links with 0 broken.

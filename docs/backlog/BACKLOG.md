@@ -10,13 +10,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs | `feature/WI-010-framework-extraction-template` |
+| — | *nothing in flight* | | |
 
 ## Review
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-010](items/WI-010-framework-extraction-template.md) | A fixed template and method for the public-framework corpus | docs | `feature/WI-010-framework-extraction-template` |
 
 ## Planned
 
