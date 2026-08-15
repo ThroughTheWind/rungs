@@ -9,6 +9,16 @@ const publishedVersion = "0.1.2";
 
 const releases = [
   {
+    version: "0.1.3",
+    date: "2026-08-15",
+    kind: "patch",
+    entries: [
+      ["added", "The design-system Versions & changelog page and release-history surface."],
+      ["changed", "The shared footer now links Versions, npm, and GitHub without stale phase or namespace claims."],
+      ["changed", "Package metadata, README, roadmap, and site navigation agree on the next release."],
+    ],
+  },
+  {
     version: "0.1.2",
     date: "2026-08-15",
     kind: "patch",
@@ -46,7 +56,7 @@ const modules = [
       title="Versions & changelog"
       fields={[
         { label: "Latest", value: `${publishedVersion} · published 2026-08-15` },
-        { label: "Next", value: `${nextVersion} · pending release` },
+        { label: "Cut", value: `${nextVersion} · npm publication pending` },
         { label: "Updated", value: SITE.asOf },
       ]}
     />
@@ -58,7 +68,7 @@ const modules = [
           <article class="release-card">
             <div class="release-head">
               <span class="release-version">v{release.version}</span>
-              <span class="release-meta">{release.date} · {release.kind} · npm latest</span>
+              <span class="release-meta">{release.date} · {release.kind} · {release.version === publishedVersion ? "npm latest" : "npm publication pending"}</span>
             </div>
             <div class="release-body">
               {release.entries.map(([kind, text]) => (
@@ -72,8 +82,8 @@ const modules = [
         ))}
       </div>
       <div class="next-card">
-        <span class="next-label">Next release · not published</span>
-        <p><code>v{nextVersion}</code> carries this site sync, the new Versions surface, and the refreshed footer. It becomes a release only after the gates, changelog assembly, tag, and npm publication complete.</p>
+        <span class="next-label">Release cut · npm publication pending</span>
+        <p><code>v{nextVersion}</code> is tagged and ready for npm publication. Verify the registry artifact and a clean consumer before announcing it.</p>
       </div>
     </section>
 
