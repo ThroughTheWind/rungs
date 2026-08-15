@@ -34,7 +34,11 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-008](items/WI-008-link-gate-checks-every-file.md) | Stop a template token switching off link checking for a whole file | chore |
+| — | *nothing proposed* | |
+
+**Done since:** [WI-008](items/WI-008-link-gate-checks-every-file.md) — promoted from F-005.
+Link checking covered 72 of 89 files; a single `{{token}}` anywhere in a document exempted every
+link in it. Now per-link, with code spans excluded because a quoted link is not a link.
 
 ---
 
