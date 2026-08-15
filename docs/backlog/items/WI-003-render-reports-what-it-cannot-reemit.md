@@ -49,27 +49,58 @@ Found while assessing first-user documentation completeness on 2026-08-15.
 
 ## Decision
 
-*Empty until decided.*
+`accepted` — 2026-08-15. Investigation during planning **widened what is wrong** and narrowed the
+fix. The instruction is not merely incomplete; no command performs it at all.
 
 ## Plan
 
-> Filled once `accepted`.
-
 ### Requirements
 
-*Filled once `accepted`.*
+- `.ai/rungs.toml`'s header states only what some command actually does.
+- It says where a parameter change *can* still be applied, and where it cannot.
+- `render` emitting nothing reads as "nothing to do", not as a completed edit.
+- No change to what any command writes. This item corrects claims, not behaviour.
 
 ### Impacts
 
-*Filled once `accepted`.*
+- [`src/add.ts`](../../../src/add.ts) `writeRecord` — the three header lines.
+- [`src/cli.ts`](../../../src/cli.ts) `cmdRender` — the zero case.
+- Every repo scaffolded from here on. Existing repos keep the old header until re-installed, which
+  is acceptable: the header is wrong but inert, and rewriting a user's file to fix our sentence is
+  the overwrite this tool promises never to do.
+- **No ADR.** Criterion 5: the code states the boundary more precisely than prose can — `SHARED` in
+  `add.ts` already carries the reasoning.
 
 ### Approach
 
-*Filled once `accepted`.*
+**What was measured on 2026-08-15**, which is more than the item was opened with:
+
+| Command | Re-substitutes a changed parameter? |
+| --- | --- |
+| `rungs render` | **No.** `readRules` reads `.ai/rules/*.md` off disk, already substituted at install. It re-emits rules per harness; it never revisits parameters |
+| `rungs upgrade --apply` | **No, for the entry document.** `emittedFiles` skips the `SHARED` set — `AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.gitattributes`, `.ai/gates.toml` — because they are co-owned and only their managed *blocks* are upgraded. `project_name` lands in the `H1`, outside every block |
+
+So the header is not describing a partial mechanism. `render` was never the command for this, and for
+`SHARED` files no command is. `upgrade` reported `0 to update · 0 diverged` after a parameter change
+— correct behaviour, wholly undiscoverable from the instruction.
+
+The fix is therefore **(b) from the proposal — narrow the instruction** — and (a) is now rejected on
+evidence rather than taste: making `render` re-emit `SHARED` files would clobber the managed blocks
+`SHARED` exists to protect, which is the one thing this tool promises not to do.
+
+Rejected: **deleting the sentence.** A config file whose parameters visibly do nothing invites the
+same experiment. Saying where they still apply is what stops it.
 
 ### Acceptance criteria / tests
 
-*Filled once `accepted`.*
+1. A fresh install's `.ai/rungs.toml` header makes no claim that editing a parameter and running
+   `render` changes a written file.
+2. The header names the co-owned files by the reason they are excluded, not by listing behaviour a
+   reader must test.
+3. `rungs render` with nothing to emit says so in words that do not read as a completed edit.
+4. `rungs check` → 20 pass, 0 fail; `render` on this repo still emits its 3 rules.
+5. The measurement table above is reproducible: change `project_name`, run `render` then
+   `upgrade --apply`, observe the entry document unchanged by both.
 
 ### Out of scope
 
