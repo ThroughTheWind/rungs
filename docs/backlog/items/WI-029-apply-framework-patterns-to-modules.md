@@ -2,7 +2,7 @@
 id: WI-029
 title: Apply framework-derived patterns to shipped modules
 type: docs
-status: planned
+status: review
 branch: feature/WI-029-apply-framework-patterns
 created: 2026-08-15
 updated: 2026-08-15
@@ -128,4 +128,28 @@ matching provenance before the review status is recorded.
 
 ## Review
 
-Not started.
+`review` — 2026-08-15. The concern table is complete and each commensurable WI-017 pattern has one
+disposition and an exact source-file set. The implemented patterns are present in module provenance,
+module versions, fragments, rules, skills, templates, and the catalogue; the intentionally
+catalogue-only rows explain why no generated capability is claimed. `replay-safe-side-effect` stays
+out of the rung-2 workflows module, typed output validation stays out of generic gates, and the
+language-specific testing candidates stay out of the deliberately dropped testing module.
+
+Acceptance review:
+
+1. **Disposition coverage — pass.** The table covers the confirmed/strengthened patterns, merged
+   `interrupt-as-state`, new invocation patterns, catalogue-only testing/gate candidates, existing
+   mappings, and product-only residues.
+2. **Provenance and upgrade handling — pass.** Instructions, workflows, skills, and session are
+   `1.1.0`; source manifests and fragments carry the matching pattern ids and incidents. A temporary
+   disciplined scaffold rendered the new rules and its upgrade preview reported zero stale or
+   divergent files.
+3. **Product boundary — pass.** No sandbox, event transport, run-control surface, agent runtime,
+   model provider, or CLI command was added. The generated rules explicitly state those limits.
+4. **Generated agreement — pass.** `docs/design/module-catalog.md`, module manifests, source
+   fragments, rules, skills, and templates use the same parameters and pattern vocabulary. The
+   gates self-test fixture preserves its template-link behavior while `rungs modules` reports a
+   clean audit.
+5. **Verification — pass.** `node src/cli.ts check` is 20/20; `node src/cli.ts modules` is audit
+   clean; `npm test` is 5/5; `site` builds 88 pages and checks 1127 internal links with 0 broken.
+   Existing duplicate-content-id build warnings remain recorded in F-010.
