@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-031 -->
+<!-- NEXT-ID: WI-036 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -23,6 +23,11 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
+| [WI-031](items/WI-031-integrate-rift-forge-capabilities.md) | Integrate transferable Rift Forge workflow capabilities into rungs | feature |
+| [WI-032](items/WI-032-sync-docs-roadmap-frontend.md) | Sync public docs, roadmap, and frontend surfaces with the current product | docs |
+| [WI-033](items/WI-033-assess-quality-and-adoption-readiness.md) | Assess repo quality, improvements, and external-adoption readiness | spike |
+| [WI-034](items/WI-034-remediate-readiness-findings.md) | Remediate release-readiness findings | chore |
+| [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore |
 
 ## Accepted
 
