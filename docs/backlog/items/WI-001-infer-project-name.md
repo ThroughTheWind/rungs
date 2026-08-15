@@ -2,7 +2,7 @@
 id: WI-001
 title: Infer project_name from the repo directory, as its own default already promises
 type: chore
-status: review
+status: done
 branch: feature/WI-001-infer-project-name
 created: 2026-08-15
 updated: 2026-08-15
