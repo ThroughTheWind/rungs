@@ -2,7 +2,7 @@
 id: WI-021
 title: Extract Inspect AI — reproducible agent evaluation and sandboxed evidence
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -26,8 +26,10 @@ mechanical.
 
 ## Decision
 
-`proposed` — 2026-08-15. Captured as the evaluation-system child of
-[WI-018](WI-018-follow-on-public-agent-research.md), after WI-019 defines the track template.
+`accepted` then `planned` — 2026-08-15. The user directed the follow-on research to continue after
+WI-019 completed the evaluation-track method and WI-020 demonstrated the extraction workflow. This
+item is the evaluation-system child of [WI-018](WI-018-follow-on-public-agent-research.md); its
+requirements, impacts, approach, and acceptance criteria above are now the execution contract.
 
 ## Plan
 
