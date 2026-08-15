@@ -2,8 +2,8 @@
 id: WI-035
 title: Prepare and execute the public rungs release
 type: chore
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-035-public-release
 created: 2026-08-15
 updated: 2026-08-15
 related: [WI-033, WI-034]
@@ -75,9 +75,10 @@ reviewed readiness assessment and its remediation item.
 
 ## Execution
 
-Not started. Planning artifact only; execute on `feature/WI-035-public-release` after WI-034 is merged and publication is explicitly authorized.
+Execution started on `feature/WI-035-public-release` after WI-034 was merged. The registry is
+reachable, but `npm whoami` returns 401, so publication is currently limited to an authorized dry-run
+and local artifact verification.
 
 ## Review
 
 Not started.
-
