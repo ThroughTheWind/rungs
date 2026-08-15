@@ -2,7 +2,7 @@
 id: WI-021
 title: Extract Inspect AI — reproducible agent evaluation and sandboxed evidence
 type: docs
-status: in_progress
+status: done
 branch: feature/WI-021-extract-inspect-ai
 created: 2026-08-15
 updated: 2026-08-15
