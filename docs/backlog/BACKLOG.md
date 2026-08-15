@@ -22,7 +22,8 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| — | | |
+| [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
+| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs |
 
 ## Accepted
 
@@ -34,8 +35,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-019](items/WI-019-follow-on-research-method.md) | Define methods for the follow-on public-agent research | docs |
 | [WI-020](items/WI-020-extract-letta-code.md) | Extract Letta Code — durable memory, identity, and continual learning | docs |
 | [WI-021](items/WI-021-extract-inspect-ai.md) | Extract Inspect AI — reproducible agent evaluation and sandboxed evidence | docs |
 | [WI-022](items/WI-022-extract-aider.md) | Extract Aider — git-first coding, repository context, and validation | docs |
@@ -59,7 +58,7 @@ order → OpenHands → synthesis.
 [`research/README.md`](../research/README.md) names as the existing corpus's explicit non-goal — so
 this is a second research axis with its own directory and template, not more of the first.
 
-[WI-018](items/WI-018-follow-on-public-agent-research.md) is a proposed follow-on, not an expansion
+[WI-018](items/WI-018-follow-on-public-agent-research.md) is an accepted follow-on, not an expansion
 of WI-009. It begins after WI-017 and gives durable memory, evaluation/optimization, local products,
 and interoperability protocols separate evidence tracks before reconciling them once.
 

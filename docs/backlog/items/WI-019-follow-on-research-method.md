@@ -2,7 +2,7 @@
 id: WI-019
 title: Define methods for the follow-on public-agent research
 type: docs
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -26,8 +26,9 @@ need separate questions.
 
 ## Decision
 
-`proposed` — 2026-08-15. Created as the prerequisite method child of
-[WI-018](WI-018-follow-on-public-agent-research.md); execution is sequenced after WI-017.
+`accepted` — 2026-08-15. The user directed the follow-on research to start. WI-017 is done, and
+[WI-018](WI-018-follow-on-public-agent-research.md) retains this method as the prerequisite for all
+eight extractions.
 
 ## Plan
 

@@ -2,7 +2,7 @@
 id: WI-018
 title: Extend public-agent research across memory, evaluation, products, and protocols
 type: epic
-status: proposed
+status: planned
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -41,9 +41,9 @@ the proposed question does not match the source.
 
 ## Decision
 
-`proposed` — 2026-08-15. The user asked that the recommended follow-on subjects be captured as an
-epic and work items. Capturing them does not authorize starting them before
-[WI-017](WI-017-framework-synthesis.md) has closed the fixed six-repository corpus.
+`accepted` — 2026-08-15. The user directed the follow-on research to start after the recommendations
+were captured. [WI-017](WI-017-framework-synthesis.md) and its parent corpus are done, so the method
+prerequisite is now unblocked; the epic remains sequenced method → extractions → synthesis.
 
 ## Plan
 
