@@ -2,7 +2,7 @@
 id: WI-032
 title: Sync public docs, roadmap, and frontend surfaces with the current product
 type: docs
-status: in_progress
+status: review
 branch: feature/WI-032-sync-docs-roadmap-frontend
 created: 2026-08-15
 updated: 2026-08-15
@@ -79,6 +79,14 @@ Execution started on `feature/WI-032-sync-docs-roadmap-frontend` after WI-031 me
 inventory is `docs/design/WI-032-claim-inventory.md`; it records each changed fact, its authority,
 and the command/date used to re-check it.
 
+- `npm test`: 6/6 pass.
+- `npm run rungs -- check`: 20 pass, 0 fail.
+- `cd site && npm run build`: 96 pages built; the pre-existing duplicate-content-id warnings
+  remain, with no new type diagnostics.
+- `cd site && npm run check`: 0 Astro errors/warnings/hints; 1,195 internal links, 0 broken.
+
 ## Review
 
-Not started.
+Ready for review. README, roadmap, module catalogue, product brief, and landing-page claims now
+use the current package/module/candidate evidence. The new matrix and claim inventory are published
+through the existing docs glob; no second content copy or route registry was introduced.
