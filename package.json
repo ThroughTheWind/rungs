@@ -13,7 +13,7 @@
   },
   "type": "module",
   "bin": {
-    "rungs": "./dist/cli.js"
+    "rungs": "dist/cli.js"
   },
   "publishConfig": {
     "access": "public"
