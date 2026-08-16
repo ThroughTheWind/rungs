@@ -2,7 +2,7 @@
 id: WI-048
 title: Act on the second external review
 type: epic
-status: accepted
+status: done
 branch:
 created: 2026-08-16
 updated: 2026-08-16
@@ -118,8 +118,77 @@ ADR-0003 territory. WI-052 decides against its own diff.
 
 ## Execution
 
-Not started.
+Landed 2026-08-16 in the planned order — 050 → 049 → 051 → 052 → 053 — with one insertion.
+
+| Child | What landed |
+| --- | --- |
+| [WI-050](WI-050-board-reconciled-gate.md) | The board is gated against the item files it names. Gate 22 → 23 |
+| [WI-049](WI-049-doctor-advertises-analysis.md) | Plain `doctor` names `--explain` |
+| [WI-051](WI-051-derive-site-claims.md) | The site's structural counts are derived and gated |
+| [WI-052](WI-052-detector-applicability.md) | Applicability declared per gate, [ADR-0007](../../decisions/ADR-0007-detector-applicability.md) |
+| [WI-053](WI-053-false-positive-census.md) | [The census](../../design/explain-census-2026-08-16.md) — 2,291 findings, 0 wrong |
+
+**[WI-054](WI-054-upgrade-registers-gates.md) was inserted between 050 and 049**, out of the epic,
+because WI-050 immediately exposed [F-016](../FINDINGS.md): `upgrade --apply` never re-registered
+gates, so the gate WI-050 had just shipped could reach no existing install. It is not a child of
+this epic — it acts on no review claim — and it is recorded here because the sequence would
+otherwise look like it drifted.
+
+### The pattern across the five
+
+**Four of the five were changed by measurement, not by the plan.** That is the epic's most useful
+output and none of it was predicted:
+
+- **WI-049** was specified with a finding count. Measured, that took plain `doctor` on `rift-forge`
+  from **1.6s to 16.8s** — a 10× tax on the entry point to advertise a flag. It ships reporting the
+  number detection already computed, and one acceptance criterion is recorded **unmet** rather than
+  reworded.
+- **WI-050**'s requirement 4 was wrong: reporting every undeclared board heading produced **seven
+  findings against a correct document**. The typo case it was aimed at is caught precisely instead.
+- **WI-051** left the run result typed, reasoning it was a dated measurement like the research
+  snapshots. Within minutes the page read `23 gates register` beside `22 pass`, same day — the
+  incoherence the item existed to remove, reintroduced by the one part exempted from it.
+- **WI-053** found that 63 of 82 directories are one project's worktrees, and that `rift-forge`'s
+  count had moved by 63 findings in a few hours because it is somebody's live repo.
 
 ## Review
 
-Not started.
+Verified 2026-08-16.
+
+**1 · All five children `done`.** No claim was dropped. **Met.**
+
+**2 · `doctor` names the analysis in ≤ 3 lines and still ends with one command.** Three lines
+including the heading; WI-005 not regressed. **Met with a stated exception:** a repo where the
+analysis would find nothing is still told it exists, because knowing otherwise costs the 15 seconds
+criterion 5 forbade. Recorded in WI-049 as unmet rather than redefined.
+
+**3 · No board row disagrees with its item's status, and a gate refuses it.**
+`backlog-board-reconciled` examines 12 rows and passes; the fourteen that disagreed when the review
+arrived are corrected. **Met.**
+
+**4 · No number on a public surface is both typed and unchecked.** Structural counts derive from
+`generated/claims.json` and `site-claims-current` refuses drift; the run result is captured by
+`npm run claims`. `phase.label` remains prose, deliberately and on the record. **Met.**
+
+**5 · Applicability declared per detector, not listed centrally by engine.** 41 gates, three values,
+`explain.ts` holds no engine names. Proven behaviour-preserving by byte-identical `--explain` output
+on all four source repos. **Met.**
+
+**6 · A false-positive rate published per repo, with the method stated.** 2,291 findings, 6 repos,
+**0 wrong, 0 unclassified**, classifier proven able to return every verdict first. **Met.**
+
+**7 · Gates, tests, site.** `rungs check` → **23 pass · 0 fail · 0 unimplemented · 0 error**;
+`npm test` → **20 pass**; site builds with 0 broken links. **Met.**
+
+### What the epic did not resolve
+
+- **Generalisation.** The census measures eleven project shapes built by **one operator**. The
+  review's actual test — twenty repositories nobody involved touched — cannot be run from here, and
+  §4 of the results document says so rather than letting 0% imply otherwise.
+- **Whether findings are worth acting on.** Of `rift-forge`'s 1,994 surviving findings, nobody knows
+  how many its owner would fix. Low false positives and low value look identical from outside.
+- **[WI-041](WI-041-decide-cross-repo-evidence.md)** stays `proposed`, as directed — the cross-repo
+  evidence question the review's fleet-product speculation reopens, and ADR-0005 Tier C still
+  refuses.
+- **[F-017](../FINDINGS.md)** stays open: `upgrade` does not update `.ai/rungs.toml`, and the obvious
+  fix would stamp our hash onto user-diverged files.
