@@ -1,6 +1,10 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { matchAny, walk } from './glob.ts';
+import { parse as parseToml } from 'smol-toml';
+import { runSelfTests } from './selftest.ts';
+import { loadAllModules } from './manifest.ts';
+import { resolveParams, substitute } from './substitute.ts';
 import {
   computedClaim,
   crossReference,
@@ -293,8 +297,9 @@ const filePopulation: Engine = (t, root, files) => {
  * and one expecting `fail`. A gate whose rules are all currently satisfied is
  * indistinguishable from a gate that matches nothing.
  */
-const gateMeta: Engine = (_t, root) => {
+export const gateMeta: Engine = (_t, root) => {
   const findings: Finding[] = [];
+
   const registry = join(root, '.ai', 'gates.toml');
   if (!existsSync(registry)) return { findings, examined: 0 };
   const text = readFileSync(registry, 'utf8');
@@ -317,11 +322,55 @@ const gateMeta: Engine = (_t, root) => {
         findings.push({ message: `gate '${id}' has no self-test expecting '${direction}'` });
       }
     }
+
   }
   return { findings, examined };
 };
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * A gate table, parsed. Substitution is deliberately *not* applied: a fixture's
+ * `{{token}}` is part of what it asserts, and the runner needs the table's raw
+ * shape rather than one repo's resolved parameters.
+ */
+function parseTable(path: string, module: string): any | null {
+  if (!existsSync(path)) return null;
+  try {
+    // Substituted with the module's **real defaults**, not a placeholder. Using
+    // `probe` turned the skills schema's scan into `probe/**/SKILL.md` while its
+    // fixture still wrote `.claude/skills/x/SKILL.md`, so the engine saw no file
+    // and the runner reported the gate broken — a mismatch entirely of the
+    // harness's making. A fixture and the table it tests must resolve against
+    // the same parameters or neither means anything.
+    const mods = loadAllModules(join(dirname(new URL(import.meta.url).pathname.slice(1)), '..', 'modules'));
+    const params = resolveParams(mods, {}, '.');
+    return parseToml(substitute(readFileSync(path, 'utf8'), module, params));
+  } catch {
+    return null;
+  }
+}
+
+/** Duplicated from `check.ts` rather than imported, to keep engines dependency-free of the runner. */
+const tableKeyFor = (engine: string) =>
+  ({
+    'file-budget': 'file_budget',
+    'frontmatter-schema': 'frontmatter_schema',
+    'link-integrity': 'link_integrity',
+    'file-population': 'file_population',
+    'render-freshness': 'render_freshness',
+    'register-schema': 'register_schema',
+    'self-declared-closure': 'self_declared_closure',
+    'filename-schema': 'filename_schema',
+    'cross-reference': 'cross_reference',
+    'git-status-reconcile': 'merged_status',
+    'computed-claim': 'computed_claim',
+    'term-ownership': 'term_ownership',
+    'rule-propagation': 'rule_propagation',
+    'git-state': 'git_state',
+    'merge-driver-check': 'merge_driver_check',
+    'board-reconcile': 'board_reconcile',
+  })[engine] ?? engine;
 
 export const ENGINES: Record<string, Engine> = {
   'file-budget': fileBudget,

@@ -17,6 +17,7 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
+| [WI-045](items/WI-045-run-gate-self-tests.md) | Execute gate self-test fixtures instead of only declaring them | feature | `feature/WI-045-run-gate-self-tests` |
 
 ## Planned
 
@@ -35,7 +36,7 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
-| [WI-045](items/WI-045-run-gate-self-tests.md) | Execute gate self-test fixtures instead of only declaring them | feature |
+
 | [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
 
 [WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
@@ -218,6 +219,19 @@ overwrote an edit [ADR-0004](../decisions/ADR-0004-adoption-detection.md) promis
 stale version number is cosmetic; discarding a user's edit is not. Verified with a divergence in
 place: the hash survived **and** the file was still reported as diverged, because either alone
 proves nothing.
+
+[WI-045](items/WI-045-run-gate-self-tests.md) sits at **review, not done**, 2026-08-16. The fixture
+runner exists and is unit-tested, and it is **deliberately not wired into the gate**. Wired, it
+reported 17 failures and every one inspected was its own harness: fixtures assume sibling files the
+temp repo does not have, tokens were substituted with a placeholder that broke scan/file
+correspondence, and the table section was narrowed by gate id. Twelve were proven artifacts and
+fixed; **five remain untriaged** ([F-018](FINDINGS.md)).
+
+A gate that cries wolf is deleted faster than the gate it was checking, so `rungs check` stays
+honest at 23 pass and the claim that fixtures execute is not made until it is true. The counting
+also corrected this item's own premise: **114 self-tests, 29 text and 85 structured across 23
+shapes**, not the ~8 it estimated. The durable fix is probably a fixture format that carries its
+context — a `setup` block — which is an ADR-0003 question rather than more harness.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
