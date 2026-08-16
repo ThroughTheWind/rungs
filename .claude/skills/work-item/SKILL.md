@@ -8,6 +8,7 @@ description: >-
   out to be real work rather than a quick fix. An out-of-scope observation is a finding, not an
   item — that is /record-finding. Shipping a version is /cut-release. This skill is one item,
   start to finish.
+disable-model-invocation: true
 ---
 
 # Execute a work item

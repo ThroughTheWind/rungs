@@ -128,7 +128,7 @@ const sections: Engine = (t, root, files) => {
   return { findings, examined };
 };
 
-const frontmatterSchema: Engine = (t, root, files) => {
+export const frontmatterSchema: Engine = (t, root, files) => {
   const specs = Array.isArray(t) ? t : [t];
   const findings: Finding[] = [];
   let examined = 0;
@@ -147,8 +147,15 @@ const frontmatterSchema: Engine = (t, root, files) => {
         if (!keys.includes(req)) findings.push({ file: rel, message: `missing '${req}'` });
       }
       if (spec.allowed) {
+        // `extensions_allowed_from` names the manifest that may legalise a
+        // non-spec key. It was declared in the skills table and read nowhere
+        // (F-019), so an extension a module had deliberately opted into was
+        // indistinguishable from one somebody typed by mistake — and the
+        // portability cost the opt-in exists to record was attached to nothing.
+        const optedIn = spec.extensions_allowed_from ? optedInExtensions(rel, spec) : new Set<string>();
         for (const k of keys) {
-          if (!spec.allowed.includes(k)) findings.push({ file: rel, message: `non-spec key '${k}'` });
+          if (spec.allowed.includes(k) || optedIn.has(k)) continue;
+          findings.push({ file: rel, message: `non-spec key '${k}'` });
         }
       }
       const field = (k: string) => m[1].match(new RegExp(`^${k}:\\s*(.+)$`, 'm'))?.[1].trim().replace(/^["']|["']$/g, '');
@@ -368,6 +375,32 @@ export const gateMeta: Engine = (_t, root) => {
   }
   return { findings, examined };
 };
+
+/**
+ * Which non-spec frontmatter keys are legal for this skill, because the module
+ * that ships it opted in.
+ *
+ * The skill's name is its directory — `.claude/skills/work-item/SKILL.md` — and
+ * the answer lives in whichever module declares `[skills.work-item]`. Read from
+ * the CLI's module set rather than from the repo, so a consumer cannot legalise
+ * an extension by editing a file: the opt-in belongs to the module that took the
+ * portability cost.
+ *
+ * `extensions_opted_in` overrides it, which is how a self-test fixture states
+ * the opt-in without needing a module on disk.
+ */
+function optedInExtensions(rel: string, spec: any): Set<string> {
+  if (Array.isArray(spec.extensions_opted_in)) return new Set(spec.extensions_opted_in.map(String));
+  const name = rel.split('/').slice(-2)[0];
+  if (!name) return new Set();
+  try {
+    const mods = loadAllModules(join(dirname(new URL(import.meta.url).pathname.slice(1)), '..', 'modules'));
+    const owner = mods.find((m) => m.skills?.[name]?.extensions);
+    return new Set(Object.keys(owner?.skills?.[name]?.extensions ?? {}));
+  } catch {
+    return new Set();
+  }
+}
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

@@ -104,6 +104,15 @@ export interface Manifest {
   params: Record<string, ParamSpec>;
   gates: GateSpec[];
   detect: DetectSpec;
+  /**
+   * Per skill, the harness extensions this module opted into — `[skills.<name>]`
+   * in `module.toml`.
+   *
+   * Was declared in manifests and documented in `modules/README.md` while being
+   * parsed by nothing (F-019), so the opt-in that is meant to attach a
+   * portability cost to a decision attached to nothing at all.
+   */
+  skills?: Record<string, { extensions?: Record<string, unknown>; extension_note?: string }>;
   provenance: Provenance;
   threshold?: { metric: string; minimum: number; confirm?: boolean };
   /** Absolute path to the module directory. */

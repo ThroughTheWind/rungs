@@ -6,12 +6,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
-import { blockedByParadigm } from '../src/add.ts';
+import { blockedByParadigm, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
 import { applyUpgrade, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
-import { linkIntegrity } from '../src/engines.ts';
+import { frontmatterSchema, linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
 import { runSelfTests } from '../src/selftest.ts';
@@ -182,6 +182,62 @@ test('the self-test runner executes a fixture and refuses to guess at one it can
 
   const contextual = runSelfTests('demo', 'link-integrity', table, [{ expect: 'pass', input: 'x' }]);
   assert.equal(contextual[0].outcome, 'unrun', 'engines needing context the fixture lacks do not run');
+});
+
+/**
+ * F-019. `[skills.<name>].extensions` was declared in manifests, documented in
+ * `modules/README.md`, and implemented at **no** layer — not parsed, not
+ * emitted, not read by the gate. `work-item` creates branches and merges, and
+ * the manifest's reason for opting it out of model invocation had been inert
+ * since it was written.
+ *
+ * Both directions matter: an opted-in key must be legal, and a key nobody opted
+ * into must still fail — otherwise the fix is just a hole.
+ */
+test('a skill extension is legal only when its module opted in', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-ext-'));
+  const write = (rel, fm) => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), `---\n${fm}\n---\n\nbody\n`);
+    return rel;
+  };
+  const spec = {
+    scan: ['.claude/skills/**/SKILL.md'],
+    required: ['name', 'description'],
+    allowed: ['name', 'description'],
+    extensions_allowed_from: 'module.toml:skills.<name>.extensions',
+  };
+
+  const opted = write('.claude/skills/a/SKILL.md', 'name: a\ndescription: d\ndisable-model-invocation: true');
+  const notOpted = write('.claude/skills/b/SKILL.md', 'name: b\ndescription: d\nargument-hint: x');
+
+  const legal = frontmatterSchema({ ...spec, extensions_opted_in: ['disable-model-invocation'] }, root, [opted]);
+  assert.deepEqual(legal.findings, [], 'an opted-in extension is not a non-spec key');
+
+  const illegal = frontmatterSchema({ ...spec, extensions_opted_in: [] }, root, [notOpted]);
+  assert.equal(illegal.findings.length, 1, 'a key nobody opted into still fails');
+  assert.match(illegal.findings[0].message, /argument-hint/);
+
+  // And with the rule absent entirely, nothing is legalised.
+  const noRule = frontmatterSchema({ ...spec, extensions_allowed_from: undefined }, root, [opted]);
+  assert.equal(noRule.findings.length, 1, 'without the rule, an extension is a non-spec key again');
+
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('the shipped work-item skill carries the extension its module opted into', () => {
+  const modules = loadAllModules(resolve('modules'));
+  const backlog = modules.find((m) => m.name === 'backlog');
+  assert.ok(backlog.skills?.['work-item']?.extensions, 'the manifest declares the opt-in');
+
+  const emitted = emittedFiles(backlog, resolveParams(modules, {}, '.'));
+  const skill = emitted.get('.claude/skills/work-item/SKILL.md');
+  assert.match(skill, /^disable-model-invocation: true$/m, 'and it reaches the emitted skill');
+  assert.doesNotMatch(
+    emitted.get('.claude/skills/backlog-summary/SKILL.md'),
+    /disable-model-invocation/,
+    'a skill with no opt-in is untouched',
+  );
 });
 
 test('every shipped gate declares its applicability', () => {

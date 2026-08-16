@@ -66,7 +66,11 @@ export function addModule(
     const base = join(mod.dir, 'skills');
     const dir = opts.skillsDir ?? '.claude/skills';
     for (const rel of walk(base)) {
-      write(`${dir}/${rel}`, sub(readFileSync(join(base, rel), 'utf8')), 'skill');
+      // Through the same helper `emittedFiles` uses. These two paths both emit
+      // skills and are easy to change apart — patching only `emittedFiles` for
+      // F-019 left `add` still writing the un-extended file, so an install and
+      // an upgrade would have produced different content for the same skill.
+      write(`${dir}/${rel}`, withOptedInExtensions(mod, rel, sub(readFileSync(join(base, rel), 'utf8'))), 'skill');
     }
   }
 
@@ -257,6 +261,37 @@ export const contentHash = (s: string) => createHash('sha256').update(s.replace(
  */
 const SHARED = new Set(['AGENTS.md', 'CLAUDE.md', '.gitignore', '.gitattributes', '.ai/gates.toml']);
 
+/**
+ * Add the harness extensions a module opted this skill into.
+ *
+ * F-019. `[skills.work-item] extensions = { disable-model-invocation = true }`
+ * was declared in the `backlog` manifest, documented in `modules/README.md`, and
+ * **implemented at no layer**: `grep -n extensions src/*.ts` returned nothing, so
+ * the key never reached the emitted `SKILL.md`, and the gate that is supposed to
+ * police it could not see the opt-in either. `work-item` creates branches and
+ * merges, and the manifest's stated reason for opting it out of model invocation
+ * had been inert since it was written.
+ *
+ * Injected here rather than written into the source skill because that is the
+ * point of the opt-in: the file stays spec-pure and portable
+ * ([ADR-0001](../docs/decisions/ADR-0001-multi-harness-rendering.md)), and the
+ * extension — with its portability cost — stays attached to the module's
+ * decision to take it.
+ */
+function withOptedInExtensions(mod: Manifest, rel: string, content: string): string {
+  const name = rel.split(/[\\/]/)[0];
+  const extensions = mod.skills?.[name]?.extensions;
+  if (!extensions || !Object.keys(extensions).length) return content;
+
+  const m = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return content; // no frontmatter to extend; `skills-spec-pure` reports it
+  const added = Object.entries(extensions)
+    .filter(([k]) => !new RegExp(`^${k}:`, 'm').test(m[1]))
+    .map(([k, v]) => `${k}: ${v}`);
+  if (!added.length) return content;
+  return content.replace(/^---\n[\s\S]*?\n---/, `---\n${m[1]}\n${added.join('\n')}\n---`);
+}
+
 export function emittedFiles(mod: Manifest, params: Params, skillsDir = '.claude/skills'): Map<string, string> {
   const out = new Map<string, string>();
   const sub = (t: string) => substitute(t, mod.name, params);
@@ -270,7 +305,9 @@ export function emittedFiles(mod: Manifest, params: Params, skillsDir = '.claude
     for (const rel of walk(base)) {
       const target = sub(prefix + rel).split('\\').join('/');
       if (SHARED.has(target)) continue;
-      out.set(target, sub(readFileSync(join(base, rel), 'utf8')));
+      let content = sub(readFileSync(join(base, rel), 'utf8'));
+      if (dir === 'skills') content = withOptedInExtensions(mod, rel, content);
+      out.set(target, content);
     }
   }
   return out;

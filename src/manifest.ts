@@ -21,6 +21,7 @@ export function loadManifest(dir: string): Manifest {
     params: (raw.params ?? {}) as Record<string, ParamSpec>,
     gates: raw.gates ?? [],
     detect: raw.detect ?? {},
+    skills: raw.skills ?? {},
     provenance: raw.provenance,
     threshold: raw.threshold,
     dir,
