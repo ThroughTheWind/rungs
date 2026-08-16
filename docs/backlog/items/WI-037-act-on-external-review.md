@@ -8,7 +8,7 @@ created: 2026-08-16
 updated: 2026-08-16
 related: [ADR-0001, ADR-0002, ADR-0004, ADR-0005, ADR-0006]
 epic:
-children: [WI-038, WI-039, WI-040, WI-041]
+children: [WI-038, WI-039, WI-040, WI-041, WI-042]
 ---
 
 ## Proposal (rationale)
@@ -136,7 +136,14 @@ does not pre-empt it.
 
 ## Execution
 
-Not started.
+In progress, 2026-08-16. Landed in sequence order: WI-040, then WI-038.
+
+**A fifth child was added mid-epic.** [WI-042](WI-042-link-line-references.md) came out of WI-038's
+own post-merge correction — `--explain` was reporting `path/file.ts:387` code references as broken
+links, 46.6% of all findings on `rift-forge`. It qualifies under this epic's first requirement (it
+changes one resolution rule in an existing engine; no module, no pattern) and it had to land before
+the epic could claim WI-038 worked. Adding it rather than folding it into WI-038 is the scope rule
+working: WI-038 is `done` and its Review carries the correction rather than a rewrite.
 
 ## Review
 

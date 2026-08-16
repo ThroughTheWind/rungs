@@ -2,7 +2,7 @@
 id: WI-042
 title: Stop reporting `file.ts:387` code references as broken links
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-042-link-line-references
 created: 2026-08-16
 updated: 2026-08-16
@@ -105,6 +105,56 @@ that also does not exist, and worse, would make the two cases indistinguishable 
 
 Branch `feature/WI-042-link-line-references`, cut from `main` at `d77c6bc`.
 
+One change of substance: [`src/engines.ts`](../../../src/engines.ts) gains `resolvesHere`, which
+resolves a link target as written and only then retries without a trailing `:line` / `:line:col`.
+`linkIntegrity` calls it in place of its inline `existsSync`. Two self-test fixtures added to
+[`structural.toml`](../../../modules/gates/gates/structural.toml), one unit test added, and
+`linkIntegrity` is now exported so the test can reach it without a registry.
+
+No deviation from the plan. The strip-and-retest shape held; nothing needed widening.
+
 ## Review
 
-Not started.
+Verified 2026-08-16 on `feature/WI-042-link-line-references`.
+
+**1 · Existing `file.ts:387` not reported; missing one still reported.** Unit test
+`link-integrity resolves a :line code reference but still reports a missing target` covers four
+targets in one fixture — an existing file with `:222`, the same with `:222:14`, a missing file with
+`:222`, and a missing file bare. Exactly the two missing ones are reported. **Met.**
+
+**2 · Self-test fixtures state both directions.** Added to `structural.toml`;
+`gates-self-tests-both-directions` passes. Worth naming what that gate does and does not do: it
+confirms both fixtures *exist*, and [F-006](../FINDINGS.md) records that no fixture is ever
+*executed*. So criterion 2 is met as written, and the unit test in criterion 1 is what actually
+runs the assertion. **Met — with the standing caveat that the self-tests remain declarations.**
+
+**3 · Four source repos re-triaged, independently of the engine.** The triage script resolves
+`:line` itself rather than reusing the engine's assumption, which is the flaw that let this ship:
+
+| Repo | Findings before | Findings after | False positive, after |
+| --- | ---: | ---: | ---: |
+| `rift-forge` | 3,851 | **2,057** | **0.0%** |
+| `hexguard` | 114 | 114 | 0.0% |
+| `hexguard-templates` | 3 | 3 | 0.0% |
+| `axiom-mesh` | 0 | 0 | — |
+
+1,794 findings removed, all from `rift-forge`, none from anywhere else — which is the monotone
+property the approach was chosen for. **Met.**
+
+Four of the 2,057 survivors were then checked by hand against the filesystem, and all four are
+genuinely broken — `policy-boundary.md`, `../backlog/FINDINGS.md` and `../specs/data-sources.md` are
+absent, and one is a literal unfilled `](url)` placeholder in
+`docs/research/lol-mechanics/README.md`. The fix removed the false class without blunting the gate.
+
+**4 · `rungs check` unchanged on this repo.** 20 pass · 0 fail · 0 unimplemented · 0 error, with the
+same finding count as before the change. This repo writes code references inside code spans, which
+WI-008 already excluded, so an unchanged count here is the evidence that the strip is not too broad.
+**Met.**
+
+**5 · `npm test`.** 11 pass, 0 fail — up from 10. **Met.**
+
+### What this leaves
+
+The 2,057 remaining `rift-forge` findings are that repo's, not rungs'. [F-007](../FINDINGS.md)
+(two gate ids, one scan) and [F-006](../FINDINGS.md) (self-tests declared, never executed) are both
+untouched and both still open — F-006 in particular is why criterion 2 is weaker than it looks.
