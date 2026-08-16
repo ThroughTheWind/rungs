@@ -2,8 +2,8 @@
 id: WI-043
 title: Make `add` honour a detected paradigm instead of installing over it
 type: feature
-status: proposed
-branch:
+status: done
+branch: feature/WI-043-add-honours-paradigm
 created: 2026-08-16
 updated: 2026-08-16
 related: [WI-039, ADR-0004, F-014]
@@ -37,18 +37,17 @@ attached.
 
 ## Decision
 
-Undecided. Opened `proposed` because it is a **CLI behaviour change** that WI-039's plan explicitly
-placed outside itself (*"No CLI change expected. If one turns out to be needed, that is a finding
-about ADR-0004's paradigm mechanism"*), and because refusing an install a user typed deliberately is
-a design choice someone should make on purpose rather than inherit from a bug fix.
+`accepted` — 2026-08-16. The user directed that WI-039 be finished, which this blocks.
 
-The open question is the default. Refusing outright is what ADR-0004 says. Warning loudly and
-proceeding is friendlier and is what most tools do. They differ exactly when the user knows better
-than the detector, which is the case ADR-0004's `--confirm-threshold` precedent already handles.
+**The open question answered itself.** The item was opened undecided between refusing outright and
+warning-then-proceeding. That is only an open question if the default is being invented here, and it
+is not: [ADR-0004](../../decisions/ADR-0004-adoption-detection.md) state 5 already says `add`
+*"prints the comparison and stops"*, and the ADR is accepted. Choosing the friendlier default would
+have been amending an accepted decision from inside a bug fix — the exact move
+[WI-037](WI-037-act-on-external-review.md)'s third requirement forbids. So: refuse by default,
+`--confirm-paradigm` to override, mirroring `--confirm-threshold`.
 
 ## Plan
-
-> Filled on acceptance.
 
 ### Requirements
 
@@ -91,8 +90,68 @@ by default, name the override in the refusal message. One mechanism, two uses.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-043-add-honours-paradigm`, cut from `main` at `1dbb9e1`.
+
+`cmdAdd` scans once, detects every module in the resolved order, and refuses those whose state is
+`paradigm` before writing anything. `blockedByParadigm` in
+[`src/add.ts`](../../../src/add.ts) propagates the refusal along dependency edges.
+
+Two decisions taken during execution, both from behaviour the first version got wrong:
+
+1. **The refusal applies under `--dry-run` too**, unlike `--confirm-threshold` beside it, which
+   carries `&& !dryRun`. A preview that installs what the real run refuses is a preview of a
+   different command. Criterion 4 is what forced this; the threshold check's own behaviour here
+   looks like a bug, and is left alone as not this item's.
+2. **The surviving install order is recomputed, not filtered.** The first version refused `backlog`
+   and then wrote `instructions` and `gates` anyway — pulled in *solely* as its dependencies, so
+   nobody asked for them and nothing surviving needed them. Filtering `order` in place cannot see
+   that; re-resolving the closure from the surviving *requested* names can. `add backlog adr` on the
+   same repo correctly still writes `instructions` and `gates`, because `adr` needs them.
 
 ## Review
 
-Not started.
+Verified 2026-08-16 on `feature/WI-043-add-honours-paradigm`, against a repo with
+`.github/ISSUE_TEMPLATE/bug_report.md`.
+
+**1 · `add backlog` writes nothing and prints the comparison. Met.**
+
+```
+  backlog: this repo already does this another way — external-tracker
+      matched .github/ISSUE_TEMPLATE/bug_report.md
+      Work items here are Markdown files in the repo; your tracker is a system outside it. …
+      compare: docs/research/synthesis.md#33-unit-of-work
+      instructions, gates not written — pulled in only for the above
+
+  Pass --confirm-paradigm to install anyway. Nothing was written.
+```
+
+The repo afterwards contains `.git`, `.github`, `README.md` and nothing else. Exit 1.
+
+**2 · The override installs and says what it overrode. Met.**
+
+```
+  backlog: installing over an existing external-tracker (.github/ISSUE_TEMPLATE/bug_report.md) — --confirm-paradigm
+      You will have two systems for one job. That is a choice, not a merge.
+```
+
+`docs/` is then written. The message was added after the first version installed silently — an
+override that prints nothing is indistinguishable from a detection that found nothing, and the two
+want opposite follow-ups.
+
+**3 · A repo with no paradigm is unaffected. Met.** `add backlog --into hexguard-templates
+--dry-run` reports `5 create · 1 rule · 2 skill · 1 merge`, unchanged. The four source repos detect
+no paradigm (WI-039 criterion 3), so none of them can reach this path.
+
+**4 · `--dry-run` and the real path agree. Met.** Both refuse, both write nothing, both name the
+override.
+
+**5 · `rungs check` and `npm test`. Met.** 20 pass · 0 fail · 0 unimplemented · 0 error; 12 tests
+pass, up from 11 — the new one covers refusal propagating along `audit → findings → backlog`, which
+is the chain that exists because one repo produced 268 audit documents with no register. `--help`
+lists `--confirm-paradigm` and exits 0.
+
+### Partial installs are now possible, and that is intended
+
+`add backlog adr` on a tracker repo installs `adr` and refuses `backlog`. That is the point — the
+paradigm note recommends exactly this ("install only the modules that do not duplicate it"). Exit
+code is 0 when anything installed, 1 when nothing did.

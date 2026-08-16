@@ -145,6 +145,7 @@ reported as diverged and left alone.
 | `--into <path>` | `add`: install into this repo rather than the working directory |
 | `--set <module>.<param>=<value>` | `add` / `init`: override a module parameter. Repeatable, and `--set m.p=v` works too |
 | `--confirm-threshold` | `add`: install a module whose rung is above this repo |
+| `--confirm-paradigm` | `add`: install a module this repo already solves another way |
 | `--apply` | `upgrade`: write the changes rather than preview them |
 | `--fast` / `--full` | `check`: pick the gate tier, as the positional also does |
 | `--copilot` | Also emit Copilot instruction files |
