@@ -16,7 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-039](items/WI-039-external-tracker-paradigm.md) | Detect an external issue tracker as a different paradigm | feature | `feature/WI-039-external-tracker-paradigm` |
+| — | | | |
 
 ## Planned
 
@@ -49,7 +49,6 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-028](items/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
 | [WI-029](items/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
 | [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
-| [WI-043](items/WI-043-add-honours-paradigm.md) | Make `add` honour a detected paradigm instead of installing over it | feature |
 
 [WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
 the first assessment of this project by someone who did not build it, recorded and adjudicated in
@@ -84,15 +83,23 @@ that stripped `#anchor` and not `:line` — **the same assumption as the engine 
 it could only ever confirm it. The engine now resolves as written, then retries without the
 suffix; `rift-forge` drops to 2,057 findings at 0.0%, and no other repo moves by one.
 
-[WI-039](items/WI-039-external-tracker-paradigm.md) sits at **review, not done**, 2026-08-16. A repo
-running its work in GitHub Issues is now reported as a *different paradigm* rather than as having no
-backlog — 0 false positives across the eight local repos that have a `.github/` directory and track
-work in files. But `rungs add backlog` still installs straight over it, because
-[ADR-0004](../decisions/ADR-0004-adoption-detection.md)'s state 5 — *"`add` prints the comparison
-and stops"* — **has never been implemented for any paradigm**, including the `milestones` one that
-shipped with the CLI. [F-014](FINDINGS.md) → [WI-043](items/WI-043-add-honours-paradigm.md).
+[WI-039](items/WI-039-external-tracker-paradigm.md) + [WI-043](items/WI-043-add-honours-paradigm.md),
+2026-08-16 — a repo running its work in GitHub Issues is reported as a *different paradigm* rather
+than as having no backlog (0 false positives across the eight local repos that have a `.github/`
+directory and track work in files), **and `add` now stops instead of installing over it**. WI-039
+merged at `review` with that second half unmet, because
+[ADR-0004](../decisions/ADR-0004-adoption-detection.md) state 5 — *"`add` prints the comparison and
+stops"* — had never been implemented for **any** paradigm, including the `milestones` one that
+shipped with the CLI. WI-043 implemented it and WI-039 then closed. The design question WI-043 was
+opened to decide turned out not to be open: the ADR had already decided it, and choosing otherwise
+would have amended an accepted decision from inside a bug fix.
 
-WI-041 and WI-043 sit under Proposed rather than Planned on purpose: it is the one claim that collides with
+WI-039's criterion 1 stays unmet on the record. No repo available here uses GitHub Issues as its
+unit of work, so the positive case rests on a fixture built to match the signature — the circular
+validation its own plan forbade. The negative evidence carries it; the gap is written down rather
+than closed.
+
+WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
 aggregation, including opt-in), and a spike that assumes its own outcome is not a spike.
 

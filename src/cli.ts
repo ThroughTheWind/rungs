@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { auditModules, loadAllModules } from './manifest.ts';
 import { detect, scanRepo } from './detect.ts';
-import { addModule, adoptableGates, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
+import { addModule, adoptableGates, blockedByParadigm, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
@@ -288,9 +288,74 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   console.log(c.bold(`\nrungs add ${names.join(' ')} → ${root}${dryRun ? c.yellow('  (dry run)') : ''}\n`));
   if (pulled.length) console.log(c.dim(`  pulled in by dependency: ${pulled.map((m) => m.name).join(', ')}\n`));
 
+  // ADR-0004 state 5: a repo that solves this module's problem a different way
+  // gets the comparison and a stop, not an install beside what it already runs.
+  //
+  // The state existed in the ADR and in `doctor` and nowhere else, so `add`
+  // wrote straight over it — for every paradigm, since the CLI shipped
+  // (WI-043, from F-014). Measured 2026-08-16: a repo with `.github/ISSUE_TEMPLATE/`
+  // reported `backlog paradigm · external-tracker`, and `add backlog` then wrote
+  // `docs/`, `AGENTS.md`, `.ai/` and 12 gates without mentioning it once.
+  //
+  // Unlike `--confirm-threshold` above, this refusal **also applies under
+  // `--dry-run`**. A preview that installs what the real run refuses is a
+  // preview of a different command.
+  const scanned = scanRepo(root);
+  const paradigms = new Set(
+    order.map((m) => detect(m, root, scanned)).filter((r) => r.state === 'paradigm').map((r) => r.module),
+  );
+  const overridden = flags.has('--confirm-paradigm');
+  const blocked = overridden ? new Map<string, string>() : blockedByParadigm(order, paradigms);
+
+  // An override that prints nothing is indistinguishable from a detection that
+  // found nothing, and the two want opposite follow-ups.
+  if (overridden && paradigms.size) {
+    for (const name of paradigms) {
+      const p = detect(order.find((m) => m.name === name)!, root, scanned).paradigm!;
+      console.log(
+        c.yellow(`  ${name}: installing over an existing ${p.id}`) +
+          c.dim(` (${p.matched[0]}) — --confirm-paradigm`),
+      );
+    }
+    console.log(c.dim('      You will have two systems for one job. That is a choice, not a merge.\n'));
+  }
+
+  // Re-resolve from what survives rather than filtering `order` in place. A
+  // dependency is only ever pulled in *for* something; `add backlog` on an
+  // issue-tracker repo was still writing `instructions` and `gates`, which
+  // nobody asked for and which were pulled in solely for the module being
+  // refused. Recomputing the closure drops them, and keeps anything a *surviving*
+  // request still needs.
+  let toInstall = order;
+  if (blocked.size) {
+    for (const mod of order) {
+      const cause = blocked.get(mod.name);
+      if (!cause) continue;
+      if (cause === mod.name) {
+        const p = detect(mod, root, scanned).paradigm!;
+        console.log(c.yellow(`  ${mod.name}: this repo already does this another way — ${p.id}`));
+        console.log(c.dim(`      matched ${p.matched[0]}`));
+        for (const line of (p.note ?? '').trim().split('\n')) console.log(c.dim(`      ${line || ''}`));
+        if (p.compare) console.log(c.dim(`      compare: ${p.compare}`));
+      } else {
+        console.log(c.yellow(`  ${mod.name}: not installed — it requires ${cause}.`));
+      }
+    }
+    toInstall = resolveInstallOrder(names.filter((n) => !blocked.has(n)), mods).order;
+    const dropped = order.filter((m) => !toInstall.includes(m) && !blocked.has(m.name));
+    if (dropped.length) {
+      console.log(c.dim(`      ${dropped.map((m) => m.name).join(', ')} not written — pulled in only for the above`));
+    }
+    console.log(
+      c.dim(`\n  Pass --confirm-paradigm to install anyway.`) +
+        (toInstall.length ? c.dim(' Continuing with the rest.\n') : c.dim(' Nothing was written.\n')),
+    );
+    if (!toInstall.length) return 1;
+  }
+
   const installed: Manifest[] = [];
   const wrote = new Map<string, Set<string>>();
-  for (const mod of order) {
+  for (const mod of toInstall) {
     if (mod.threshold?.confirm && !dryRun && !flags.has('--confirm-threshold')) {
       console.log(
         c.yellow(`  ${mod.name}: requires ${mod.threshold.minimum}+ ${mod.threshold.metric}.`) +
@@ -529,6 +594,7 @@ const COMMANDS: [usage: string, blurb: string][] = [
 const FLAGS: [flag: string, blurb: string][] = [
   ['--dry-run', 'report what would happen, write nothing'],
   ['--explain', "doctor: also run the detectors over what this repo already has"],
+  ['--confirm-paradigm', 'add: install a module this repo already solves another way'],
   ['--into <path>', 'add: install into this repo instead of the working directory'],
   ['--set m.param=value', 'add/init: override a module parameter. Repeatable'],
   ['--confirm-threshold', 'add: install a module whose rung is above this repo'],

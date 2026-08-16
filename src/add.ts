@@ -165,6 +165,31 @@ const gateEntry = (mod: Manifest) => (g: Manifest['gates'][number]) => {
 };
 
 /** Dependency order, refusing anything unmet — naming the incident (ADR-0003). */
+/**
+ * Every module in `order` that cannot be installed because one of the modules
+ * it needs — or itself — is a different paradigm.
+ *
+ * A refusal has to travel *up* the dependency edges, not just stop at the
+ * module that matched. `add audit` pulls `findings` which pulls `backlog`; if
+ * the repo's work lives in an issue tracker, refusing `backlog` and installing
+ * `audit` anyway would ship an audit procedure whose findings have nowhere to
+ * close — which is the exact incident (268 audit documents, no register) that
+ * made `audit → findings → backlog` a declared dependency in the first place.
+ */
+export function blockedByParadigm(order: Manifest[], paradigms: ReadonlySet<string>): Map<string, string> {
+  const blocked = new Map<string, string>();
+  // `order` is already dependency-first, so one forward pass settles it.
+  for (const mod of order) {
+    if (paradigms.has(mod.name)) {
+      blocked.set(mod.name, mod.name);
+      continue;
+    }
+    const dep = mod.requires.find((d) => blocked.has(d));
+    if (dep) blocked.set(mod.name, blocked.get(dep)!);
+  }
+  return blocked;
+}
+
 export function resolveInstallOrder(requested: string[], all: Manifest[]): { order: Manifest[]; missing: string[] } {
   const byName = new Map(all.map((m) => [m.name, m]));
   const order: Manifest[] = [];

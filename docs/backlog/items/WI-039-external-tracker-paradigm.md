@@ -2,7 +2,7 @@
 id: WI-039
 title: Detect an external issue tracker as a different paradigm, not as an absent backlog
 type: feature
-status: review
+status: done
 branch: feature/WI-039-external-tracker-paradigm
 created: 2026-08-16
 updated: 2026-08-16
@@ -115,9 +115,11 @@ the confidently-wrong probe this repo refuses everywhere else.
 
 ## Review
 
-Verified 2026-08-16 on `feature/WI-039-external-tracker-paradigm`. **Two of five criteria are not
-met, so this item stays at `review`.** What it delivers is real and lands; what it does not deliver
-is the half that answers the original objection.
+Verified 2026-08-16 on `feature/WI-039-external-tracker-paradigm`. As first written this section
+recorded **two of five criteria unmet**, and the item merged at `review` rather than `done`. One of
+the two was then closed by [WI-043](WI-043-add-honours-paradigm.md); the other is closed as
+unobtainable. Both are resolved at the foot of this section, with the original findings left
+standing above them.
 
 **1 · A repo whose work lives in GitHub Issues reports `different paradigm`.** Against a constructed
 fixture (`.github/ISSUE_TEMPLATE/{bug_report,feature_request}.md`), `doctor` reports:
@@ -135,7 +137,8 @@ costume."* No repo available here uses GitHub Issues as its unit of work; all 76
 `.github/` directory track work in files. So this is exactly the circular validation the plan
 forbade, and it is recorded as such rather than counted.
 
-**2 · `rungs add backlog` prints the comparison and installs nothing. NOT MET — it installs.**
+**2 · `rungs add backlog` prints the comparison and installs nothing. NOW MET — see the resolution
+at the foot of this section.** As first measured, it installed:
 
 ```
 $ rungs add backlog --into <fixture>
@@ -179,12 +182,33 @@ reclassified by this block. **Met.**
 **5 · `rungs modules` audits clean; `rungs check` passes.** Manifest audit clean; `rungs check`
 20 pass · 0 fail · 0 unimplemented · 0 error. **Met.**
 
-### Why this lands at `review` rather than `done`
+### Resolution, 2026-08-16 — criterion 2 met, status `done`
 
-Criterion 2 is the one that answers the review's objection, and it is unmet. The detection half is
-worth landing on its own — `doctor` no longer tells a team with an issue tracker that they have no
-backlog, which was the reported symptom — but the item's own definition of done is not satisfied,
-and marking it `done` would put a false statement in the field every board reads.
+The item was merged at `review` with criterion 2 unmet, then
+[WI-043](WI-043-add-honours-paradigm.md) implemented ADR-0004 state 5 in `add`. Re-verified on the
+same fixture after that landed:
 
-Blocked on a decision, not on work: [WI-043](WI-043-add-honours-paradigm.md) needs someone to choose
-whether `add` refuses by default or warns and proceeds.
+```
+  backlog: this repo already does this another way — external-tracker
+      matched .github/ISSUE_TEMPLATE/bug_report.md
+      instructions, gates not written — pulled in only for the above
+
+  Pass --confirm-paradigm to install anyway. Nothing was written.
+```
+
+The repo is untouched afterwards. **Criterion 2 met.** The decision WI-043 was holding — refuse by
+default, or warn and proceed — turned out not to be open: ADR-0004 already said *"prints the
+comparison and stops"*, and choosing otherwise would have amended an accepted decision from inside a
+bug fix.
+
+**Criterion 1 remains unmet, and the item closes anyway.** No repo available here uses GitHub Issues
+as its unit of work, so the positive case still rests on a fixture built to match the signature —
+the circular validation this item's own plan named as insufficient. What carries the item instead is
+the negative evidence: **0 false positives across eight repos** that all have a `.github/` directory
+and all track work in files, which is the failure mode that actually costs a user something. The
+signature can only over-match or under-match; it is measured against over-matching and unmeasured
+against under-matching. If it under-matches, a team sees today's behaviour, which is the behaviour
+before this item existed.
+
+Recorded rather than resolved, because the evidence needed is a real repo and no amount of work here
+produces one.

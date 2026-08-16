@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
+import { blockedByParadigm } from '../src/add.ts';
 import { selfDeclaredClosure } from '../src/engines2.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
@@ -136,6 +137,31 @@ test('explain collapses two gate ids reporting the identical finding set into on
 
   assert.equal(reported.length, 2, 'F-007: one check behind two ids is one finding, reported once');
   assert.equal(reported[0].gate, 'gates-links-resolve + gates-paths-exist', 'both ids stay visible');
+});
+
+/**
+ * WI-043. ADR-0004 state 5 says `add` prints the comparison and stops. A
+ * refusal has to travel *up* the dependency edges: `audit → findings → backlog`
+ * is a declared chain precisely because one repo ran a good audit prompt 268
+ * times into documents with no register to close them. Installing `audit` while
+ * refusing `backlog` would rebuild that incident through the installer.
+ */
+test('a paradigm refusal propagates to every module that depends on it', () => {
+  const mods = [
+    { name: 'instructions', requires: [] },
+    { name: 'backlog', requires: ['instructions'] },
+    { name: 'findings', requires: ['backlog'] },
+    { name: 'audit', requires: ['findings'] },
+    { name: 'adr', requires: ['instructions'] },
+  ];
+
+  const blocked = blockedByParadigm(mods, new Set(['backlog']));
+
+  assert.equal(blocked.get('backlog'), 'backlog', 'the matching module names itself as the cause');
+  assert.equal(blocked.get('findings'), 'backlog', 'a direct dependent is blocked, and by whom');
+  assert.equal(blocked.get('audit'), 'backlog', 'a transitive dependent too');
+  assert.ok(!blocked.has('adr'), 'an unrelated module is untouched');
+  assert.ok(!blocked.has('instructions'), 'a dependency of the blocked module is not itself blocked');
 });
 
 /**
