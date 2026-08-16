@@ -9,6 +9,8 @@ import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { explain } from './explain.ts';
+import { applyArchive, planArchive } from './backlog.ts';
+import { existsSync } from 'node:fs';
 import type { DetectResult, Manifest } from './types.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -499,6 +501,52 @@ function reportLedger(root: string) {
   console.log(c.dim('    directly, and CI runs, are not counted.\n'));
 }
 
+function cmdBacklogArchive(root: string, dryRun: boolean) {
+  const record = readRecord(root);
+  const configured = record?.modules['backlog']?.params?.root;
+  const backlogRoot = `docs/${configured ?? 'backlog'}`;
+
+  if (!existsSync(join(root, ...backlogRoot.split('/'), 'items'))) {
+    console.log(c.red(`\n  no backlog at ${backlogRoot}/items\n`));
+    return 1;
+  }
+
+  const plan = planArchive(root, backlogRoot);
+  console.log(c.bold(`\nrungs backlog archive → ${root}${dryRun ? c.yellow('  (dry run)') : ''}\n`));
+
+  for (const h of plan.held) console.log(c.yellow(`  held  ${h.file}`) + c.dim(` — ${h.reason}`));
+  if (plan.held.length) console.log();
+
+  if (!plan.moves.length) {
+    console.log(c.dim('  nothing to archive — no item is done or rejected.\n'));
+    return 0;
+  }
+
+  const byStatus = new Map<string, number>();
+  for (const m of plan.moves) byStatus.set(m.status, (byStatus.get(m.status) ?? 0) + 1);
+  console.log(
+    `  ${c.bold(String(plan.moves.length))} item(s) — ${[...byStatus].map(([s, n]) => `${n} ${s}`).join(' · ')}`,
+  );
+  for (const m of plan.moves.slice(0, 5)) console.log(c.dim(`      ${m.from} → ${m.to}`));
+  if (plan.moves.length > 5) console.log(c.dim(`      …and ${plan.moves.length - 5} more`));
+
+  const touched = plan.rewrites.filter((r) => r.links);
+  const links = touched.reduce((n, r) => n + r.links, 0);
+  console.log(`\n  ${c.bold(String(links))} link(s) repointed across ${touched.length} file(s)`);
+  for (const r of touched.slice(0, 5)) console.log(c.dim(`      ${r.file} (${r.links})`));
+  if (touched.length > 5) console.log(c.dim(`      …and ${touched.length - 5} more`));
+
+  if (dryRun) {
+    console.log(c.dim('\n  Nothing written. Drop --dry-run to apply.\n'));
+    return 0;
+  }
+
+  applyArchive(root, plan);
+  console.log(c.green(`\n  archived ${plan.moves.length} item(s)`) + c.dim(' — ids stay spent and every citation still resolves.'));
+  console.log(c.dim('  Run `rungs check` to confirm.\n'));
+  return 0;
+}
+
 function cmdInit(root: string, profile: string, dryRun: boolean, harnesses: Harness[], stamp: string) {
   if (readRecord(root)) {
     console.log(
@@ -601,6 +649,7 @@ const COMMANDS: [usage: string, blurb: string][] = [
   ['eject [path]', 'materialise the engines; stop depending on rungs'],
   ['setup git [path]', 'install the merge drivers .gitattributes names'],
   ['modules', 'list the module set and audit the manifests'],
+  ['backlog archive [path]', 'move finished items to archive/, repointing every link'],
 ];
 
 /** Every flag the parser honours. A flag absent here is a flag nobody can find. */
@@ -694,6 +743,13 @@ switch (cmd) {
     process.exit(cmdModules(flags.has('--params')));
   case 'doctor':
     process.exit(cmdDoctor(args[0] ?? process.cwd(), flags.has('--explain')));
+  case 'backlog': {
+    if (args[0] !== 'archive') {
+      console.log(c.red(`\n  unknown: rungs backlog ${args[0] ?? ''}`) + c.dim('\n  The only subcommand is `archive`.\n'));
+      process.exit(1);
+    }
+    process.exit(cmdBacklogArchive(resolve(args[1] ?? process.cwd()), flags.has('--dry-run')));
+  }
   case 'check': {
     const tier = args[1] ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
     process.exit(cmdCheck(resolve(args[0] ?? process.cwd()), tier, STAMP));

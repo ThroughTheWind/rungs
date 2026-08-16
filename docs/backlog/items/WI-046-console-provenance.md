@@ -19,11 +19,11 @@ The site's `Console` component takes `date` and `source` and renders them as the
 **`real output · <command>`**. Nothing checks that the lines beneath it were ever produced by that
 command.
 
-This is not hypothetical. [WI-040](WI-040-public-surface-first-command.md) found **two of the three
+This is not hypothetical. [WI-040](../archive/WI-040-public-surface-first-command.md) found **two of the three
 console blocks on the landing page fabricated**, both carrying a date and a source:
 
 - `npx @rungs/cli doctor` was shown emitting *"this rule says MANDATORY and has no gate"* — a line
-  `doctor` did not produce until [WI-038](WI-038-doctor-explain-detectors.md) shipped `--explain`,
+  `doctor` did not produce until [WI-038](../archive/WI-038-doctor-explain-detectors.md) shipped `--explain`,
   weeks later.
 - `npx @rungs/cli add concurrency` was shown prompting `Install anyway? [y/N]`. rungs is
   non-interactive; the real path skips the module and names `--confirm-threshold`.

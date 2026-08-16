@@ -13,7 +13,7 @@ children: [WI-019, WI-020, WI-021, WI-022, WI-023, WI-024, WI-025, WI-026, WI-02
 
 ## Proposal (rationale)
 
-[WI-009](WI-009-public-agent-framework-corpus.md) deliberately fixes six subjects around runtime
+[WI-009](../archive/WI-009-public-agent-framework-corpus.md) deliberately fixes six subjects around runtime
 architecture: the core loop, checkpointed graphs, small primitives, typed/testable agents,
 enterprise workflows, and a sandboxed product. Its synthesis can therefore answer the question it
 was designed to answer, but it should not silently be treated as evidence about four materially
@@ -42,7 +42,7 @@ the proposed question does not match the source.
 ## Decision
 
 `accepted` — 2026-08-15. The user directed the follow-on research to start after the recommendations
-were captured. [WI-017](WI-017-framework-synthesis.md) and its parent corpus are done, so the method
+were captured. [WI-017](../archive/WI-017-framework-synthesis.md) and its parent corpus are done, so the method
 prerequisite is now unblocked; the epic remains sequenced method → extractions → synthesis.
 
 ## Plan

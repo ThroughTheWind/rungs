@@ -188,7 +188,7 @@ the absence from the catalogue is a decision rather than an omission.
 
 The catalogue changes are documentation inputs to the shipped modules; this item does not edit
 `modules/`. The affected surfaces are `instructions`, `workflows`, `skills`, `gates`, `session`, and
-`testing`. [WI-029](../../backlog/items/WI-029-apply-framework-patterns-to-modules.md) will decide
+`testing`. [WI-029](../../backlog/archive/WI-029-apply-framework-patterns-to-modules.md) will decide
 which definitions require changes to manifests, templates, skills, gates, or module versions.
 
 No ADR is admitted. [The admission rule](../../decisions/README.md#admission-rule) fails because this

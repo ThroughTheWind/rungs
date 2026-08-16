@@ -31,7 +31,7 @@ corpus lives and how it is kept honest, before six documents establish that by a
 
 `accepted` — 2026-08-15. The user directed work on the research epic to start; this template is
 the planned prerequisite for the other seven children of
-[WI-009](WI-009-public-agent-framework-corpus.md).
+[WI-009](../archive/WI-009-public-agent-framework-corpus.md).
 
 ## Plan
 
@@ -73,7 +73,7 @@ judgement → verdict) is what lets a reader who knows `repos/` read `frameworks
 
 **Write the template thin and let the first extraction correct it.** Phase 4 produced sixteen
 corrections to the module format, all found by authoring rather than reading; the same is expected
-here, which is why [WI-011](WI-011-extract-swe-agent.md) is scheduled as the template's first test
+here, which is why [WI-011](../archive/WI-011-extract-swe-agent.md) is scheduled as the template's first test
 and is explicitly allowed to change it.
 
 **Separate directory, not a subheading.** `frameworks/` beside `repos/` keeps one definition per
@@ -93,12 +93,12 @@ concept and keeps the workflow corpus's non-goal true as written.
 ### Out of scope
 
 - **Any actual extraction.** The template is not exercised here; that is
-  [WI-011](WI-011-extract-swe-agent.md), which is also where its first corrections come from.
+  [WI-011](../archive/WI-011-extract-swe-agent.md), which is also where its first corrections come from.
 - **Changing the existing `repos/` template or any of the four extractions.** They were measured
   2026-08-14 and are not reopened. If the new template suggests a better question, that is a finding.
 - **A second pattern catalogue.** Section 8 cites ids from the existing
   [`pattern-catalog.md`](../../research/pattern-catalog.md); reconciling the catalogue is
-  [WI-017](WI-017-framework-synthesis.md).
+  [WI-017](../archive/WI-017-framework-synthesis.md).
 - **A gate that enforces the SHA field.** Worth considering once six documents exist and the shape
   is known; premature now, and `nothing deferred` beyond this note.
 

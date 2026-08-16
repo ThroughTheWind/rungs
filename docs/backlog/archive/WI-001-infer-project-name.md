@@ -70,7 +70,7 @@ stated default and a running one, not a new feature.
   state the reserved namespace, or the next module author reads `{{repo.dirname}}` as the
   undeclared-coupling that rule forbids.
 - **No ADR.** Tested against the admission rule in
-  [`docs/decisions/README.md`](../../../docs/decisions/README.md): criterion 4 fails — parameter
+  [`docs/decisions/README.md`](../../decisions/README.md): criterion 4 fails — parameter
   referencing is already owned by a module doc — so the rule sends this to `modules/README.md`.
 
 ### Approach

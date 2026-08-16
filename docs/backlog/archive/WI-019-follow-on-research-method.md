@@ -27,7 +27,7 @@ need separate questions.
 ## Decision
 
 `accepted` — 2026-08-15. The user directed the follow-on research to start. WI-017 is done, and
-[WI-018](WI-018-follow-on-public-agent-research.md) retains this method as the prerequisite for all
+[WI-018](../items/WI-018-follow-on-public-agent-research.md) retains this method as the prerequisite for all
 eight extractions.
 
 ## Plan

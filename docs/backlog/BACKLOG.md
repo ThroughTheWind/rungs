@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-047 -->
+<!-- NEXT-ID: WI-048 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -23,10 +23,10 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-031](items/WI-031-integrate-rift-forge-capabilities.md) | Integrate transferable Rift Forge workflow capabilities into rungs | feature |
-| [WI-032](items/WI-032-sync-docs-roadmap-frontend.md) | Sync public docs, roadmap, and frontend surfaces with the current product | docs |
-| [WI-033](items/WI-033-assess-quality-and-adoption-readiness.md) | Assess repo quality, improvements, and external-adoption readiness | spike |
-| [WI-034](items/WI-034-remediate-readiness-findings.md) | Remediate release-readiness findings | chore |
+| [WI-031](archive/WI-031-integrate-rift-forge-capabilities.md) | Integrate transferable Rift Forge workflow capabilities into rungs | feature |
+| [WI-032](archive/WI-032-sync-docs-roadmap-frontend.md) | Sync public docs, roadmap, and frontend surfaces with the current product | docs |
+| [WI-033](archive/WI-033-assess-quality-and-adoption-readiness.md) | Assess repo quality, improvements, and external-adoption readiness | spike |
+| [WI-034](archive/WI-034-remediate-readiness-findings.md) | Remediate release-readiness findings | chore |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore |
 
 ## Accepted
@@ -39,15 +39,15 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-021](items/WI-021-extract-inspect-ai.md) | Extract Inspect AI — reproducible agent evaluation and sandboxed evidence | docs |
-| [WI-022](items/WI-022-extract-aider.md) | Extract Aider — git-first coding, repository context, and validation | docs |
-| [WI-023](items/WI-023-extract-goose.md) | Extract goose — local extensibility, MCP/ACP, and session isolation | docs |
-| [WI-024](items/WI-024-extract-google-adk.md) | Extract Google ADK — multi-language evolution, task delegation, and evaluation | docs |
-| [WI-025](items/WI-025-extract-mcp.md) | Extract MCP — the tool and context interoperability boundary | docs |
-| [WI-026](items/WI-026-extract-a2a.md) | Extract A2A — remote agent discovery, tasks, and artifacts | docs |
-| [WI-027](items/WI-027-extract-dspy.md) | Extract DSPy — metric-driven agent program optimization | docs |
-| [WI-028](items/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
-| [WI-029](items/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
+| [WI-021](archive/WI-021-extract-inspect-ai.md) | Extract Inspect AI — reproducible agent evaluation and sandboxed evidence | docs |
+| [WI-022](archive/WI-022-extract-aider.md) | Extract Aider — git-first coding, repository context, and validation | docs |
+| [WI-023](archive/WI-023-extract-goose.md) | Extract goose — local extensibility, MCP/ACP, and session isolation | docs |
+| [WI-024](archive/WI-024-extract-google-adk.md) | Extract Google ADK — multi-language evolution, task delegation, and evaluation | docs |
+| [WI-025](archive/WI-025-extract-mcp.md) | Extract MCP — the tool and context interoperability boundary | docs |
+| [WI-026](archive/WI-026-extract-a2a.md) | Extract A2A — remote agent discovery, tasks, and artifacts | docs |
+| [WI-027](archive/WI-027-extract-dspy.md) | Extract DSPy — metric-driven agent program optimization | docs |
+| [WI-028](archive/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
+| [WI-029](archive/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
 | [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
 | [WI-045](items/WI-045-run-gate-self-tests.md) | Execute gate self-test fixtures instead of only declaring them | feature |
 | [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
@@ -59,7 +59,7 @@ claims were checked against the working tree; four became work. Its own first re
 **it adds no module and no pattern** — every child makes an existing capability reachable,
 reconciles a surface that contradicts another surface, or puts a decision in front of a person.
 
-**Done under WI-037:** [WI-040](items/WI-040-public-surface-first-command.md), 2026-08-16 — the
+**Done under WI-037:** [WI-040](archive/WI-040-public-surface-first-command.md), 2026-08-16 — the
 first command now agrees across the landing page, the README and getting-started, and both surfaces
 show what `doctor` returns before what `rungs` installs. It found more than it was opened for: two
 of the three landing-page consoles showed **fabricated output**, labelled `REAL OUTPUT` by the
@@ -67,7 +67,7 @@ component that rendered them. The external reviewer had read one of those blocks
 capability, which is where the review's best claim came from. Three findings opened
 ([F-011](FINDINGS.md), F-012, F-013), none folded in.
 
-[WI-038](items/WI-038-doctor-explain-detectors.md), 2026-08-16 — `rungs doctor --explain` runs the
+[WI-038](archive/WI-038-doctor-explain-detectors.md), 2026-08-16 — `rungs doctor --explain` runs the
 existing detectors over repos that never installed anything. No new detector was written; the
 analysis had simply been gated behind installing the thing it exists to justify. On `hexguard` it
 reports the **same incidents the research recorded by hand** — 99 near-identical workflows and 275
@@ -76,7 +76,7 @@ hand-triaged to 0 mis-framed and 0 wrong. Getting there required a rule the plan
 repo that is not ours, only **convention-free** engines run, because the first version produced 71
 findings that were true about our conventions and meaningless about their repo.
 
-[WI-042](items/WI-042-link-line-references.md), 2026-08-16 — opened *from WI-038's own failure*, and
+[WI-042](archive/WI-042-link-line-references.md), 2026-08-16 — opened *from WI-038's own failure*, and
 the more useful half of it. Running `--explain` against `rift-forge` — which WI-038's review had
 wrongly recorded as unavailable — showed **46.6% false positives**: 1,794 of 3,851 link findings
 were `path/file.ts:387` code references pointing at files that were exactly there, in the form
@@ -85,7 +85,7 @@ that stripped `#anchor` and not `:line` — **the same assumption as the engine 
 it could only ever confirm it. The engine now resolves as written, then retries without the
 suffix; `rift-forge` drops to 2,057 findings at 0.0%, and no other repo moves by one.
 
-[WI-039](items/WI-039-external-tracker-paradigm.md) + [WI-043](items/WI-043-add-honours-paradigm.md),
+[WI-039](archive/WI-039-external-tracker-paradigm.md) + [WI-043](archive/WI-043-add-honours-paradigm.md),
 2026-08-16 — a repo running its work in GitHub Issues is reported as a *different paradigm* rather
 than as having no backlog (0 false positives across the eight local repos that have a `.github/`
 directory and track work in files), **and `add` now stops instead of installing over it**. WI-039
@@ -101,7 +101,7 @@ unit of work, so the positive case rests on a fixture built to match the signatu
 validation its own plan forbade. The negative evidence carries it; the gap is written down rather
 than closed.
 
-[WI-044](items/WI-044-resolve-open-findings.md), 2026-08-16 — the findings register went from seven
+[WI-044](archive/WI-044-resolve-open-findings.md), 2026-08-16 — the findings register went from seven
 open rows to one. Five fixed, two promoted ([WI-045](items/WI-045-run-gate-self-tests.md),
 [WI-046](items/WI-046-console-provenance.md)), and one new: [F-015](FINDINGS.md), because
 `rungs backlog archive` — which [README §8](README.md) tells contributors to use — **does not
@@ -114,12 +114,24 @@ implementing the check instead produced ten findings that were all false, and na
 than falling back to the collapse — kept a distinct measured incident the collapse would have
 deleted. Gate count 20 → 21; tests 12 → 14.
 
+[WI-047](items/WI-047-backlog-archive-command.md), 2026-08-16 — `rungs backlog archive` now exists.
+It was named in three files shipped into **every consumer repo**, two of them saying *"never by
+hand"*, and `rungs backlog` answered *"unknown command"* — so the instruction was unfollowable
+everywhere rungs had ever been installed. Implemented rather than documented away: rewriting §8
+would have deleted the capability from every scaffolded repo to make one sentence true. This board
+is the first thing it touched — **39 items moved, 135 links repointed across 37 files**, and the
+site's 1,721 links are still 0 broken, which is the whole test. `items/` went from 47 files to 8.
+
+Both of its bugs were caught by trialling on a throwaway clone rather than here: a doubled
+destination path, and a version that wanted to rewrite **334** links across 58 files including
+module templates — a repo-wide link reflow disguised as an archive.
+
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
 aggregation, including opt-in), and a spike that assumes its own outcome is not a spike.
 
 WI-009's eight children are one fixed epic —
-[WI-009](items/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted
+[WI-009](archive/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted
 repos share an author, so every convergence in
 [`pattern-catalog.md`](../research/pattern-catalog.md) is currently one operator agreeing with
 themselves; six independently-built public frameworks are the cheapest test of which patterns are
@@ -134,7 +146,7 @@ this is a second research axis with its own directory and template, not more of 
 of WI-009. It begins after WI-017 and gives durable memory, evaluation/optimization, local products,
 and interoperability protocols separate evidence tracks before reconciling them once.
 
-**Done since:** [WI-008](items/WI-008-link-gate-checks-every-file.md) — promoted from F-005.
+**Done since:** [WI-008](archive/WI-008-link-gate-checks-every-file.md) — promoted from F-005.
 Link checking covered 72 of 89 files; a single `{{token}}` anywhere in a document exempted every
 link in it. Now per-link, with code spans excluded because a quoted link is not a link.
 
@@ -148,13 +160,13 @@ opened and re-verified before it was closed.
 
 | Id | What it fixed |
 | --- | --- |
-| [WI-001](items/WI-001-infer-project-name.md) | Every scaffold's entry document opened `# AGENTS.md — ` with a dangling dash. The default now states its own derivation |
-| [WI-002](items/WI-002-set-flag-parsing.md) | `--set k=v` silently became a positional and `--into` ate it, reporting the user's path as an unknown module |
-| [WI-003](items/WI-003-render-reports-what-it-cannot-reemit.md) | `.ai/rungs.toml` told every scaffolded repo to do something no command performs |
-| [WI-004](items/WI-004-help-completeness.md) | `--help` omitted a real command and three real flags, and exited 1 |
-| [WI-005](items/WI-005-doctor-next-step.md) | The advertised entry point ended on fifteen `absent` lines with nothing to do next |
-| [WI-006](items/WI-006-parameter-reference.md) | 43 parameters documented nowhere; now rendered from the manifests by `rungs modules --params` |
-| [WI-007](items/WI-007-first-hour-guide.md) | No page addressed the reader holding a fresh scaffold |
+| [WI-001](archive/WI-001-infer-project-name.md) | Every scaffold's entry document opened `# AGENTS.md — ` with a dangling dash. The default now states its own derivation |
+| [WI-002](archive/WI-002-set-flag-parsing.md) | `--set k=v` silently became a positional and `--into` ate it, reporting the user's path as an unknown module |
+| [WI-003](archive/WI-003-render-reports-what-it-cannot-reemit.md) | `.ai/rungs.toml` told every scaffolded repo to do something no command performs |
+| [WI-004](archive/WI-004-help-completeness.md) | `--help` omitted a real command and three real flags, and exited 1 |
+| [WI-005](archive/WI-005-doctor-next-step.md) | The advertised entry point ended on fifteen `absent` lines with nothing to do next |
+| [WI-006](archive/WI-006-parameter-reference.md) | 43 parameters documented nowhere; now rendered from the manifests by `rungs modules --params` |
+| [WI-007](archive/WI-007-first-hour-guide.md) | No page addressed the reader holding a fresh scaffold |
 
 Three of the items corrected a measurement in their own proposal during execution — an exit code
 read from a pipeline, a count read from a truncated `head`, a link count taken on memory. Those

@@ -45,7 +45,7 @@ containing a `{{token}}` had every link exempted, which masked it.
 ## Decision
 
 `accepted` — 2026-08-16. Opened from WI-038's post-merge correction, as a child of
-[WI-037](WI-037-act-on-external-review.md). The epic's requirement that no child add a new module or
+[WI-037](../items/WI-037-act-on-external-review.md). The epic's requirement that no child add a new module or
 pattern holds: this changes one resolution rule in an existing engine.
 
 ## Plan

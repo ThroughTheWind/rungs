@@ -137,6 +137,7 @@ reported as diverged and left alone.
 | `rungs eject [path]` | Materialise the engines; stop depending on rungs |
 | `rungs setup git [path]` | Install the merge drivers `.gitattributes` names |
 | `rungs modules` | List the set and audit the manifests |
+| `rungs backlog archive` | Move finished items to `archive/`, repointing every link that cites them |
 
 | Option | Effect |
 | --- | --- |

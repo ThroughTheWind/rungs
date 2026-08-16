@@ -25,16 +25,16 @@ Four things came out of it, and **only one is a capability gap**:
    have conflicting authorities" already exist — as gates, inside modules, reachable only *after*
    installing the thing the analysis is supposed to justify. That is backwards for a retrofit-first
    tool, and the fix is smaller than the review assumed because nothing new has to be invented.
-   → [WI-038](WI-038-doctor-explain-detectors.md)
+   → [WI-038](../archive/WI-038-doctor-explain-detectors.md)
 2. **A repo running its work in GitHub Issues is detected as having no backlog**, so `doctor`
    proposes a Markdown one beside it. The review read this as rungs wanting to own work state; the
    real cause is a single missing `[[detect.paradigm]]` on the `backlog` module, and
    [ADR-0004](../../decisions/ADR-0004-adoption-detection.md) already shipped the mechanism.
-   → [WI-039](WI-039-external-tracker-paradigm.md)
+   → [WI-039](../archive/WI-039-external-tracker-paradigm.md)
 3. **The public surfaces contradict each other on the first command a new user runs.** The site
    says `add` first; the README and getting-started say `doctor` first. A reader who checks two
    sources gets two answers, and the wrong one is the one that installs files.
-   → [WI-040](WI-040-public-surface-first-command.md)
+   → [WI-040](../archive/WI-040-public-surface-first-command.md)
 4. **The review's headline strategic recommendation is refused by an accepted ADR.** Cross-repo
    pattern-frequency counts are Tier C in
    [ADR-0005](../../decisions/ADR-0005-self-instrumentation.md), permanently and including opt-in.
@@ -138,7 +138,7 @@ does not pre-empt it.
 
 In progress, 2026-08-16. Landed in sequence order: WI-040, then WI-038.
 
-**A fifth child was added mid-epic.** [WI-042](WI-042-link-line-references.md) came out of WI-038's
+**A fifth child was added mid-epic.** [WI-042](../archive/WI-042-link-line-references.md) came out of WI-038's
 own post-merge correction — `--explain` was reporting `path/file.ts:387` code references as broken
 links, 46.6% of all findings on `rift-forge`. It qualifies under this epic's first requirement (it
 changes one resolution rule in an existing engine; no module, no pattern) and it had to land before

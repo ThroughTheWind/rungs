@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
 import { blockedByParadigm } from '../src/add.ts';
+import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
@@ -137,6 +138,72 @@ test('explain collapses two gate ids reporting the identical finding set into on
 
   assert.equal(reported.length, 2, 'F-007: one check behind two ids is one finding, reported once');
   assert.equal(reported[0].gate, 'gates-links-resolve + gates-paths-exist', 'both ids stay visible');
+});
+
+/**
+ * F-015. `rungs backlog archive` was named in three files shipped into every
+ * consumer repo, two of them saying "never by hand", and did not exist.
+ *
+ * The link rewrite is the whole substance of the command, so this asserts the
+ * three spellings of one target that a real repo actually contains — board-
+ * relative, parent-relative, and sibling — plus the two things the first
+ * implementation got wrong: it must not touch a link whose target did not move,
+ * and it must not touch module templates.
+ */
+test('backlog archive moves finished items and repoints every spelling of a link to them', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-arch-'));
+  const w = (rel, body) => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), body);
+  };
+  const item = (id, status, extra = '') =>
+    `---\nid: ${id}\nstatus: ${status}\ntype: feature\n${extra}---\n\nbody\n`;
+
+  w('docs/backlog/items/WI-001-done.md', item('WI-001', 'done'));
+  w('docs/backlog/items/WI-002-open.md', `${item('WI-002', 'planned')}\nSee [one](WI-001-done.md).\n`);
+  w('docs/backlog/BACKLOG.md', 'Board: [one](items/WI-001-done.md) and [two](items/WI-002-open.md).\n');
+  w('docs/roadmap.md', 'Elsewhere: [one](backlog/items/WI-001-done.md).\n');
+  w('docs/backlog/README.md', 'Unrelated: [board](BACKLOG.md).\n');
+  w('modules/backlog/files/docs/{{root}}/BACKLOG.md', 'Template: [x](items/{{id_prefix}}-001-x.md).\n');
+
+  const plan = planArchive(root);
+  assert.deepEqual(plan.moves.map((m) => m.id), ['WI-001'], 'only the finished item moves');
+  assert.equal(plan.moves[0].to, 'docs/backlog/archive/WI-001-done.md', 'basename, not the whole path');
+
+  applyArchive(root, plan);
+  const read = (rel) => readFileSync(join(root, rel), 'utf8');
+
+  assert.match(read('docs/backlog/BACKLOG.md'), /\(archive\/WI-001-done\.md\)/, 'board-relative');
+  assert.match(read('docs/roadmap.md'), /\(backlog\/archive\/WI-001-done\.md\)/, 'from another directory');
+  assert.match(read('docs/backlog/items/WI-002-open.md'), /\(\.\.\/archive\/WI-001-done\.md\)/, 'sibling becomes parent-relative');
+  assert.match(read('docs/backlog/BACKLOG.md'), /\(items\/WI-002-open\.md\)/, 'an unmoved target is left alone');
+  assert.match(read('docs/backlog/README.md'), /\(BACKLOG\.md\)/, 'a file citing nothing moved is untouched');
+  assert.match(
+    read('modules/backlog/files/docs/{{root}}/BACKLOG.md'),
+    /\(items\/\{\{id_prefix\}\}-001-x\.md\)/,
+    'a module template is never rewritten — its links belong to the consumer repo',
+  );
+
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('backlog archive holds an epic whose children have not all finished', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-arch2-'));
+  const w = (rel, body) => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), body);
+  };
+  w('docs/backlog/items/WI-010-epic.md', '---\nid: WI-010\nstatus: done\ntype: epic\nchildren: [WI-011, WI-012]\n---\n\nbody\n');
+  w('docs/backlog/items/WI-011-a.md', '---\nid: WI-011\nstatus: done\ntype: feature\n---\n\nbody\n');
+  w('docs/backlog/items/WI-012-b.md', '---\nid: WI-012\nstatus: planned\ntype: feature\n---\n\nbody\n');
+
+  const plan = planArchive(root);
+
+  assert.deepEqual(plan.moves.map((m) => m.id), ['WI-011'], 'the finished child moves, the epic does not');
+  assert.equal(plan.held.length, 1);
+  assert.match(plan.held[0].reason, /WI-012/, 'the hold names which child is unfinished');
+
+  rmSync(root, { recursive: true, force: true });
 });
 
 /**

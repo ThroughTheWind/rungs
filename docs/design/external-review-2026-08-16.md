@@ -109,7 +109,7 @@ as gates, in the modules, reachable only after installation and only over rungs-
 So the gap is not *"rungs cannot analyse a repo"*. It is **the analysis is gated behind installing
 the thing the analysis is supposed to justify installing** — which is exactly backwards for an
 adoption wedge, and is a much smaller fix than the review assumes. This is
-[WI-038](../backlog/items/WI-038-doctor-explain-detectors.md).
+[WI-038](../backlog/archive/WI-038-doctor-explain-detectors.md).
 
 One caveat the review does not raise and the item must carry: several of these gates read
 rungs-shaped inputs. Running them over an arbitrary repo will produce findings whose *evidence* is
@@ -140,7 +140,7 @@ What is genuinely missing is one link in that chain. The `backlog` module declar
 work in GitHub Issues today is detected as having *no* backlog, and `doctor` proposes installing a
 Markdown one beside it. **That is the review's fear, and it is real; the adapter layer is not the
 fix.** A paradigm signature is, and it is the mechanism ADR-0004 already shipped for this exact
-case. [WI-039](../backlog/items/WI-039-external-tracker-paradigm.md).
+case. [WI-039](../backlog/archive/WI-039-external-tracker-paradigm.md).
 
 ### 3.2 Vocabulary
 

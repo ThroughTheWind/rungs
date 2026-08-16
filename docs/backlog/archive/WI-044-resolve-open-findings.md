@@ -14,7 +14,7 @@ children: []
 ## Proposal (rationale)
 
 Seven findings were open, four of them opened during
-[WI-037](WI-037-act-on-external-review.md)'s run and three inherited from 2026-08-15. A register
+[WI-037](../items/WI-037-act-on-external-review.md)'s run and three inherited from 2026-08-15. A register
 that only grows stops being a register: [FINDINGS.md](../FINDINGS.md) states that it *"counts what
 was recorded, not what was noticed"*, and the same logic applies one level up — a row nobody ever
 closes is a row people stop writing.
@@ -45,7 +45,7 @@ half-done features.
 - [`site/astro.config.mjs`](../../../site/astro.config.mjs) and a new
   [`site/scripts/check-vendored.mjs`](../../../site/scripts/check-vendored.mjs).
 - One new repo-owned gate in `.ai/gates.toml`. Gate count 20 → 21.
-- Two new items, [WI-045](WI-045-run-gate-self-tests.md) and [WI-046](WI-046-console-provenance.md).
+- Two new items, [WI-045](../items/WI-045-run-gate-self-tests.md) and [WI-046](../items/WI-046-console-provenance.md).
 
 ### Approach
 
@@ -133,11 +133,11 @@ against 49 consecutive 403s before.
 
 Both need a design change rather than a fix, and both are sized wrong for a register row:
 
-- **F-006** → [WI-045](WI-045-run-gate-self-tests.md). 27 fixtures are runnable text; the rest are
+- **F-006** → [WI-045](../items/WI-045-run-gate-self-tests.md). 27 fixtures are runnable text; the rest are
   ~8 bespoke structured shapes (`{workflows, similarity}`, `{worktrees}`, `{values}`,
   `{matching_files}`), each needing its own synthesizer. A runner covering only the easy half would
   reproduce the finding's own complaint one level down.
-- **F-011** → [WI-046](WI-046-console-provenance.md). The `Console` component renders the literal
+- **F-011** → [WI-046](../items/WI-046-console-provenance.md). The `Console` component renders the literal
   label `real output · <command>` and is **vendored** — the directory is generated, now sha-gated
   by F-003's own fix, and the export it comes from is gitignored and not in this checkout. So the
   cheap interim the finding suggested (rename the attribute) is not available from here.

@@ -28,7 +28,7 @@ mechanical.
 
 `accepted` then `planned` — 2026-08-15. The user directed the follow-on research to continue after
 WI-019 completed the evaluation-track method and WI-020 demonstrated the extraction workflow. This
-item is the evaluation-system child of [WI-018](WI-018-follow-on-public-agent-research.md); its
+item is the evaluation-system child of [WI-018](../items/WI-018-follow-on-public-agent-research.md); its
 requirements, impacts, approach, and acceptance criteria above are now the execution contract.
 
 ## Plan
