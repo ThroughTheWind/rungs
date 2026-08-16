@@ -142,10 +142,20 @@ gate   = "gates-rules-declare-enforcement"
 expect = "pass"
 fixture = { file = ".ai/rules/x.md", frontmatter = { description = "d", enforcement = "review-only" } }
 
+# F-018. This gate's three fixtures all described `.claude/skills/**/SKILL.md`, and the skill
+# frontmatter schema moved to the `skills` module — so they asserted a schema this table no longer
+# contains and could never pass or fail for the stated reason. They were left behind by the move and
+# nobody noticed, because no fixture had ever been executed. Replaced with the schema that is
+# actually here.
 [[self_test]]
 gate   = "gates-frontmatter-valid"
 expect = "fail"
-fixture = { file = ".claude/skills/x/SKILL.md", frontmatter = { name = "x", description = "d", "argument-hint" = "y" } }
+fixture = { file = ".ai/rules/x.md", frontmatter = { enforcement = "gated" } }
+
+[[self_test]]
+gate   = "gates-frontmatter-valid"
+expect = "pass"
+fixture = { file = ".ai/rules/x.md", frontmatter = { description = "d", enforcement = "gated" } }
 
 [[self_test]]
 gate   = "gates-self-tests-both-directions"
@@ -173,12 +183,3 @@ gate   = "gates-paths-exist"
 expect = "pass"
 input  = "The mapper lives in [`structural.toml`](./structural.toml)."
 
-[[self_test]]
-gate    = "gates-frontmatter-valid"
-expect  = "pass"
-fixture = { file = ".claude/skills/x/SKILL.md", frontmatter = { name = "x", description = "d" } }
-
-[[self_test]]
-gate    = "gates-frontmatter-valid"
-expect  = "fail"
-fixture = { file = ".claude/skills/x/SKILL.md", frontmatter = { description = "d" } }
