@@ -110,6 +110,47 @@ coexist — a milestone overlay sits on top of items. Three real options: adopt 
 unit and install only the missing gates, install items alongside, or skip.
 """
 
+# The repo's work lives in an issue tracker. Without this, a team running
+# everything through GitHub Issues matched no backlog signature at all, was
+# reported `absent`, and `doctor` proposed installing a Markdown backlog beside
+# the one they actually use — which is exactly the "why isn't this Jira?"
+# objection, earned.
+#
+# **Detection only, and deliberately so.** An adapter that read or wrote an
+# external tracker would need credentials, network and a client inside the
+# consumer repo, which ADR-0002 rules out. ADR-0004 already answers the
+# ownership worry the right way: adoption is a mapping, not a migration. So
+# rungs' job here is to notice and stop, not to sync.
+#
+# Only configured issue *intake* counts. A `.github/` directory does not — 76
+# local repos have one and none of them run their work in Issues (measured
+# 2026-08-16). An `ISSUE_TEMPLATE` directory or a root issue template is
+# somebody deliberately configuring how work arrives, which is the narrowest
+# in-repo evidence that the tracker is the unit of work.
+#
+# Linear and Jira are **not** listed. They leave no reliable file-level trace —
+# usually nothing but a URL in a PR template — and a signature guessed from a
+# link is the confidently-wrong probe this repo refuses everywhere else.
+# The note covers them because the trade-off does not depend on the vendor.
+[[detect.paradigm]]
+id      = "external-tracker"
+paths   = [
+  ".github/ISSUE_TEMPLATE/**",
+  ".github/issue_template.md",
+  ".github/ISSUE_TEMPLATE.md",
+]
+compare = "docs/research/synthesis.md#33-unit-of-work"
+note    = """
+Work items here are Markdown files in the repo; your tracker is a system outside it. Neither is
+better — they fail differently. A tracker gives you queries, notifications and non-engineers; files
+give you review, history and offline agents, and they are the only form a gate can mechanically
+check against a branch.
+
+rungs will not sync, import or export. Three real options: keep the tracker as the unit of work and
+install only the modules that do not duplicate it (`findings`, `adr`, `session`), install items
+alongside for agent-facing work while humans stay in the tracker, or skip the module.
+"""
+
 # Proposes a parameter once presence is already established. Never concludes
 # presence — hexguard-templates has 207 well-formed `FOUND-US-###` matches and
 # no backlog; they are spec story ids.

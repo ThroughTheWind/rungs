@@ -8,7 +8,7 @@ created: 2026-08-16
 updated: 2026-08-16
 related: [ADR-0001, ADR-0002, ADR-0004, ADR-0005, ADR-0006]
 epic:
-children: [WI-038, WI-039, WI-040, WI-041, WI-042]
+children: [WI-038, WI-039, WI-040, WI-041, WI-042, WI-043]
 ---
 
 ## Proposal (rationale)

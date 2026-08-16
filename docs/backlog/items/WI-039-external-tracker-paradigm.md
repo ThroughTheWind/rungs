@@ -2,11 +2,11 @@
 id: WI-039
 title: Detect an external issue tracker as a different paradigm, not as an absent backlog
 type: feature
-status: planned
-branch:
+status: review
+branch: feature/WI-039-external-tracker-paradigm
 created: 2026-08-16
 updated: 2026-08-16
-related: [WI-037, WI-038, ADR-0002, ADR-0004]
+related: [WI-037, WI-038, WI-043, ADR-0002, ADR-0004]
 epic: WI-037
 children: []
 ---
@@ -102,8 +102,89 @@ signature. A signature validated only by its own fixture is `gate-self-test`'s k
 
 ## Execution
 
-Not started.
+Branch `feature/WI-039-external-tracker-paradigm`, cut from `main` at `36a0eb0`.
+
+One `[[detect.paradigm]]` block added to
+[`modules/backlog/module.toml`](../../../modules/backlog/module.toml), id `external-tracker`,
+matching configured issue *intake* only — `.github/ISSUE_TEMPLATE/**`, `.github/issue_template.md`,
+`.github/ISSUE_TEMPLATE.md`. Linear and Jira are named in the note and deliberately absent from the
+paths, per the plan: they leave no reliable file-level trace, and a signature guessed from a URL is
+the confidently-wrong probe this repo refuses everywhere else.
+
+**No CLI change, and that turned out to be the problem — see Review criterion 2.**
 
 ## Review
 
-Not started.
+Verified 2026-08-16 on `feature/WI-039-external-tracker-paradigm`. **Two of five criteria are not
+met, so this item stays at `review`.** What it delivers is real and lands; what it does not deliver
+is the half that answers the original objection.
+
+**1 · A repo whose work lives in GitHub Issues reports `different paradigm`.** Against a constructed
+fixture (`.github/ISSUE_TEMPLATE/{bug_report,feature_request}.md`), `doctor` reports:
+
+```
+backlog        paradigm
+    different paradigm: external-tracker (.github/ISSUE_TEMPLATE/bug_report.md)
+    Work items here are Markdown files in the repo; your tracker is a system outside it.
+```
+
+**Not met, and the plan predicted why.** Its Approach required testing *"against repos that
+genuinely use Issues, not against a fixture built to match the signature — a signature validated
+only by its own fixture is `gate-self-test`'s known hole ([F-006](../FINDINGS.md)) in a different
+costume."* No repo available here uses GitHub Issues as its unit of work; all 76 local repos with a
+`.github/` directory track work in files. So this is exactly the circular validation the plan
+forbade, and it is recorded as such rather than counted.
+
+**2 · `rungs add backlog` prints the comparison and installs nothing. NOT MET — it installs.**
+
+```
+$ rungs add backlog --into <fixture>
+  instructions   3 create · 1 merge
+  gates          1 create · 1 skill · 2 merge
+  backlog        5 create · 1 rule · 2 skill · 1 merge
+  registered 12 gates from 3 module(s)
+```
+
+The paradigm is never mentioned. Cause: **`paradigm` is read by `doctor` and by nothing else** —
+`grep -n paradigm src/add.ts src/cli.ts` returns five hits, all in doctor's rendering, none in
+`add.ts`. [ADR-0004](../../decisions/ADR-0004-adoption-detection.md)'s state 5 is specified and
+unimplemented, and has been for **every** paradigm since the CLI shipped; the pre-existing
+`milestones` block has the same hole. WI-039 did not introduce it — it added the first paradigm
+anyone would actually hit, which is what made it visible.
+
+The plan named this outcome in advance: *"No CLI change expected. If one turns out to be needed,
+that is a finding about ADR-0004's paradigm mechanism, and worth recording as one."* Recorded as
+[F-014](../FINDINGS.md) (high · now) and promoted to
+[WI-043](WI-043-add-honours-paradigm.md), because refusing an install a user typed on purpose is a
+design decision, not a bug fix to slip into this branch.
+
+**3 · A repo with `.github/` but no issue-workflow evidence is not matched.** Required at least
+three; checked against **eight**, every one of which has a `.github/` directory:
+
+| | |
+| --- | --- |
+| `absent` (no backlog at all) | `angular-academy` · `axiom-mesh` · `dotnet-academy` · `ng-i18n-compiler` |
+| `theirs` (their own in-repo backlog) | `hexguard-templates` · `rewind` · `rift-forge` |
+| `ours` | `hexguard` |
+
+**False positives: 0.** The negative evidence here is much stronger than the positive evidence in
+criterion 1, which is the honest summary of this item. **Met.**
+
+**4 · The four source repos' detection is unchanged.** `hexguard` `ours` · `hexguard-templates`
+`theirs` · `rift-forge` `theirs` · `axiom-mesh` `absent` — identical to before the change, as
+criterion 3's table shows. Paradigm is only consulted when nothing else matched
+([`src/detect.ts:86`](../../../src/detect.ts)), so a repo with its own backlog can never be
+reclassified by this block. **Met.**
+
+**5 · `rungs modules` audits clean; `rungs check` passes.** Manifest audit clean; `rungs check`
+20 pass · 0 fail · 0 unimplemented · 0 error. **Met.**
+
+### Why this lands at `review` rather than `done`
+
+Criterion 2 is the one that answers the review's objection, and it is unmet. The detection half is
+worth landing on its own — `doctor` no longer tells a team with an issue tracker that they have no
+backlog, which was the reported symptom — but the item's own definition of done is not satisfied,
+and marking it `done` would put a false statement in the field every board reads.
+
+Blocked on a decision, not on work: [WI-043](WI-043-add-honours-paradigm.md) needs someone to choose
+whether `add` refuses by default or warns and proceeds.
