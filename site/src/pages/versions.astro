@@ -91,13 +91,13 @@ const modules = [
       <span class="lab">Status · what exists alongside the version</span>
       <div class="status">
         <Measurement
-          value={`${SITE.gates.registered} gates register, all ${SITE.gates.withEngines} have engines`}
+          value={`${SITE.registered} gates register, plus ${SITE.hooks} hook that fires on a tool call`}
           date={SITE.asOf}
           command="npx @rungs/cli check"
         />
-        <span class="mono">{SITE.gates.pass} pass</span>
-        <span class="mono bad">{SITE.gates.fail} fail</span>
-        <span class="mono dim">{SITE.gates.unimplemented} unimplemented · 15 modules</span>
+        <span class="mono">{SITE.run.pass} pass</span>
+        <span class="mono bad">{SITE.run.fail} fail</span>
+        <span class="mono dim">{SITE.run.unimplemented} unimplemented · {SITE.modules.length} modules</span>
       </div>
     </section>
 

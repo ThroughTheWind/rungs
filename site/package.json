@@ -10,6 +10,8 @@
   "scripts": {
     "vendor": "node scripts/vendor-design-system.mjs",
     "check:vendored": "node scripts/check-vendored.mjs",
+    "claims": "node scripts/generate-claims.mjs",
+    "check:claims": "node scripts/check-claims.mjs",
     "dev": "astro dev",
     "build": "astro build && node scripts/precompress.mjs",
     "preview": "astro preview",
