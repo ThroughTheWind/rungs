@@ -3,14 +3,14 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-042 -->
+<!-- NEXT-ID: WI-043 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-042](items/WI-042-link-line-references.md) | Stop reporting `file.ts:387` code references as broken links | feature | `feature/WI-042-link-line-references` |
 
 ## Review
 

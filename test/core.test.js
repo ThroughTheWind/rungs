@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
 import { selfDeclaredClosure } from '../src/engines2.ts';
+import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
 
@@ -135,6 +136,36 @@ test('explain collapses two gate ids reporting the identical finding set into on
 
   assert.equal(reported.length, 2, 'F-007: one check behind two ids is one finding, reported once');
   assert.equal(reported[0].gate, 'gates-links-resolve + gates-paths-exist', 'both ids stay visible');
+});
+
+/**
+ * WI-042. `path/file.ts:387` is the code-reference form CLAUDE.md mandates, and
+ * `link-integrity` resolved it literally — 1,794 false findings on rift-forge,
+ * 46.6% of that repo's link findings, every one a file that was exactly there.
+ *
+ * The strip must be monotone: it may only ever remove findings. A missing file
+ * with a line number is still a missing file.
+ */
+test('link-integrity resolves a :line code reference but still reports a missing target', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-links-'));
+  writeFileSync(join(dir, 'forge-store.ts'), 'export const x = 1;\n');
+  writeFileSync(
+    join(dir, 'doc.md'),
+    [
+      'Built in [the store](./forge-store.ts:222).',
+      'Also [with a column](./forge-store.ts:222:14).',
+      'And [gone](./no-such-file.ts:222).',
+      'And [plainly gone](./no-such-file.ts).',
+    ].join('\n'),
+  );
+
+  const { findings } = linkIntegrity({ scan: ['**/*.md'] }, dir, ['doc.md']);
+  const broken = findings.map((f) => f.message);
+
+  assert.equal(broken.length, 2, 'only the two genuinely missing targets are reported');
+  assert.ok(broken.some((m) => m.includes('no-such-file.ts:222')), 'a missing file with a line number still fails');
+  assert.ok(broken.some((m) => m.endsWith('no-such-file.ts')), 'a missing file without one still fails');
+  assert.ok(!broken.some((m) => m.includes('forge-store')), 'an existing file with a line number is not a broken link');
 });
 
 /**

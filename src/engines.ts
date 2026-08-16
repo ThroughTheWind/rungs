@@ -147,7 +147,34 @@ const frontmatterSchema: Engine = (t, root, files) => {
   return { findings, examined };
 };
 
-const linkIntegrity: Engine = (t, root, files) => {
+/**
+ * Does a link target resolve, under any reading of it?
+ *
+ * `path/to/file.ts:387` is a code reference, not a broken link — it is the form
+ * `CLAUDE.md` mandates in this repo ("Reference code as `file_path:line_number`")
+ * and the form editors and terminals click. The engine resolved it literally and
+ * reported the file missing while the file sat exactly there.
+ *
+ * Measured 2026-08-16 on `rift-forge` via `doctor --explain`: **1,794 of 3,851
+ * link findings — 46.6% — were this**, every one a real file with a line number
+ * after it. Latent since WI-008 made link checking per-link; before that, one
+ * `{{token}}` anywhere in a file exempted every link in it, which hid it.
+ *
+ * Resolve as written first, and only then retry without a trailing `:line` or
+ * `:line:col`. Strip-and-retest rather than strip-and-assume: a link is called
+ * broken only when **no** reading of it resolves, so this can only ever remove
+ * findings. Stripping unconditionally would silence a genuinely missing
+ * `foo.ts:12` whenever an equally missing `foo.ts` explained it away.
+ */
+function resolvesHere(root: string, rel: string, href: string): boolean {
+  const from = dirname(rel);
+  const decoded = decodeURIComponent(href);
+  if (existsSync(resolve(root, from, decoded))) return true;
+  const stripped = decoded.replace(/:\d+(?::\d+)?$/, '');
+  return stripped !== decoded && existsSync(resolve(root, from, stripped));
+}
+
+export const linkIntegrity: Engine = (t, root, files) => {
   const scan = expand(files, t.scan, ['**/*.md']);  // link checks DO cover generated files
   const excluded = new Set(expand(files, t.exclude, []));
   const findings: Finding[] = [];
@@ -169,8 +196,7 @@ const linkIntegrity: Engine = (t, root, files) => {
       // The case the file-level skip was written for — `modules/*/fragments/AGENTS.md` linking
       // `{{path}}/README.md` — is already excluded by path in `link_integrity.exclude` (WI-008).
       if (/\{\{[a-z_.]+\}\}/.test(m[1])) continue;
-      const target = resolve(root, dirname(rel), decodeURIComponent(m[1]));
-      if (!existsSync(target)) findings.push({ file: rel, message: `broken link → ${m[1]}` });
+      if (!resolvesHere(root, rel, m[1])) findings.push({ file: rel, message: `broken link → ${m[1]}` });
     }
   }
   return { findings, examined };
