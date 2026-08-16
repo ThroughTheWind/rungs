@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-055 -->
+<!-- NEXT-ID: WI-056 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -208,6 +208,16 @@ changed by measurement rather than by their plans, which is the epic's most usef
 count that cost `doctor` 10× its run time, a board requirement that flagged seven correct documents,
 a "dated measurement" exemption that reintroduced the incoherence it existed to remove, and a corpus
 four times smaller than its directory listing.
+
+[WI-055](items/WI-055-upgrade-updates-record.md), 2026-08-16 — the other half of the upgrade defect:
+`.ai/rungs.toml` kept naming the old version, so a repo on 1.2.0 described itself as 1.1.0 and the
+same upgrade was offered forever. Fixed **surgically** rather than by the obvious route, because
+`writeInstallRecord` re-derives the whole record and hashes every emitted file that exists — it
+would have stamped our hash onto a **diverged** file, flipping it to `current` so the next upgrade
+overwrote an edit [ADR-0004](../decisions/ADR-0004-adoption-detection.md) promises never to touch. A
+stale version number is cosmetic; discarding a user's edit is not. Verified with a divergence in
+place: the hash survived **and** the file was still reported as diverged, because either alone
+proves nothing.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

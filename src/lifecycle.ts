@@ -89,14 +89,20 @@ export function applyUpgrade(repoRoot: string, mods: Manifest[], record: Install
   const params = resolveParams(mods, paramsFrom(record), repoRoot);
   const skillsDir = record.harnesses.includes('claude') ? '.claude/skills' : '.agents/skills';
   let written = 0;
+  // Only files this run rewrote. A diverged file is not in here, which is what
+  // keeps its recorded hash — and therefore its protection — intact (F-017).
+  const rewritten = new Map<string, Map<string, string>>();
   for (const item of plan) {
     const mod = mods.find((m) => m.name === item.module)!;
     const emitted = emittedFiles(mod, params, skillsDir);
     for (const f of item.files) {
       if (f.state !== 'stale' && f.state !== 'missing') continue;
       const full = join(repoRoot, f.rel);
+      const content = emitted.get(f.rel)!;
       mkdirSync(dirname(full), { recursive: true });
-      writeFileSync(full, emitted.get(f.rel)!);
+      writeFileSync(full, content);
+      if (!rewritten.has(mod.name)) rewritten.set(mod.name, new Map());
+      rewritten.get(mod.name)!.set(f.rel, contentHash(content));
       written++;
     }
   }
@@ -114,7 +120,74 @@ export function applyUpgrade(repoRoot: string, mods: Manifest[], record: Install
   const upgraded = plan.map((p) => mods.find((m) => m.name === p.module)!).filter(Boolean);
   const gateActions = upgraded.length ? registerGates(upgraded, repoRoot, false) : [];
 
-  return { written, gates: gateActions.length };
+  const recorded = updateRecordAfterUpgrade(
+    repoRoot,
+    upgraded.map((m) => ({ module: m.name, version: m.version, hashes: rewritten.get(m.name) ?? new Map() })),
+  );
+
+  return { written, gates: gateActions.length, recorded };
+}
+
+/**
+ * Update `.ai/rungs.toml` in place after an upgrade: the version each module
+ * moved to, and a new hash for each file this run actually rewrote.
+ *
+ * **Surgical, and text-level, on purpose.** F-017: `upgrade` left the record
+ * naming the old version, so a repo on 1.2.0 described itself to its owner as
+ * 1.1.0 and `planUpgrade` offered the same move forever. The obvious fix —
+ * calling `writeInstallRecord` — is worse than the bug: it re-derives the whole
+ * record and hashes **every emitted file that exists**, which would stamp our
+ * hash onto a file the user had diverged. That file would then match its record
+ * and be silently reclassified from `diverged` to `current`, so the next upgrade
+ * would overwrite the edit rungs promises never to touch.
+ *
+ * So: only the lines that must change, and only for files we wrote. Everything
+ * else — the header comment, kept-file lists, and the hash of every file we did
+ * not touch — is left exactly as it was.
+ */
+export function updateRecordAfterUpgrade(
+  repoRoot: string,
+  updates: { module: string; version: string; hashes: Map<string, string> }[],
+): number {
+  const path = join(repoRoot, '.ai', 'rungs.toml');
+  if (!existsSync(path) || !updates.length) return 0;
+
+  const lines = readFileSync(path, 'utf8').split('\n');
+  const byModule = new Map(updates.map((u) => [u.module, u]));
+  let changed = 0;
+  let current: { module: string; hashes: boolean } | null = null;
+
+  const out: string[] = [];
+  for (const line of lines) {
+    const header = /^\[modules\.([^\].]+)(\.[^\]]+)?\]/.exec(line);
+    if (header) {
+      current = byModule.has(header[1]) ? { module: header[1], hashes: header[2] === '.hashes' } : null;
+      out.push(line);
+      continue;
+    }
+
+    if (current && !current.hashes && /^version\s*=/.test(line)) {
+      const next = `version = "${byModule.get(current.module)!.version}"`;
+      if (next !== line) changed++;
+      out.push(next);
+      continue;
+    }
+
+    if (current?.hashes) {
+      const entry = /^"([^"]+)"\s*=/.exec(line);
+      const replacement = entry && byModule.get(current.module)!.hashes.get(entry[1]);
+      if (replacement) {
+        out.push(`"${entry[1]}" = "${replacement}"`);
+        changed++;
+        continue;
+      }
+    }
+
+    out.push(line);
+  }
+
+  writeFileSync(path, out.join('\n'));
+  return changed;
 }
 
 function paramsFrom(record: InstallRecord): Params {

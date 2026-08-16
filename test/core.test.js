@@ -10,7 +10,7 @@ import { blockedByParadigm } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
-import { applyUpgrade } from '../src/lifecycle.ts';
+import { applyUpgrade, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
@@ -184,6 +184,52 @@ test('explain collapses two gate ids reporting the identical finding set into on
  * every module in the plan, not only ones with stale files, and it goes through
  * the same whole-block merge that makes removal work.
  */
+/**
+ * F-017. `upgrade` left the record naming the old version, so a repo on 1.2.0
+ * described itself as 1.1.0 forever. The obvious fix — `writeInstallRecord` —
+ * is worse than the bug: it hashes every emitted file that exists, which would
+ * stamp our hash onto a **diverged** file, silently reclassify it as current,
+ * and let the next upgrade overwrite an edit rungs promises never to touch.
+ *
+ * So the assertion that matters is the last one.
+ */
+test('the record update touches only the version and the files this run rewrote', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-rec-'));
+  mkdirSync(join(root, '.ai'), { recursive: true });
+  writeFileSync(
+    join(root, '.ai', 'rungs.toml'),
+    [
+      '# Installed by `rungs`. Header comment that must survive.',
+      '',
+      '[modules.session]',
+      'version = "1.1.0"',
+      'state   = "managed"',
+      '',
+      '[modules.session.hashes]',
+      '".ai/session.md" = "MINE-diverged"',
+      '".ai/archive/README.md" = "old-hash"',
+      '',
+      '[modules.other]',
+      'version = "9.9.9"',
+      '',
+    ].join('\n'),
+  );
+
+  const changed = updateRecordAfterUpgrade(root, [
+    { module: 'session', version: '1.2.0', hashes: new Map([['.ai/archive/README.md', 'new-hash']]) },
+  ]);
+  const text = readFileSync(join(root, '.ai', 'rungs.toml'), 'utf8');
+
+  assert.equal(changed, 2, 'one version line and one hash');
+  assert.match(text, /\[modules\.session\]\nversion = "1\.2\.0"/, 'the version moved');
+  assert.match(text, /"\.ai\/archive\/README\.md" = "new-hash"/, 'the rewritten file has its new hash');
+  assert.match(text, /"\.ai\/session\.md" = "MINE-diverged"/, 'a diverged file keeps its hash, so it stays diverged');
+  assert.match(text, /\[modules\.other\]\nversion = "9\.9\.9"/, 'an untouched module is untouched');
+  assert.match(text, /^# Installed by `rungs`/, 'the header comment survives');
+
+  rmSync(root, { recursive: true, force: true });
+});
+
 test('applyUpgrade registers gates even when no file is stale', () => {
   const root = mkdtempSync(join(tmpdir(), 'rungs-upg-'));
   mkdirSync(join(root, '.ai'), { recursive: true });
