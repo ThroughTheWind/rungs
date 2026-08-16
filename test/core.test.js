@@ -105,13 +105,14 @@ test('self-declared closure catches an open finding declaring itself fixed, but 
  * findings on hexguard-templates whose spec register simply has its own
  * columns. Both are guaranteed by the repo's *state*, not its *content*.
  */
-test('explain runs only convention-free engines over a repo that has its own equivalent', () => {
+test('explain runs only repo-content gates over a repo that has its own equivalent', () => {
   const mods = [
     {
       name: 'adr',
       gates: [
-        { id: 'adr-index-current', kind: 'declared', engine: 'render-freshness', table: 'gates/adr.toml' },
-        { id: 'adr-links', kind: 'declared', engine: 'link-integrity', table: 'gates/adr.toml' },
+        { id: 'adr-index-current', kind: 'declared', engine: 'render-freshness', applicability: 'our-artifacts', table: 'gates/adr.toml' },
+        { id: 'adr-schema', kind: 'declared', engine: 'frontmatter-schema', applicability: 'our-schema', table: 'gates/adr.toml' },
+        { id: 'adr-links', kind: 'declared', engine: 'link-integrity', applicability: 'repo-content', table: 'gates/adr.toml' },
         { id: 'adr-script', kind: 'command', command: 'rm -rf /' },
       ],
     },
@@ -119,16 +120,46 @@ test('explain runs only convention-free engines over a repo that has its own equ
   const theirs = [{ module: 'adr', state: 'theirs' }];
 
   const ran = [];
+  const stub = (name) => () => (ran.push(name), { findings: [], examined: 1 });
   const engines = {
-    'render-freshness': () => (ran.push('render-freshness'), { findings: [{ message: 'x' }], examined: 1 }),
-    'link-integrity': () => (ran.push('link-integrity'), { findings: [], examined: 1 }),
+    'render-freshness': stub('render-freshness'),
+    'frontmatter-schema': stub('frontmatter-schema'),
+    'link-integrity': stub('link-integrity'),
   };
 
   const result = explainWith(engines, mods, theirs, '/nowhere', []);
 
-  assert.deepEqual(ran, ['link-integrity'], 'shape-conformance engines must not run on a repo that is not ours');
+  assert.deepEqual(ran, ['link-integrity'], 'only repo-content runs on a repo that is not ours');
   assert.equal(result.skipped.command, 1, 'a command gate is counted, never executed');
-  assert.equal(result.reported.length, 0);
+});
+
+/**
+ * WI-052. Applicability has **no default**. A gate that never said whether it
+ * can read a foreign repo does not read one, and is named — silence resolving
+ * to "safe" is precisely how WI-038's first version produced 71 findings that
+ * were true about our conventions and meaningless about the repos they landed on.
+ */
+test('an undeclared gate does not run on a foreign repo and is reported by name', () => {
+  const mods = [{ name: 'adr', gates: [{ id: 'adr-mystery', kind: 'declared', engine: 'link-integrity', table: 'gates/adr.toml' }] }];
+  const ran = [];
+  const engines = { 'link-integrity': () => (ran.push('ran'), { findings: [], examined: 1 }) };
+
+  const foreign = explainWith(engines, mods, [{ module: 'adr', state: 'theirs' }], '/nowhere', []);
+  assert.deepEqual(ran, [], 'an undeclared gate does not read somebody else\'s repo');
+  assert.deepEqual(foreign.skipped.undeclared, ['adr-mystery'], 'and it is named, not silently dropped');
+
+  // On a repo that *is* ours the question does not arise: the artifacts are ours
+  // to read, so an undeclared gate still runs.
+  const ours = explainWith(engines, mods, [{ module: 'adr', state: 'ours-current' }], '/nowhere', []);
+  assert.deepEqual(ours.skipped.undeclared, [], 'applicability constrains foreign repos only');
+});
+
+test('every shipped gate declares its applicability', () => {
+  const modules = loadAllModules(resolve('modules'));
+  const undeclared = modules.flatMap((m) =>
+    m.gates.filter((g) => g.kind === 'declared' && !g.applicability).map((g) => `${m.name}/${g.id}`),
+  );
+  assert.deepEqual(undeclared, [], 'the audit reports these too, but a test states the invariant');
 });
 
 test('explain collapses two gate ids reporting the identical finding set into one row', () => {

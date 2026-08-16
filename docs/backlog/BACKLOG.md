@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-052](items/WI-052-detector-applicability.md) | Make detector applicability a declared property rather than two lists | feature |
 | [WI-053](items/WI-053-false-positive-census.md) | Census `--explain` against every repo available | spike |
 
 ## Accepted
@@ -174,6 +173,20 @@ nothing ran at all. Registry 20 → 21 and `rungs check` 19 → 20 on that consu
 rather than assumed. The record half — `.ai/rungs.toml` still names the old version — is
 [F-017](FINDINGS.md), left open deliberately: the obvious fix rewrites the whole record and would
 stamp our hash onto a user-diverged file, ending its protection silently.
+
+[WI-052](items/WI-052-detector-applicability.md), 2026-08-16 — the review's strongest technical
+recommendation, and the last substantial one. *Can this detector legitimately interpret this
+repository* is now a **required field on every gate**, next to its engine, with no default: an
+undeclared gate does not read a foreign repo and is named. It had been two hard-coded sets of engine
+names inside `explain.ts`, so a new gate inherited a reach nobody chose for it and nothing at either
+declaration said so. Landed with [ADR-0007](../decisions/ADR-0007-detector-applicability.md), because
+the field is required, all 41 gates changed, and third-party modules would inherit the obligation.
+
+The criterion the item turns on is that it is a **move, not a retune**: `--explain` output is
+byte-identical before and after on all four source repos, `rift-forge`'s 2,057 findings included.
+Three values, each with real members — `repo-content` 8, `our-artifacts` 7, `our-schema` 26. A
+boolean was rejected because it merges the two "no" cases, which is precisely the distinction that
+explains a false positive to whoever reads it.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

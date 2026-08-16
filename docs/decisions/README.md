@@ -16,6 +16,7 @@ Architecture decision records for rungs itself.
 | [0004](ADR-0004-adoption-detection.md) | Adoption detection: map what exists, never migrate it | accepted | 2026-08-14 |
 | [0005](ADR-0005-self-instrumentation.md) | Self-instrumentation: the runner records what it observes, and nothing else | accepted | 2026-08-14 |
 | [0006](ADR-0006-the-name.md) | The name: `rungs`, and why a name here is an identifier rather than a brand | accepted | 2026-08-14 |
+| [0007](ADR-0007-detector-applicability.md) | Detector applicability is declared per gate, and has no default | accepted | 2026-08-16 |
 
 > 0001–0005 were decided out of numeric order, each because it blocked the next: 0005 set the
 > gate-shipping contract, 0002 set what a scaffolded repo may depend on, 0003 is largely 0002's

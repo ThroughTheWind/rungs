@@ -91,6 +91,19 @@ whether its guard has ever actually fired.
    `module.toml`, per skill, with the portability cost stated there.
 5. **Every gate declares a self-test asserting both directions.** A gate whose rules are currently
    satisfied is indistinguishable from a gate that matches nothing.
+5b. **Every gate declares its `applicability`**, next to its `engine`, and there is no default:
+
+   | Value | Means | Runs on a repo that is not ours? |
+   | --- | --- | --- |
+   | `repo-content` | Measures the repo's own content — a count, a length, whether a link resolves | **Yes** |
+   | `our-artifacts` | Checks something rungs wrote, which cannot exist unless we installed | No |
+   | `our-schema` | Reads their file against a shape we defined | No |
+
+   `doctor --explain` runs only `repo-content` against a repo that has its own equivalent of a
+   module. Omitting the field does not mean "safe": the gate is skipped **and named**, and
+   `rungs modules` refuses the manifest. This exists because the first version of `--explain`
+   decided it centrally by engine name, and produced 71 findings that were true about our
+   conventions and meaningless about the repos they landed on.
 6. **`[detect]` must correctly classify all four source repos.** That is the Phase 6 acceptance
    criterion, and it is why detection is biased toward false negatives.
 7. **A managed-block marker uses the target file's comment syntax** — `<!-- rungs:begin x -->` in
