@@ -18,7 +18,16 @@ import { derive, OUT, REPO } from "./claims.mjs";
 
 const claims = derive();
 
-const raw = execSync("node src/cli.ts check", { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+// `check` exits non-zero when a gate fails, and this must still record the run —
+// otherwise regenerating is impossible exactly when the snapshot is stale, which
+// is a deadlock: the `site-claims-current` gate fails because claims are old, and
+// claims cannot be regenerated because a gate is failing. Capture either way.
+let raw;
+try {
+  raw = execSync("node src/cli.ts check", { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+} catch (e) {
+  raw = e.stdout ?? "";
+}
 const line = raw.replace(/\x1b\[[0-9;]*m/g, "").match(/(\d+) pass · (\d+) fail · (\d+) unimplemented · (\d+) error/);
 if (!line) {
   console.error("generate-claims: could not read a summary line from `rungs check`. Its output shape changed.");

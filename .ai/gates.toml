@@ -208,7 +208,7 @@ why    = """A finding closed without a written reason is indistinguishable from 
 is the same observation the next session will record again. The reason is what the register is for."""
 # rungs:end findings
 
-# rungs:begin adr@1.0.0
+# rungs:begin adr@1.1.0
 
 [[gates]]
 id     = "adr-index-current"
@@ -220,6 +220,20 @@ tier   = "fast"
 why    = """An index that has stopped listing every record is a routing table that silently drops decisions."""
 
 [[gates]]
+id     = "adr-sections-present"
+kind   = "declared"
+module = "adr"
+engine = "sections"
+table  = "adr/adr.toml"
+tier   = "fast"
+why    = """The `[sections]` table required Context, Decision, Consequences, Alternatives considered and
+Revisit triggers with non-empty bodies, and **no gate declared it** — a fully specified check that
+nothing ran, found 2026-08-16 by executing the self-test fixtures (F-018). Two fixtures were even
+labelled for `adr-required-fields`, which checks frontmatter and could never have satisfied them.
+A record without alternatives is a description of what was done rather than a decision, which is
+what the admission rule's second criterion guards against."""
+
+[[gates]]
 id     = "adr-required-fields"
 kind   = "declared"
 module = "adr"
@@ -229,7 +243,6 @@ tier   = "fast"
 why    = """A record with no alternatives section is a description of what was done, not a decision. The
 admission rule exists to keep those out, and this gate is what makes the rule more than advice."""
 # rungs:end adr
-
 # rungs:begin session@1.0.0
 
 [[gates]]

@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-056 -->
+<!-- NEXT-ID: WI-057 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -232,6 +232,21 @@ honest at 23 pass and the claim that fixtures execute is not made until it is tr
 also corrected this item's own premise: **114 self-tests, 29 text and 85 structured across 23
 shapes**, not the ~8 it estimated. The durable fix is probably a fixture format that carries its
 context — a `setup` block — which is an ADR-0003 question rather than more harness.
+
+[WI-056](items/WI-056-triage-selftest-mismatches.md), 2026-08-16 — triaged the self-test mismatches
+from 17 to 7, and **all four causes fixed were real defects in the gate set, not the harness**: the
+`adr` module declared no gate for its own fully-specified `[sections]` table (F-007's shape, third
+time), two fixtures were labelled for a gate that checks frontmatter while describing sections,
+`adr-required-fields` was left with no `pass` fixture at all, and `[frontmatter_schema.reciprocal]`
+was configured and implemented nowhere. The new `adr-sections-present` gate then found a *fifth*:
+`non_empty` read any section made of subsections as empty, which is the normal shape of a long ADR.
+Gate count 23 → 24.
+
+**The recommendation in [F-018](FINDINGS.md) changed as a result.** It said *triage each by hand*;
+having done a round, the advice is now to stop. Every round finds something real — so the runner is
+worth having — but every round also moves which fixtures fail, and a gate whose failures shift under
+it cannot block a merge. The cause is structural: a fixture describes a *fragment* and an engine
+needs a *scenario*. The format needs a `setup` block, which is an ADR-0003 change.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

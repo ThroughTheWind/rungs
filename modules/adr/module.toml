@@ -1,6 +1,6 @@
 [module]
 name    = "adr"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 1
 summary = "Numbered, immutable decision records, with an admission rule that keeps the directory from becoming a second documentation tree."
 
@@ -31,6 +31,22 @@ applicability = "our-artifacts"
 table  = "gates/adr.toml"
 tier   = "fast"
 why    = "An index that has stopped listing every record is a routing table that silently drops decisions."
+
+[[gates]]
+id     = "adr-sections-present"
+kind   = "declared"
+engine = "sections"
+applicability = "our-schema"
+table  = "gates/adr.toml"
+tier   = "fast"
+why    = """
+The `[sections]` table required Context, Decision, Consequences, Alternatives considered and
+Revisit triggers with non-empty bodies, and **no gate declared it** — a fully specified check that
+nothing ran, found 2026-08-16 by executing the self-test fixtures (F-018). Two fixtures were even
+labelled for `adr-required-fields`, which checks frontmatter and could never have satisfied them.
+A record without alternatives is a description of what was done rather than a decision, which is
+what the admission rule's second criterion guards against.
+"""
 
 [[gates]]
 id     = "adr-required-fields"

@@ -23,6 +23,10 @@ enum     = { status = ["proposed", "accepted", "rejected", "superseded"] }
 # supersession leaves a reader on the stale record with no way to find the live one.
 [frontmatter_schema.reciprocal]
 pairs = [{ from = "superseded_by", to = "supersedes" }]
+# A record cannot declare itself superseded without saying by what. Stated
+# separately from `pairs` because it is a different failure: `pairs` catches a
+# one-way link, this catches a missing one.
+required_when = { superseded = "superseded_by" }
 
 # Sections, not prose quality. The gate can check that `Alternatives considered` exists and is not
 # empty; it cannot judge whether the alternatives were real, and one that tried would be the
@@ -40,12 +44,12 @@ done rather than a decision — which is what admission criterion 2 is guarding 
 # ── self-tests ────────────────────────────────────────────────────────────────
 
 [[self_test]]
-gate    = "adr-required-fields"
+gate    = "adr-sections-present"
 expect  = "fail"
 fixture = { file = "{{path}}/{{id_prefix}}-0001-x.md", sections = ["Context", "Decision", "Consequences"] }
 
 [[self_test]]
-gate    = "adr-required-fields"
+gate    = "adr-sections-present"
 expect  = "pass"
 fixture = { file = "{{path}}/{{id_prefix}}-0001-x.md", sections = ["Context", "Decision", "Consequences", "Alternatives considered", "Revisit triggers"] }
 
@@ -53,6 +57,14 @@ fixture = { file = "{{path}}/{{id_prefix}}-0001-x.md", sections = ["Context", "D
 gate    = "adr-required-fields"
 expect  = "fail"
 fixture = { frontmatter = { id = "{{id_prefix}}-0001", title = "x", status = "superseded", date = "2026-01-01" } }
+
+# The pass direction was missing entirely: both of this gate's fixtures described *sections* and
+# were relabelled to `adr-sections-present` (F-018), which left it asserting only that something
+# fails. A gate with no passing fixture cannot tell "correct" from "matches nothing".
+[[self_test]]
+gate    = "adr-required-fields"
+expect  = "pass"
+fixture = { frontmatter = { id = "{{id_prefix}}-0001", title = "x", status = "accepted", date = "2026-01-01" } }
 
 [[self_test]]
 gate    = "adr-index-current"
