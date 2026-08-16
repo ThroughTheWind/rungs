@@ -129,6 +129,7 @@ reported as diverged and left alone.
 | --- | --- |
 | `rungs init [path] [profile]` | Scaffold — `minimal` · `tracked` · `disciplined` · `hardened` · `fleet` |
 | `rungs doctor [path]` | What does this repo already have? Works on repos that never installed anything |
+| `rungs doctor --explain` | Also run the detectors over what it found — evidence rows, never a score |
 | `rungs add <module…>` | Install one module, resolving dependencies and adopting what exists |
 | `rungs check [path]` | Run the gates, record the ledger |
 | `rungs render [path]` | Re-emit path-scoped rules for each harness |
@@ -140,6 +141,7 @@ reported as diverged and left alone.
 | Option | Effect |
 | --- | --- |
 | `--dry-run` | Report what would happen, write nothing. Any write command |
+| `--explain` | `doctor`: run the detectors too. Read-only, and it runs no command your repo owns |
 | `--into <path>` | `add`: install into this repo rather than the working directory |
 | `--set <module>.<param>=<value>` | `add` / `init`: override a module parameter. Repeatable, and `--set m.p=v` works too |
 | `--confirm-threshold` | `add`: install a module whose rung is above this repo |

@@ -8,6 +8,7 @@ import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
+import { explain } from './explain.ts';
 import type { DetectResult, Manifest } from './types.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -74,7 +75,7 @@ function cmdModules(showParams = false) {
   return issues.length === 0 ? 0 : 1;
 }
 
-function cmdDoctor(target: string) {
+function cmdDoctor(target: string, doExplain = false) {
   const root = resolve(target);
   const mods = loadAllModules(MODULES);
   console.log(c.bold(`\nrungs doctor — ${root}\n`));
@@ -153,6 +154,8 @@ function cmdDoctor(target: string) {
   console.log(c.dim('  system is good, complete, or working — only that files are where a'));
   console.log(c.dim("  module's files would be. Signatures under-detect on purpose.\n"));
 
+  if (doExplain) reportExplain(mods, results, root, files);
+
   // `doctor` is the command the README makes the entry point, and it used to stop on the sentence
   // above — fifteen `absent` lines and nothing to do next. The recommendation is deliberately a
   // **single** command, and never the maximal one: the brief names selling rung 5 to a rung-1 repo
@@ -184,6 +187,69 @@ function cmdDoctor(target: string) {
 
 function firstSentence(s: string): string {
   return s.trim().replace(/\s+/g, ' ').split(/(?<=\.)\s/)[0];
+}
+
+/**
+ * The defect half of `doctor` (WI-038). Every line carries a path and a count
+ * or a quote; there is no score, grade, bar, or maturity label anywhere, and
+ * there is not going to be — ADR-0005 tier C refuses composites permanently,
+ * and a single word over incommensurable signals is the purest form of the
+ * probe-encoding-a-guess the corpus warns about.
+ *
+ * The incident is attached to each detector rather than to each finding: it is
+ * why the check exists, not what was found, and repeating it per row would bury
+ * the evidence under the provenance.
+ */
+function reportExplain(mods: Manifest[], results: DetectResult[], root: string, files: string[]) {
+  const { reported, skipped, scope } = explain(mods, results, root, files);
+
+  console.log(c.bold('  What it also checked\n'));
+
+  if (!scope.length) {
+    console.log(c.dim('  Nothing — detectors run only over what this repo already has, and'));
+    console.log(c.dim('  detection found no equivalent of any module. There is nothing here to'));
+    console.log(c.dim('  check that would not be checking our conventions against your repo.\n'));
+    return;
+  }
+
+  const total = reported.reduce((n, r) => n + r.findings.length, 0);
+  console.log(
+    c.dim(`  ran the detectors for ${scope.length} module(s) this repo already has: `) + c.dim(scope.join(' ')) + '\n',
+  );
+
+  for (const r of reported) {
+    const n = r.findings.length;
+    console.log(`  ${c.yellow(r.gate.padEnd(34))} ${c.bold(String(n))} ${n === 1 ? 'finding' : 'findings'}`);
+    for (const f of r.findings.slice(0, 4)) {
+      console.log(c.dim(`      ${f.file ? `${f.file}: ` : ''}${f.message}`));
+    }
+    if (n > 4) console.log(c.dim(`      …and ${n - 4} more`));
+    if (r.why) console.log(c.dim(`      why: ${firstSentence(r.why)}`));
+    console.log();
+  }
+
+  if (!total) {
+    console.log(c.dim('  No detector fired. That is not a clean bill of health — see below.\n'));
+  }
+
+  // Pins. ADR-0005's rule that green must never read as verified applies with
+  // more force here than in the ledger: this pass runs our checks over content
+  // written to somebody else's conventions, and the honest failure mode is a
+  // sound finding in a frame the repo never adopted.
+  console.log(c.dim('  This is not an audit, and it is deliberately incomplete:'));
+  console.log(c.dim('  · Detectors ran only for modules this repo already has an equivalent of.'));
+  console.log(c.dim("  · They read rungs-shaped inputs. A finding may be true and framed against"));
+  console.log(c.dim('    a convention you never adopted — that is our defect, not yours.'));
+  if (skipped.command) {
+    console.log(c.dim(`  · ${skipped.command} command gate(s) not run. rungs does not execute commands in a repo it is only reading.`));
+  }
+  if (skipped.unimplemented.length) {
+    console.log(c.dim(`  · ${skipped.unimplemented.length} declared gate(s) have no engine and were skipped, never passed: ${skipped.unimplemented.join(' ')}`));
+  }
+  for (const e of skipped.errored) {
+    console.log(c.dim(`  · ${e.gate} could not run here (${e.message}) — a fact about this pass, not about your repo.`));
+  }
+  console.log();
 }
 
 function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harness[], stamp: string) {
@@ -462,6 +528,7 @@ const COMMANDS: [usage: string, blurb: string][] = [
 /** Every flag the parser honours. A flag absent here is a flag nobody can find. */
 const FLAGS: [flag: string, blurb: string][] = [
   ['--dry-run', 'report what would happen, write nothing'],
+  ['--explain', "doctor: also run the detectors over what this repo already has"],
   ['--into <path>', 'add: install into this repo instead of the working directory'],
   ['--set m.param=value', 'add/init: override a module parameter. Repeatable'],
   ['--confirm-threshold', 'add: install a module whose rung is above this repo'],
@@ -547,7 +614,7 @@ switch (cmd) {
   case 'modules':
     process.exit(cmdModules(flags.has('--params')));
   case 'doctor':
-    process.exit(cmdDoctor(args[0] ?? process.cwd()));
+    process.exit(cmdDoctor(args[0] ?? process.cwd(), flags.has('--explain')));
   case 'check': {
     const tier = args[1] ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
     process.exit(cmdCheck(resolve(args[0] ?? process.cwd()), tier, STAMP));

@@ -124,7 +124,7 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
  * parameters before parsing — which is also what makes a gate honour the
  * prefix, root and budget that repo actually chose.
  */
-function loadTable(ref: string | undefined, repoRoot: string): any | null {
+export function loadTable(ref: string | undefined, repoRoot: string): any | null {
   if (!ref) return null;
   const [mod, file] = ref.split('/');
   const path = join(MODULES, mod, 'gates', file);
@@ -157,7 +157,7 @@ function installedParams(repoRoot: string): Params {
   return defaults;
 }
 
-const tableKey = (engine: string) =>
+export const tableKey = (engine: string) =>
   ({
     'file-budget': 'file_budget',
     sections: 'sections',

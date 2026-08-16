@@ -70,7 +70,13 @@ const fileBudget: Engine = (t, root, files) => {
     if (excluded.has(rel) || !existsSync(join(root, rel))) continue;
     examined++;
     const n = loadedLines(read(root, rel));
-    if (n > t.max_lines) findings.push({ file: rel, message: `${n} lines, budget ${t.max_lines}` });
+    // "1358 lines" invites `wc -l`, which answered 1413 on the same file
+    // (hexguard-templates, 2026-08-16) because this counts what actually *loads*
+    // — frontmatter, HTML comments and blank lines stripped. Naming the measure
+    // is the difference between evidence and a number the reader disproves.
+    if (n > t.max_lines) {
+      findings.push({ file: rel, message: `${n} loaded lines (blank lines and comments excluded), budget ${t.max_lines}` });
+    }
   }
   return { findings, examined };
 };
@@ -194,7 +200,17 @@ const filePopulation: Engine = (t, root, files) => {
   const findings: Finding[] = [];
   const failAt = t.fail_at ?? Infinity;
   if (hits.length >= failAt) {
-    findings.push({ message: `${hits.length} matching file(s), threshold ${failAt} (e.g. ${hits[0]})` });
+    // The count is only re-derivable if the reader knows what was counted.
+    // `audit-output-is-rows` reported 275 on hexguard while the obvious
+    // one-pattern `find` answered 268 (2026-08-16) — the gate scans three
+    // patterns, and the message named none of them, so the correct number read
+    // as a wrong one.
+    const scanned = [t.scan ?? []].flat();
+    findings.push({
+      message:
+        `${hits.length} matching file(s), threshold ${failAt} (e.g. ${hits[0]})` +
+        (scanned.length ? ` — matched against ${scanned.join(', ')}` : ''),
+    });
   }
   return { findings, examined: hits.length };
 };

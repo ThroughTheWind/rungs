@@ -2,8 +2,8 @@
 id: WI-038
 title: Make doctor report a repo's own defects, not only which modules it resembles
 type: feature
-status: planned
-branch:
+status: done
+branch: feature/WI-038-doctor-explain-detectors
 created: 2026-08-16
 updated: 2026-08-16
 related: [WI-037, WI-005, ADR-0004, ADR-0005]
@@ -134,8 +134,146 @@ here proves nothing about a foreign repo. The four source repos are the test set
 
 ## Execution
 
-Not started.
+Branch `feature/WI-038-doctor-explain-detectors`, cut from `main` at `448a9ab`.
+
+### The two open decisions, settled against real output as the plan required
+
+**Surface → `--explain`, appended to `doctor` rather than replacing it.** The plan leaned the other
+way — *"a defect the user must pass a flag to see is one most users never see"*. Real output
+reversed it: on `hexguard` the pass emits 114 findings. Putting that in plain `doctor` buries the
+`Next` line that [WI-005](WI-005-doctor-next-step.md) exists to protect, under a wall of somebody
+else's broken links, on the command the README makes the entry point. The flag stays.
+
+**Framing → evidence rows, not questions.** ADR-0005 Tier B's question form (*"is that still a risk
+here?"*) is for a gate that has been **silent**, where the only honest output is a question. A
+detector that has just fired has something to state. The incident is attached per detector as
+`why:` — it is why the check exists, not what was found, and repeating it per row would bury the
+evidence under the provenance.
+
+### How it works
+
+[`src/explain.ts`](../../../src/explain.ts) synthesizes a gate registry in memory from the module
+manifests — an unmanaged repo has no `.ai/gates.toml` — and runs the same `ENGINES` table the runner
+uses. **No new detector was written**, as the plan required. Two rules bound what may run:
+
+1. **Only modules the repo already has an equivalent of** (`theirs` / `ours-*`). A module the repo
+   has nothing for has nothing to check.
+2. **On `theirs`, only convention-free engines** — `file-population`, `file-budget`,
+   `link-integrity`. These measure the repo's own content; a broken link is a broken link in
+   anybody's methodology. Everything else checks conformance to a shape we defined.
+
+Rule 2 is the item's central safety property and it was **derived from measurement, not from the
+plan**. The first working version had no such rule, and criterion 4's triage is what forced it —
+see Review.
+
+`command` gates are counted and never executed. A read-only-sounding flag that runs shell commands
+from somebody else's repo is not a thing this tool gets to do.
+
+### Deviations from the plan
+
+1. **Two engine messages were changed**, which the plan did not anticipate — it scoped edits to
+   `cli.ts` and the engines' *callability*. Criterion 2 (evidence re-derivable by hand) failed
+   against both, and in both cases **the number was right and the message did not say what it
+   measured**:
+   - `file-budget` reported *"1358 lines"*; `wc -l` on the same file answers 1413, because the
+     engine counts what actually loads (frontmatter, comments and blank lines stripped). Now
+     *"1358 loaded lines (blank lines and comments excluded)"*.
+   - `file-population` reported *"275 matching file(s)"* where the obvious one-pattern `find`
+     answers 268, because the gate scans three patterns and named none of them. Now
+     *"— matched against `docs/**/audits/**/*.md`, `docs/**/*-audit-*.md`, `docs/**/*-readiness-*.md`"*.
+
+   This is [CLAUDE.md](../../../CLAUDE.md)'s second corollary exactly — *a command is evidence only
+   for the property it tests* — caught in this repo's own engines. Both messages also improve
+   `rungs check`.
+2. **[F-007](../FINDINGS.md)'s duplicate is collapsed in the report**, not fixed at source. Two gate
+   ids running the identical scan produced 224 lines of the same 112 links. The merged row names
+   both ids so the duplication stays visible; fixing the registry is still F-007's job.
+3. **A `PreToolUse` hook was added** — [`.claude/hooks/no-inline-interpreter-scripts.mjs`](../../../.claude/hooks/no-inline-interpreter-scripts.mjs)
+   and [`.claude/settings.json`](../../../.claude/settings.json) — which is outside anything this
+   item scoped. Mid-execution I applied three token replacements to `src/explain.ts` with
+   `python - <<'PY'`. Python is not installed on this machine, so the interpreter never ran; the
+   file was left as **8,486 bytes of NUL**, and being untracked, git had nothing to restore. It was
+   rewritten from context and re-verified byte-for-byte against the source repos.
+
+   [CLAUDE.md](../../../CLAUDE.md) § *Editing files from the shell* already forbade this, I had read
+   it, and I did it anyway — which is the case its own § *When you get something wrong* addresses:
+   **"do not restate it — make it mechanical"**, and it names shipping the hook as the mechanical
+   form. So the hook is not scope creep by preference; it is the one deviation that file requires
+   be taken in the same change. It blocks interpreter heredocs and multi-line `-e`, and allows
+   single-line expressions, `git commit -F-`, and `cat >`. The allow-cases in its test are every
+   such command actually used in this session — a guard that blocks the work gets removed.
 
 ## Review
 
-Not started.
+Verified 2026-08-16 on `feature/WI-038-doctor-explain-detectors`. Three of the four source repos are
+available locally; `rift-forge` is not, so it is not part of this evidence.
+
+**1 · Evidenced rows on a repo with no `.ai/rungs.toml`, on at least two source repos.**
+
+| Repo | Record | Detectors | Findings |
+| --- | --- | --- | --- |
+| `hexguard` | installed (4 modules, from earlier phase work) | 3 | 114 |
+| `hexguard-templates` | **none** | 1 | 3 |
+| `axiom-mesh` | **none** | 0 | 0 |
+
+Two source repos produced evidenced rows, every row carrying a path. The no-record path is
+demonstrated by `hexguard-templates`, and separately by four unrelated local repos
+(`angular-academy`, `ng-i18n-compiler`, `dotnet-samples`, `rewind`), all of which ran clean.
+**Met — with one qualification stated rather than smoothed:** only *one* of the two row-producing
+source repos is genuinely never-installed, because `hexguard` carries a record. `axiom-mesh`
+produced nothing because its decision records do not live under a `decisions/` path and so match no
+signature — the under-report bias working as designed, not a gap in this pass.
+
+**2 · Evidence re-derivable by hand.** Five checked, independently of the tool:
+
+| Claim | Re-derived | Result |
+| --- | --- | --- |
+| 99 workflow files | `ls .github/workflows/*.yml *.yaml \| wc -l` | **99** ✅ |
+| 275 audit documents | `find` over the three patterns the message now names | **275** ✅ |
+| `docs/packages/README.md` → `angular-auth-flow.md` broken | `ls` the resolved path | absent ✅ |
+| `docs/.ai/backlog.md` → `strategy/spreadsheet-engine-strategy.md` broken | `ls` the resolved path | absent ✅ |
+| `platform/spec.md` 1358 loaded lines | `perl` strip frontmatter/comments, `grep -c '[^[:space:]]'` | **1358** ✅ |
+
+Two of the five failed on first attempt and are what produced deviation 1. **Met, after the fix.**
+
+**3 · No score, grade, bar, or maturity label.** `grep -iE "score|grade|maturity|█|░|weak|mature|partial|fragmented|[0-9]+%"` over the `--explain` output of all
+three source repos returns nothing. **Met.**
+
+**4 · Every finding on one foreign repo triaged real / mis-framed / wrong.** Done for **all 114** on
+`hexguard`, not a sample: each of the 112 broken links re-resolved from its citing file's directory
+against the filesystem, independently of the engine that reported it; both counts re-derived above.
+
+```
+hexguard             real 114 · mis-framed 0 · wrong 0
+hexguard-templates   real 3   · mis-framed 0 · wrong 0
+```
+
+**The threshold did real work.** The first version, before rule 2 existed, was above it:
+`adr-index-current` reported *"no 'adr-index' block — run `rungs render`"* against `hexguard`'s
+perfectly healthy decision index, and `specs-status-evidence` produced **70** findings on
+`hexguard-templates` opening with *"register table missing column 'Story'"*. That is 71 mis-framed
+findings — both classes guaranteed by the repo's *state* rather than its *content*, and both the
+exact failure the criterion was written to catch. Rule 2 was written in response. **Met at 0%.**
+
+**5 · `doctor` still ends with exactly one recommended command.** One match for
+`rungs (add|init|check|upgrade)` after the `Next` header, with `--explain` on. WI-005 not
+regressed. **Met.**
+
+**6 · `--help`, gates, tests.** `--help` lists `--explain` and exits 0 (WI-004 not regressed).
+`node src/cli.ts check` → **20 pass · 0 fail · 0 unimplemented · 0 error**. `npm test` → **10 pass,
+0 fail**, up from 7: two cover the scope rules that carry the false-positive suppression, one covers
+the hook. **Met.**
+
+**7 · A dated run recorded with its command.** Throughout this section; every table row names the
+command and the date is 2026-08-16. **Met.**
+
+### What this found and did not fix
+
+`hexguard`'s 99 workflows and 275 audit documents are the **same incidents the research recorded by
+hand** — 98 and 268 — now detected mechanically, on the real repo, by gates whose provenance quotes
+those very numbers. That is the strongest available evidence that the extraction was real rather
+than retrospective, and it was not an acceptance criterion of this item; it is a by-product worth
+recording.
+
+No new findings were opened. [F-007](../FINDINGS.md) is worked around and remains open; F-011,
+F-012 and F-013 are untouched.
