@@ -2,8 +2,8 @@
 id: WI-045
 title: Execute gate self-test fixtures instead of only declaring them
 type: feature
-status: proposed
-branch:
+status: review
+branch: feature/WI-045-run-gate-self-tests
 created: 2026-08-16
 updated: 2026-08-16
 related: [WI-044, F-006, F-005]
@@ -81,10 +81,77 @@ choice determines whether the runner needs one path or nine.
 - **Fixing whatever the runner finds.** Those are separate items or findings; this builds the runner.
 - **New fixtures for gates that lack them.** `gates-self-tests-both-directions` already refuses that.
 
+## Decision
+
+`accepted` — 2026-08-16, directed by the user.
+
+The open question — synthesize the structured fixtures or rewrite them as text — was answered by
+counting them: **114 self-tests, 29 with `input`, 85 structured across 23 distinct shapes**, not the
+~8 this item estimated. Neither option is small, and the runner had to exist before either could be
+judged. So: build the runner, run what can be run faithfully, and let the measurement decide the
+rest.
+
 ## Execution
 
-Not started.
+Branch `feature/WI-045-run-gate-self-tests`, cut from `main` at `9f1c3d4`.
+[`src/selftest.ts`](../../../src/selftest.ts) executes a fixture against its engine in a temp repo
+and returns `ok` / `mismatch` / `unrun`.
+
+### It is not wired into the gate, and that is the finding
+
+Wired into `gates-self-tests-both-directions` it reported **17 failures**, and every one inspected
+was the harness's own fault:
+
+| Cause | Example |
+| --- | --- |
+| Fixtures assume sibling files | `gates-links-resolve`'s pass fixture is `See [this table](./structural.toml).` — it asserts a link *that resolves*, and in an empty temp directory it does not |
+| Tokens substituted with a placeholder | The skills schema's scan became `probe/**/SKILL.md` while its fixture still wrote `.claude/skills/x/SKILL.md`, so the engine saw no file |
+| Table sections narrowed by gate id | Fed the `rules` schema to a fixture describing a `SKILL.md` |
+
+Two were fixed — real module defaults instead of `probe`, and passing the whole table section — which
+took 9 mismatches to 5. **The remaining 5 are untriaged**, and I cannot currently tell a stale
+fixture from a further harness gap.
+
+**A gate that cries wolf is deleted faster than the gate it was checking**, and this repo has that
+written down. So the runner ships unwired: `rungs check` stays honest at 23 pass, and the claim that
+fixtures are executed is not made until it is true.
+
+### What the runner does cover
+
+- Engines whose verdict depends only on the described file's content —
+  `frontmatter-schema`, `sections`, `file-budget`, `register-schema`, `file-population`. Everything
+  else is `unrun`, because a fixture that needs context it does not carry cannot be executed
+  faithfully. **This is ADR-0007's applicability question one level down**: ask whether the check can
+  legitimately run before running it.
+- A generic builder for the declarative content keys (`frontmatter`, `sections`, `opening`, `body`,
+  `row`) and for `matching_files`, rather than one builder per shape — per-shape sprawl is what left
+  85 fixtures unrunnable to begin with.
+- **A shape with no builder is `unrun`, never a pass.** That is requirement 1 and it is the part
+  that stops this becoming F-006 one level up.
 
 ## Review
 
-Not started.
+Verified 2026-08-16. **Three of four criteria unmet, so this stays at `review`.**
+
+**1 · Every fixture executed or reported unrun. NOT MET.** The runner distinguishes the three
+outcomes correctly, but it is not attached to anything that runs on every change, so in practice no
+fixture is executed during `rungs check` today.
+
+**2 · A deliberately broken fixture fails its gate. Met at the unit level, not the gate level.** The
+test asserts `mismatch` for a fixture that disagrees with its engine, `unrun` for an unbuildable
+shape, and `unrun` for an engine needing absent context. What is unproven is the same behaviour
+through `gates-self-tests-both-directions`.
+
+**3 · Any gate whose fixtures now fail is fixed or recorded. NOT MET** — 5 mismatches remain
+untriaged and are recorded as [F-018](../FINDINGS.md) rather than left in a commit message.
+
+**4 · `rungs check` and `npm test` pass.** 23 pass · 0 fail; `npm test` 22 pass, up from 21. **Met.**
+
+### What it would take to finish
+
+Either a fixture format that carries its context — a `setup` block naming the sibling files a
+fixture assumes — or per-fixture triage of the remaining 5 followed by wiring. The first is a change
+to [ADR-0003](../../decisions/ADR-0003-module-definition-format.md)'s territory and the more likely
+right answer, because the current format describes fragments and the runner needs scenarios.
+
+That is a decision, not a continuation, which is why this stops here rather than guessing.

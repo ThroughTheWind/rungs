@@ -14,6 +14,7 @@ import { applyUpgrade, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
+import { runSelfTests } from '../src/selftest.ts';
 
 test('substitute resolves local and cross-module values without touching passthrough expressions', () => {
   const params = {
@@ -152,6 +153,35 @@ test('an undeclared gate does not run on a foreign repo and is reported by name'
   // to read, so an undeclared gate still runs.
   const ours = explainWith(engines, mods, [{ module: 'adr', state: 'ours-current' }], '/nowhere', []);
   assert.deepEqual(ours.skipped.undeclared, [], 'applicability constrains foreign repos only');
+});
+
+/**
+ * WI-045 / F-006. Self-test fixtures were declared and never executed, so every
+ * one was documentation shaped like a test. The runner exists; this pins that it
+ * actually distinguishes a passing fixture from a failing one, and that a shape
+ * it cannot build is reported `unrun` rather than counted as a pass.
+ */
+test('the self-test runner executes a fixture and refuses to guess at one it cannot build', () => {
+  const table = [{ id: 'demo', scan: ['probe.md'], required: ['id'] }];
+
+  const ok = runSelfTests('demo', 'frontmatter-schema', table, [
+    { expect: 'pass', fixture: { file: 'probe.md', frontmatter: { id: 'X' } } },
+    { expect: 'fail', fixture: { file: 'probe.md', frontmatter: { title: 'no id here' } } },
+  ]);
+  assert.deepEqual(ok.map((r) => r.outcome), ['ok', 'ok'], 'both directions execute and agree');
+
+  const wrong = runSelfTests('demo', 'frontmatter-schema', table, [
+    { expect: 'fail', fixture: { file: 'probe.md', frontmatter: { id: 'X' } } },
+  ]);
+  assert.equal(wrong[0].outcome, 'mismatch', 'a fixture that disagrees with its engine is reported');
+
+  const unbuildable = runSelfTests('demo', 'frontmatter-schema', table, [
+    { expect: 'pass', fixture: { worktrees: [{ branch: 'x' }] } },
+  ]);
+  assert.equal(unbuildable[0].outcome, 'unrun', 'a shape with no builder is never a pass');
+
+  const contextual = runSelfTests('demo', 'link-integrity', table, [{ expect: 'pass', input: 'x' }]);
+  assert.equal(contextual[0].outcome, 'unrun', 'engines needing context the fixture lacks do not run');
 });
 
 test('every shipped gate declares its applicability', () => {

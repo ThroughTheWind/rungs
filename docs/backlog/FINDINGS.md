@@ -4,13 +4,13 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-018 -->
+<!-- NEXT-ID: F-019 -->
 
 ## Open
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| — | | | | | | |
+| F-018 | medium | next | Five self-test fixtures disagree with their engine when executed, and it is not yet known whether the fixture is stale or the runner's harness is still wrong. Until they are triaged the runner cannot be wired into `gates-self-tests-both-directions` without making `rungs check` red for possibly-bogus reasons | Found 2026-08-16 during [WI-045](items/WI-045-run-gate-self-tests.md), running the new fixture runner over the repo: `adr-required-fields` (pass fixture fired *"no frontmatter"*, and its fail fixture did not fire), `session-sections-present` (fail, did not fire), `skills-spec-pure` ×2 (fail, did not fire). Started at 17 mismatches; 12 were proven to be harness artifacts and fixed — placeholder token substitution, and narrowing the table section by gate id | Before wiring the runner into the gate. A gate that cries wolf is deleted faster than the gate it was checking, and 5 unexplained failures is exactly that | Triage each against its engine by hand: build the fixture's file, run the engine, and decide whether the fixture describes behaviour the table no longer implements. Likely outcome for several: the fixture assumes sibling files, which the format has no way to express — see the `setup`-block idea in WI-045's Review, which is the more durable fix |
 
 ## Closed — 2026-08-16 by [WI-055](items/WI-055-upgrade-updates-record.md)
 
