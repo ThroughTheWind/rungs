@@ -205,8 +205,15 @@ from somebody else's repo is not a thing this tool gets to do.
 
 ## Review
 
-Verified 2026-08-16 on `feature/WI-038-doctor-explain-detectors`. Three of the four source repos are
-available locally; `rift-forge` is not, so it is not part of this evidence.
+Verified 2026-08-16 on `feature/WI-038-doctor-explain-detectors`.
+
+> **Corrected 2026-08-16, after merge, by [WI-042](WI-042-link-line-references.md).** This section
+> originally said *"three of the four source repos are available locally; `rift-forge` is not"*.
+> It is — I listed the repository directory and read the first 20 of 76 entries. Running the pass
+> against it afterwards falsified this section's headline result: **the mis-framed rate is 46.6% on
+> `rift-forge`, not 0%**, and the method used below could not have detected the class responsible.
+> The original text is left standing and the correction recorded in full at the foot of this
+> section, because an amended-away error reads as an error that never happened.
 
 **1 · Evidenced rows on a repo with no `.ai/rungs.toml`, on at least two source repos.**
 
@@ -277,3 +284,42 @@ recording.
 
 No new findings were opened. [F-007](../FINDINGS.md) is worked around and remains open; F-011,
 F-012 and F-013 are untouched.
+
+---
+
+### Correction, 2026-08-16 (post-merge)
+
+**Criterion 4 was not met. It was measured with a method incapable of failing.**
+
+`rift-forge` was available the whole time. I listed `C:\Development\Repositories\` and read the
+first 20 of 76 entries, concluded it was absent, and wrote that into the Review as a fact. Run
+afterwards, it is the largest and most informative of the four: never installed, 3,623 commits,
+**3,851 findings**.
+
+Re-triaged with a corrected script:
+
+| | count |
+| --- | ---: |
+| real | 2,057 |
+| **false — `path/file.ts:387` where the file exists** | **1,794** |
+| other wrong | 0 |
+| | **46.6% false positive** |
+
+`link-integrity` strips `#anchor` before resolving and does not strip a trailing `:line`. A
+markdown link to `../../web/src/app/features/forge/forge-store.ts:222` is reported broken while
+`forge-store.ts` sits exactly there. That form is a deliberate code-reference convention — and it
+is the one [CLAUDE.md](../../../CLAUDE.md) mandates in this very repo (*"Reference code as
+`file_path:line_number`"*).
+
+**The verification failed the same way, and that is the part worth keeping.** The triage script
+resolved `target.split('#')[0]` — the identical assumption the engine makes. It could confirm the
+engine only against itself, so `0 mis-framed` on `hexguard` was never evidence of correctness; it
+was evidence that the two agreed. hexguard's 0 happens to be true (its docs carry no `:line`
+references), which is exactly why it held long enough to be believed. **A check that shares the
+assumption of the thing it checks measures nothing**, and this repo's own second corollary —
+*a command is evidence only for the property it tests* — is the rule it broke.
+
+Against this item's own stated threshold (*"a mis-framed rate above roughly one in five means the
+pass under-reports further before it ships"*), 46.6% means it shipped when it should not have.
+[WI-042](WI-042-link-line-references.md) fixes the engine and re-runs the triage across all four
+source repos.

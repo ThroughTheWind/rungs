@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-042 -->
+<!-- NEXT-ID: WI-043 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -74,6 +74,15 @@ audit documents, against the 98 and 268 in the provenance — plus 112 broken li
 hand-triaged to 0 mis-framed and 0 wrong. Getting there required a rule the plan did not have: on a
 repo that is not ours, only **convention-free** engines run, because the first version produced 71
 findings that were true about our conventions and meaningless about their repo.
+
+[WI-042](items/WI-042-link-line-references.md), 2026-08-16 — opened *from WI-038's own failure*, and
+the more useful half of it. Running `--explain` against `rift-forge` — which WI-038's review had
+wrongly recorded as unavailable — showed **46.6% false positives**: 1,794 of 3,851 link findings
+were `path/file.ts:387` code references pointing at files that were exactly there, in the form
+[CLAUDE.md](../../CLAUDE.md) itself mandates. WI-038 had claimed 0%, measured with a triage script
+that stripped `#anchor` and not `:line` — **the same assumption as the engine it was checking**, so
+it could only ever confirm it. The engine now resolves as written, then retries without the
+suffix; `rift-forge` drops to 2,057 findings at 0.0%, and no other repo moves by one.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

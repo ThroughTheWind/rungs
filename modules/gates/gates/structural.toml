@@ -84,6 +84,20 @@ gate   = "gates-links-resolve"
 expect = "pass"
 input  = "The module writes [its readme](${{path}}/README.md) once installed."
 
+# WI-042. `path/file.ts:387` is a code reference, not a broken link — it is the form CLAUDE.md
+# mandates. Resolved literally it reported 1,794 false findings on rift-forge, 46.6% of that repo's
+# link findings. Both directions, because the strip must narrow what is reported and never widen it:
+# an existing file with a line number passes, a missing one with a line number still fails.
+[[self_test]]
+gate   = "gates-links-resolve"
+expect = "pass"
+input  = "The store is built in [forge-store](./structural.toml:222)."
+
+[[self_test]]
+gate   = "gates-links-resolve"
+expect = "fail"
+input  = "The store is built in [forge-store](./no-such-file.toml:222)."
+
 [[self_test]]
 gate   = "gates-paths-exist"
 expect = "pass"
