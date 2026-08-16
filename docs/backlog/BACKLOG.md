@@ -28,7 +28,6 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-033](items/WI-033-assess-quality-and-adoption-readiness.md) | Assess repo quality, improvements, and external-adoption readiness | spike |
 | [WI-034](items/WI-034-remediate-readiness-findings.md) | Remediate release-readiness findings | chore |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore |
-| [WI-038](items/WI-038-doctor-explain-detectors.md) | Make `doctor` report a repo's own defects, not only which modules it resembles | feature |
 | [WI-039](items/WI-039-external-tracker-paradigm.md) | Detect an external issue tracker as a different paradigm, not as an absent backlog | feature |
 
 ## Accepted
@@ -66,6 +65,15 @@ of the three landing-page consoles showed **fabricated output**, labelled `REAL 
 component that rendered them. The external reviewer had read one of those blocks as shipped
 capability, which is where the review's best claim came from. Three findings opened
 ([F-011](FINDINGS.md), F-012, F-013), none folded in.
+
+[WI-038](items/WI-038-doctor-explain-detectors.md), 2026-08-16 — `rungs doctor --explain` runs the
+existing detectors over repos that never installed anything. No new detector was written; the
+analysis had simply been gated behind installing the thing it exists to justify. On `hexguard` it
+reports the **same incidents the research recorded by hand** — 99 near-identical workflows and 275
+audit documents, against the 98 and 268 in the provenance — plus 112 broken links, all 114 findings
+hand-triaged to 0 mis-framed and 0 wrong. Getting there required a rule the plan did not have: on a
+repo that is not ours, only **convention-free** engines run, because the first version produced 71
+findings that were true about our conventions and meaningless about their repo.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
