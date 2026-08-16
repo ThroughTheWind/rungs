@@ -12,6 +12,8 @@
     "check:vendored": "node scripts/check-vendored.mjs",
     "claims": "node scripts/generate-claims.mjs",
     "check:claims": "node scripts/check-claims.mjs",
+    "transcripts": "node scripts/generate-transcripts.mjs",
+    "check:transcripts": "node scripts/check-transcripts.mjs",
     "dev": "astro dev",
     "build": "astro build && node scripts/precompress.mjs",
     "preview": "astro preview",

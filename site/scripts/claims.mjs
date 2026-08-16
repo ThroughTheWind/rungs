@@ -59,6 +59,7 @@ export function derive() {
       const requires = /^modules\s*=\s*\[([^\]]*)\]/m.exec(toml.split("[requires]")[1] ?? "")?.[1] ?? "";
       return {
         name,
+        version: field(toml, "version"),
         rung: Number(field(toml, "rung")),
         summary: field(toml, "summary"),
         requires: [...requires.matchAll(/"([^"]+)"/g)].map((m) => m[1]),

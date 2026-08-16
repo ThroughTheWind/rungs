@@ -34,7 +34,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
+| — | | |
 
 [WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
 the first assessment of this project by someone who did not build it, recorded and adjudicated in
@@ -308,6 +308,23 @@ match the Open schema. And the runner did not bridge `opted_in`.
 
 45 fixtures still have no builder and are named on every run rather than skipped — the honest
 position is that 17 of 62 executable fixtures assert something and the rest visibly do not.
+
+[WI-046](items/WI-046-console-provenance.md), 2026-08-16 — the site's `real output` label is now
+**earned rather than asserted**, closing [F-011](FINDINGS.md). Transcripts are captured by running
+each command against a fixture the capture script builds itself, committed, and checked by the
+`site-transcripts-real` gate: every displayed line must appear in the capture, in order. Gate count
+24 → 25.
+
+Tested with the *actual* fabricated line — `this rule says MANDATORY and has no gate` — which was
+live on the landing page for weeks and which an outside reviewer read as shipped capability. The
+gate refuses it.
+
+Two things surfaced alongside. The third console block was **not output at all**: its own `source`
+read *"the procedure, not a transcript"* while the component rendered `REAL OUTPUT` above it, so it
+is now a plain block with a caption saying what it is. And the versions page carried a hand-typed
+table of module versions with **three already wrong** — `backlog`, `adr` and `session`, all bumped
+this week — now derived from the claims snapshot. Same class WI-051 fixed for gate counts, on a page
+it had missed.
 
 WI-009's eight children are one fixed epic —
 [WI-009](archive/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted
