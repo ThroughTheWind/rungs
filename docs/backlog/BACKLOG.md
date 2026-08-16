@@ -23,14 +23,12 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-053](items/WI-053-false-positive-census.md) | Census `--explain` against every repo available | spike |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-037](items/WI-037-act-on-external-review.md) | Act on the 2026-08-16 external review | epic |
-| [WI-048](items/WI-048-act-on-second-external-review.md) | Act on the second external review | epic |
 
 ## Proposed
 
@@ -187,6 +185,29 @@ byte-identical before and after on all four source repos, `rift-forge`'s 2,057 f
 Three values, each with real members — `repo-content` 8, `our-artifacts` 7, `our-schema` 26. A
 boolean was rejected because it merges the two "no" cases, which is precisely the distinction that
 explains a false positive to whoever reads it.
+
+[WI-053](items/WI-053-false-positive-census.md), 2026-08-16 — closes the epic with
+[the census](../design/explain-census-2026-08-16.md): **2,291 findings across 6 repos, 0 wrong, 0
+unclassified**, every one re-derived from the repository rather than from the engine that produced
+it. The classifier was proven able to return every verdict *before* its results were believed —
+including the exact `:line` case that defeated WI-038's triage — because a 0% rate from a check that
+cannot fail is what started all of this.
+
+Three findings about the method, none predicted. **82 directories are not 82 repos**: 63 are one
+project's worktrees, and censusing them would have manufactured a sample four times the truth.
+**A count against a live repo needs a commit, not a date** — `rift-forge` moved 2,057 → 1,994 in a
+few hours because it took a docs merge at 19:00. And **silence has two causes**: four of the sixteen
+quiet repos had *zero modules in scope* and were never examined, which is not the same as clean.
+
+The result is deliberately undersold in its own §4. Every repo here was built by the same operator,
+so it measures survival across eleven project *shapes*, not across other people — which is the test
+the review actually asked for and the one thing this machine cannot run.
+
+**[WI-048](items/WI-048-act-on-second-external-review.md) is closed.** Four of its five children were
+changed by measurement rather than by their plans, which is the epic's most useful output: a finding
+count that cost `doctor` 10× its run time, a board requirement that flagged seven correct documents,
+a "dated measurement" exemption that reintroduced the incoherence it existed to remove, and a corpus
+four times smaller than its directory listing.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

@@ -2,8 +2,8 @@
 id: WI-053
 title: Census `--explain` against every repo available, and publish the false-positive rate
 type: spike
-status: planned
-branch:
+status: done
+branch: spike/WI-053-false-positive-census
 created: 2026-08-16
 updated: 2026-08-16
 related: [WI-048, WI-038, WI-042, WI-052]
@@ -96,8 +96,63 @@ tells you what to fix.
 
 ## Execution
 
-Not started.
+Branch `spike/WI-053-false-positive-census`, cut from `main` at `c81f2a1`. Results:
+[`docs/design/explain-census-2026-08-16.md`](../../design/explain-census-2026-08-16.md).
+
+**2,291 findings across 6 repositories, 0 wrong, 0 unclassified.**
+
+### Three things the census found about its own method
+
+1. **82 directories are not 82 repositories.** 63 of them are `rift-forge*` worktrees and clones of
+   one project. Censusing them would have manufactured a sample size four times the truth, with the
+   average dominated by a single repo. Three are kept. The plan said "every repo available, not a
+   chosen sample" — this is the one deviation from that, and it is the opposite of cherry-picking.
+
+2. **A count against a live repo needs a commit, not a date.** `rift-forge` reported 2,057 findings
+   during [WI-042](../archive/WI-042-link-line-references.md) and 1,994 here, hours apart the same
+   day — it took a docs merge at 19:00 in between. Every row is now pinned to a SHA plus the number
+   of uncommitted files. This is the rule [`roadmap.md`](../../roadmap.md) already applies to the
+   public-framework research, arriving from the other direction.
+
+3. **Silence has two causes.** Four of the sixteen silent repos had **zero modules in scope** — no
+   detector was ever eligible, so the repo was not examined. The other twelve were examined and
+   produced nothing. Reporting both as "clean" would be the false-negative version of exactly the
+   error this census exists to measure.
 
 ## Review
 
-Not started.
+Verified 2026-08-16.
+
+**1 · Every available repo run, and the list published.** 82 `.git` directories found, 22 censused
+after the worktree collapse, all named in the results document with their SHAs. **Met, with the
+deviation in Execution 1 stated rather than absorbed.**
+
+**2 · Per-repo counts with the method stated per class.** Six rows, four classification methods
+tabulated. No pooled rate is published anywhere — `rift-forge` is 87% of all findings, so a pooled
+number would be its number wearing a corpus's clothes. **Met.**
+
+**3 · The triage does not share the engines' assumptions — shown, not asserted.** This is the
+criterion the item exists for, because WI-038's did share them and therefore could not fail. The
+classifier was run against ten findings that are true or false by construction, including the exact
+`:line` case that defeated the previous triage, and required to produce every verdict including
+`unclassified`. All ten correct. **Met.**
+
+**4 · No class above one in five.** The highest rate is 0%. Nothing opened. **Met — and §6 of the
+results document says why that is weaker than it looks.**
+
+**5 · The one-operator limit stated in the output.** §4 of the results document, not only here:
+every repository was built by the same person, so this measures survival across eleven project
+*shapes*, not across other people. That is not the test the review asked for and the document says
+so. **Met.**
+
+**6 · Gates and tests.** `rungs check` → 23 pass · 0 fail. `npm test` → 20 pass. **Met.**
+
+### What this closes, and what it does not
+
+It closes the question *"do the detectors fire wrongly on repos with different shapes?"* — no,
+measurably, at 0% over 2,291 findings with a classifier proven able to say otherwise.
+
+It does not close **generalisation**, which the second review called the main remaining risk, and it
+cannot: the corpus is one operator's. Nor does it touch whether the surviving findings are *worth
+acting on* — §5 — which needs a repository's owner rather than a measurement. Both are recorded as
+open questions rather than answered by a number that does not address them.
