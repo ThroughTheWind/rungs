@@ -68,7 +68,7 @@ function cmdModules(showParams = false) {
   const issues = auditModules(mods);
   console.log();
   if (issues.length === 0) {
-    console.log(c.green('  audit clean') + c.dim(' — every parameter accounted for, every gate has a table and a why'));
+    console.log(c.green('  audit clean') + c.dim(' — every parameter accounted for; every gate has a table, a why, and a declared applicability'));
   } else {
     console.log(c.red(`  ${issues.length} issue(s):`));
     for (const i of issues) console.log(`    ${c.yellow(i.module)} ${c.dim(i.kind)} — ${i.detail}`);
@@ -276,6 +276,9 @@ function reportExplain(mods: Manifest[], results: DetectResult[], root: string, 
   console.log(c.dim('    a convention you never adopted — that is our defect, not yours.'));
   if (skipped.command) {
     console.log(c.dim(`  · ${skipped.command} command gate(s) not run. rungs does not execute commands in a repo it is only reading.`));
+  }
+  if (skipped.undeclared.length) {
+    console.log(c.dim(`  · ${skipped.undeclared.length} gate(s) never said whether they can read a repo like yours, so they did not: ${skipped.undeclared.join(' ')}`));
   }
   if (skipped.unimplemented.length) {
     console.log(c.dim(`  · ${skipped.unimplemented.length} declared gate(s) have no engine and were skipped, never passed: ${skipped.unimplemented.join(' ')}`));

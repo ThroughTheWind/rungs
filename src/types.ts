@@ -15,10 +15,35 @@ export interface ParamSpec {
   consumed_by?: string;
 }
 
+/**
+ * Whether a detector can legitimately interpret a repo that did not adopt our
+ * conventions — asked *before* "did the condition fire" (WI-052).
+ *
+ * This lived as two hard-coded sets of engine names inside `explain.ts`, which
+ * meant a new gate inherited an applicability nobody chose for it and could not
+ * see. The three cases are the ones measurement produced, not a taxonomy:
+ *
+ * - `repo-content`  measures the repo's own content. A broken link is a broken
+ *   link in anybody's methodology, and so is a 1,358-line file.
+ * - `our-artifacts` checks something rungs wrote. On a repo that never installed
+ *   it the artifact cannot exist, so the finding is guaranteed by the repo's
+ *   *state* rather than its *content* — `adr-index-current` reporting a missing
+ *   `adr-index` block against hexguard's perfectly healthy decision index.
+ * - `our-schema`    reads their file against a shape we defined.
+ *   `specs-status-evidence` produced 70 findings on hexguard-templates whose
+ *   spec register is fine and simply has its own columns.
+ *
+ * Only `repo-content` runs on a repo that is not ours. There is deliberately no
+ * default: an undeclared gate is reported, never quietly assumed safe — the same
+ * rule `enforcement-declaration` applies to `gated` / `review-only`.
+ */
+export type Applicability = 'repo-content' | 'our-artifacts' | 'our-schema';
+
 export interface GateSpec {
   id: string;
   kind: 'declared' | 'command';
   engine?: string;
+  applicability?: Applicability;
   table?: string;
   command?: string;
   tier?: string;

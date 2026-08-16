@@ -31,7 +31,7 @@ export interface DetectorFinding {
 export interface ExplainResult {
   reported: DetectorFinding[];
   /** Gates skipped, by reason — printed, because a silent skip reads as a pass. */
-  skipped: { command: number; unimplemented: string[]; errored: { gate: string; message: string }[] };
+  skipped: { command: number; unimplemented: string[]; undeclared: string[]; errored: { gate: string; message: string }[] };
   /** Modules whose detectors ran at all. */
   scope: string[];
 }
@@ -65,34 +65,16 @@ const isRunnable = (g: Manifest['gates'][number]) => g.kind !== 'command' && !g.
 export const IN_SCOPE: ReadonlySet<string> = new Set(['theirs', 'ours-current', 'ours-diverged']);
 
 /**
- * The engines allowed to run over a repo's **own** artifacts (`theirs`), as
- * opposed to ours.
+ * Which declared applicability may run against a repo that is not ours.
  *
- * The line is whether a finding is true *regardless of whether the repo adopted
- * our conventions*. These three measure the repo's own content — how many files
- * match a shape, how long a file is, whether a link resolves — and a broken link
- * is a broken link in anybody's methodology.
- *
- * Everything else checks **conformance to a shape we defined**, and on someone
- * else's repo it is guaranteed to fire without saying anything. Both were
- * measured on 2026-08-16, and both are the false-positive class WI-038 was
- * required to suppress rather than ship:
- *
- * - `render-freshness` → `adr-index-current` reported *"docs/decisions/README.md:
- *   no 'adr-index' block — run `rungs render`"* on `hexguard`, about a decision
- *   index that is healthy and simply is not ours. The block cannot exist on a
- *   repo that never installed anything, so the finding is guaranteed by the
- *   repo's *state* rather than by its *content*.
- * - `register-schema` → `specs-status-evidence` produced 70 findings on
- *   `hexguard-templates`, opening with *"register table missing column 'Story'"*.
- *   Their spec register is fine; it has their columns, not ours.
- *
- * A finding nobody could act on without first adopting rungs is an
- * advertisement wearing a finding's clothes. This list is deliberately short —
- * ADR-0004 biased detection toward false negatives, and under-reporting on a
- * stranger's repo is the same trade with a higher stake.
+ * This was two hard-coded sets of **engine names** in this file, and the
+ * knowledge lived nowhere near the gates it governed: adding a gate on
+ * `file-population` silently made it foreign-safe, and adding one on a new
+ * engine silently made it not, with nothing at either declaration saying so.
+ * It is now a required field on each gate — see `Applicability` in `types.ts`
+ * for what the three cases mean and which measurement produced them.
  */
-const CONVENTION_FREE: ReadonlySet<string> = new Set(['file-budget', 'link-integrity', 'file-population']);
+const FOREIGN_SAFE: ReadonlySet<string> = new Set(['repo-content']);
 
 export function explain(
   mods: Manifest[],
@@ -120,7 +102,7 @@ export function explainWith(
   const scope = inScope.map((r) => r.module);
   const stateOf = new Map(inScope.map((r) => [r.module, r.state]));
   const reported: DetectorFinding[] = [];
-  const skipped: ExplainResult['skipped'] = { command: 0, unimplemented: [], errored: [] };
+  const skipped: ExplainResult['skipped'] = { command: 0, unimplemented: [], undeclared: [], errored: [] };
 
   for (const name of scope) {
     const mod = mods.find((m) => m.name === name);
@@ -132,7 +114,16 @@ export function explainWith(
         if (g.kind === 'command') skipped.command++;
         continue;
       }
-      if (!isOurs && !CONVENTION_FREE.has(g.engine!)) continue;
+      // No default. A gate that has not said whether it can read a foreign repo
+      // does not read one, and is named — silence resolving to "safe" is how the
+      // 71 mis-framed findings of WI-038's first version happened.
+      if (!isOurs) {
+        if (!g.applicability) {
+          skipped.undeclared.push(g.id);
+          continue;
+        }
+        if (!FOREIGN_SAFE.has(g.applicability)) continue;
+      }
       if (!(g.engine! in engines)) {
         // Same rule as the runner: an engine named and missing is an unknown,
         // and an unknown is never reported as clean.

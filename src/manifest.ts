@@ -61,7 +61,7 @@ export function usedParams(dir: string): Set<string> {
 
 export interface ManifestIssue {
   module: string;
-  kind: 'dead-param' | 'undeclared-param' | 'dep-missing' | 'gate-no-table' | 'gate-no-why';
+  kind: 'dead-param' | 'undeclared-param' | 'dep-missing' | 'gate-no-table' | 'gate-no-why' | 'gate-no-applicability';
   detail: string;
 }
 
@@ -101,6 +101,17 @@ export function auditModules(mods: Manifest[]): ManifestIssue[] {
       // so a gate without one cannot be asked about.
       if (!g.why?.trim()) {
         issues.push({ module: mod.name, kind: 'gate-no-why', detail: `gate '${g.id}' has no 'why'` });
+      }
+      // WI-052. `doctor --explain` will not run an undeclared gate against a repo
+      // that is not ours, so an author who forgets this silently loses their gate
+      // on exactly the repos the analysis exists for. Caught here, where the
+      // module is written, rather than as a skip line nobody reads.
+      if (g.kind === 'declared' && !g.applicability) {
+        issues.push({
+          module: mod.name,
+          kind: 'gate-no-applicability',
+          detail: `gate '${g.id}' does not declare applicability (repo-content | our-artifacts | our-schema)`,
+        });
       }
     }
   }
