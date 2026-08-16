@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-037 -->
+<!-- NEXT-ID: WI-042 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -28,12 +28,15 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-033](items/WI-033-assess-quality-and-adoption-readiness.md) | Assess repo quality, improvements, and external-adoption readiness | spike |
 | [WI-034](items/WI-034-remediate-readiness-findings.md) | Remediate release-readiness findings | chore |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore |
+| [WI-038](items/WI-038-doctor-explain-detectors.md) | Make `doctor` report a repo's own defects, not only which modules it resembles | feature |
+| [WI-039](items/WI-039-external-tracker-paradigm.md) | Detect an external issue tracker as a different paradigm, not as an absent backlog | feature |
+| [WI-040](items/WI-040-public-surface-first-command.md) | Make every public surface agree on the first command, and name the vocabulary once | docs |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
-| — | | |
+| [WI-037](items/WI-037-act-on-external-review.md) | Act on the 2026-08-16 external review | epic |
 
 ## Proposed
 
@@ -48,6 +51,18 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-027](items/WI-027-extract-dspy.md) | Extract DSPy — metric-driven agent program optimization | docs |
 | [WI-028](items/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
 | [WI-029](items/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
+| [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
+
+[WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
+the first assessment of this project by someone who did not build it, recorded and adjudicated in
+[`docs/design/external-review-2026-08-16.md`](../design/external-review-2026-08-16.md). Eighteen
+claims were checked against the working tree; four became work. Its own first requirement is that
+**it adds no module and no pattern** — every child makes an existing capability reachable,
+reconciles a surface that contradicts another surface, or puts a decision in front of a person.
+
+WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
+an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
+aggregation, including opt-in), and a spike that assumes its own outcome is not a spike.
 
 WI-009's eight children are one fixed epic —
 [WI-009](items/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted
