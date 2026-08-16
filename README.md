@@ -1,6 +1,7 @@
 # rungs
 
-**Installs and maintains a repository's agentic development system.**
+**rungs CLI — repository infrastructure for coding agents.** It installs and
+maintains a repository's agentic development system.
 
 Your agent has instructions. Do they have gates? Is your backlog's status field
 telling the truth about what actually merged? That thing you noticed last
@@ -9,6 +10,22 @@ Tuesday — where did it go?
 rungs scaffolds the parts of a working setup — agent instructions, skills, work
 tracking, findings, decision records, validation gates — as **modules you pick**,
 then keeps checking that they still say what they said.
+
+**Start read-only.** `doctor` writes nothing, works on repos that never installed
+anything, and ends by naming one command:
+
+```console
+$ npx @rungs/cli doctor
+  ci             theirs
+      1× .github/workflows/*.yml  e.g. .github/workflows/ci.yml
+
+  1 present · 0 different paradigm · 14 absent
+
+  Next
+  rungs add ci  — adopt what you already built, in place
+```
+
+Once you have run that:
 
 ```console
 $ rungs init . tracked
@@ -66,6 +83,9 @@ It reports what your repo already has, installed or not, and ends by naming one
 command to run next. Once you have run that:
 **[your first hour](docs/getting-started.md)** — which of the new files matter,
 what the installed skills are for, and what to do when a gate goes red.
+
+New to the vocabulary? **[The nine words this page uses](docs/glossary.md)**,
+defined once each.
 
 Requires **Node 22.18+**. The published package ships a bundled JavaScript entry point; the source
 checkout still runs the TypeScript sources directly with `node`.
@@ -152,6 +172,12 @@ Selling rung 5 to a rung-1 repo is the most likely way this tool does harm.
 Full specification: [`docs/design/module-catalog.md`](docs/design/module-catalog.md).
 
 ## Which agents
+
+**Bring your own.** rungs is not a methodology and not an orchestrator: it does
+not decide how your agent plans, specifies, or executes. It checks that the
+repository underneath stays coherent while it does — which is why it composes
+with whatever harness or spec-driven process you already run rather than
+replacing one. `AGENTS.md` is embraced, not competed with.
 
 Skills are **spec-compliant Agent Skills**, portable to Claude Code, Codex,
 Cursor, Copilot, Gemini CLI and 40+ others without translation.
