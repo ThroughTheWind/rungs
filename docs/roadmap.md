@@ -14,9 +14,9 @@ depended on was measured.
 | **2** | Synthesize | ✅ Convergences, divergences, [eight failure modes](research/synthesis.md), the maturity ladder, [~80 patterns](research/pattern-catalog.md) |
 | **3** | Product definition | ✅ [Product brief](design/product-brief.md) + [ADRs 0001–0005](decisions/README.md) |
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
-| **5** | CLI | ✅ Nine commands, 39 gates, ~2,800 lines |
+| **5** | CLI | ✅ Ten commands, 4,523 lines (`wc -l src/*.ts`, 2026-08-17); 25 gates register in this repo (`rungs check`, 2026-08-17) |
 | **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; WI-034 verified a clean packed-consumer journey; **a source-repo/public-registry install remains** |
-| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; public latest v0.1.2; v0.1.3 prepared in [`package.json`](../package.json)) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
+| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; public latest v0.1.3 since 2026-08-15; v0.2.0 prepared in [`package.json`](../package.json), untagged) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 
 ## What each phase produced that the next one needed
 
@@ -44,8 +44,9 @@ git-backed consumer from a packed artifact, including a safe failure path; the
 remaining test is an install from the public registry and a bounded platform matrix.
 
 **Phase 7.** Publishing and the docs site have landed: `@rungs/cli` is on npm
-(v0.1.0 first published 2026-08-14; public latest is v0.1.2 and local package metadata is v0.1.3 on
-2026-08-15) and [`site/`](../site/README.md) builds from a pristine checkout and
+(v0.1.0 first published 2026-08-14; public latest is v0.1.3, published 2026-08-15, and local
+package metadata is v0.2.0 prepared per the [release runbook](design/release-runbook.md))
+and [`site/`](../site/README.md) builds from a pristine checkout and
 deploys. What remains is the **module registry**, so third-party modules are
 possible — the format is a plain directory precisely so that does not need a
 format change.

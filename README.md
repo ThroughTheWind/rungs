@@ -212,12 +212,14 @@ Four promises that shape everything else:
 
 ## Status
 
-**Next release, v0.1.3** — prepared locally as
-[`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli); the public `latest` tag is v0.1.2.
-The release remains untagged until the release gates and publication step are run.
+**Published: v0.1.3** on [`@rungs/cli`](https://www.npmjs.com/package/@rungs/cli) since
+2026-08-15 (`npm view @rungs/cli dist-tags`, 2026-08-17). **Next release: v0.2.0** — assembled
+from [`changelog.d/0.2.0.md`](changelog.d/0.2.0.md) and prepared in
+[`package.json`](package.json), untagged until the [release runbook](docs/design/release-runbook.md)
+is run to completion.
 
-rungs is installed in its own repo and its gates run on every change — 20 pass,
-0 fail (`rungs check`, 2026-08-15). A clean consumer has also installed the packed
+rungs is installed in its own repo and its gates run on every change — 25 pass,
+0 fail (`rungs check`, 2026-08-17). A clean consumer has also installed the packed
 artifact and completed the doctor → init → add → check → render → upgrade/eject
 journey locally. Detection is [verified against all four source repos](docs/design/detection-verification.md).
 Not yet done: an install from the public registry and a cross-platform release matrix.
@@ -241,7 +243,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~2,800 lines |
+| [`src/`](src/) | The CLI, 4,523 lines (`wc -l src/*.ts`, 2026-08-17) |
 
 ## Licence
 

@@ -470,7 +470,23 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
 function cmdCheck(root: string, tier: string | undefined, stamp: string) {
   const runs = runGates(root, tier);
   if (!runs.length) {
-    console.log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
+    // Two situations printed the same sentence, and it was the wrong one for the case that
+    // actually happens: a registry full of `fast` gates filtered by `--full` asked "is this a
+    // rungs repo?" about a repo holding 25 of them, and `cut-release` told every consumer to
+    // gate a release on exactly that command (F-020). Blame the filter when there is one.
+    //
+    // Hooks are excluded because a hook fires on a tool call rather than in the runner: it is
+    // registered, and no tier value could ever have selected it. Counting it here would offer
+    // the reader a gate that changing the tier cannot reach.
+    const runnable = loadRegistry(root).gates.filter((g) => !g.trigger);
+    if (runnable.length && tier) {
+      const tiers = [...new Set(runnable.map((g) => g.tier).filter(Boolean))];
+      console.log(c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
+        c.dim(` (${tiers.length ? tiers.join(', ') : 'none tiered'}).`));
+      console.log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
+    } else {
+      console.log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
+    }
     return 1;
   }
   appendLedger(root, runs, stamp);

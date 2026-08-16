@@ -7,7 +7,19 @@ import { Button, Callout, Console, Measurement, ModuleCard } from "../design-sys
 // TODO, in a file arguing that hand-kept inventories go stale. Name, rung, dependencies and summary
 // now come from `modules/*/module.toml` through `generated/claims.json`; `npm run claims` rewrites
 // it and the `site-claims-current` gate refuses a snapshot that has drifted.
-const MODULES = SITE.modules.map((m) => [m.name, m.rung, m.requires, m.summary] as const);
+// Deriving them cost the literal types the hand-written array used to carry: JSON widens `rung` to
+// `number`, and `ModuleCard` accepts `0 | 1 | … | 5`. `astro check` had been red on this since
+// WI-051. Narrowing here rather than in the vendored component, and *checking* rather than
+// asserting — a rung outside the ladder is a manifest defect, and a bare `as` would render it as a
+// badge instead of reporting it.
+const asRung = (r: number, name: string) => {
+  if (!Number.isInteger(r) || r < 0 || r > 5) {
+    throw new Error(`module ${name}: rung ${r} is outside the 0–5 ladder`);
+  }
+  return r as 0 | 1 | 2 | 3 | 4 | 5;
+};
+
+const MODULES = SITE.modules.map((m) => [m.name, asRung(m.rung, m.name), m.requires, m.summary] as const);
 
 // The "for what" line stays authored: it is editorial, not a fact about the repo, and there is
 // nowhere in `modules/` it could honestly be read from. The module *set* per profile is derived,

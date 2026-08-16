@@ -1,13 +1,49 @@
 ---
 import packageJson from "../../../package.json";
 import Base from "../layouts/Base.astro";
-import { Callout, Claim, Console, EnforcementTag, Measurement, TitleBlock } from "../design-system/components/index.js";
+// No `Console` here on purpose: WI-046 replaced the release-procedure block with a plain `<pre>`
+// because it is a summary of a skill, not captured output, and `Console` renders a REAL OUTPUT
+// chrome that would have contradicted the block's own caption. The import outlived the usage.
+import { Callout, Claim, EnforcementTag, Measurement, TitleBlock } from "../design-system/components/index.js";
 import { SITE } from "../site.config";
 
 const nextVersion = packageJson.version as string;
-const publishedVersion = "0.1.2";
+// The registry is the authority, not this file. Verified 2026-08-17 with
+// `npm view @rungs/cli dist-tags` → { latest: "0.1.3" }, published 2026-08-15T18:06:25Z.
+// This constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
+// "0.1.3 · npm publication pending" above a version anyone could already install.
+const publishedVersion = "0.1.3";
+
+// Published-ness is an ordering against `latest`, not equality with it. The page used to ask
+// `version === publishedVersion ? "npm latest" : "npm publication pending"`, which is correct for
+// exactly one row and wrong for every release below it: v0.1.1 and v0.1.2 have been installable
+// since 2026-08-15 and both rendered "npm publication pending". A changelog whose older entries
+// claim to be unpublished is worse than no status column at all.
+const order = (v: string) => v.split(".").map(Number);
+const cmp = (a: string, b: string) => {
+  const [x, y] = [order(a), order(b)];
+  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+};
+const status = (v: string) =>
+  cmp(v, publishedVersion) === 0 ? "npm latest" : cmp(v, publishedVersion) < 0 ? "published" : "npm publication pending";
 
 const releases = [
+  {
+    version: "0.2.0",
+    date: "2026-08-17",
+    kind: "minor",
+    entries: [
+      ["added", "doctor --explain runs the detectors on a repo that never installed rungs, and plain doctor says the analysis exists."],
+      ["added", "Detection treats an external issue tracker as a different paradigm, and add stops rather than installing over it."],
+      ["added", "rungs backlog archive, and a self-test runner that executes each gate's fixtures on every check."],
+      ["added", "The skill-extension opt-in, so a repo can extend a module's skill and keep it through upgrade."],
+      ["changed", "Detector applicability is declared per gate with no default (ADR-0007)."],
+      ["changed", "The site derives its structural counts from the registry and refuses to build when they drift."],
+      ["fixed", "upgrade re-registers a module's gates and updates the install record without touching diverged files."],
+      ["fixed", "Link checking resolves file.ts:387 code references, and the REAL OUTPUT label only sits above captured output."],
+      ["fixed", "A tier that matches no gate now names the tier and exits non-zero, instead of asking whether this is a rungs repo. The cut-release skill gated on it."],
+    ],
+  },
   {
     version: "0.1.3",
     date: "2026-08-15",
@@ -54,7 +90,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
       title="Versions & changelog"
       fields={[
         { label: "Latest", value: `${publishedVersion} · published 2026-08-15` },
-        { label: "Cut", value: `${nextVersion} · npm publication pending` },
+        { label: "Next", value: `${nextVersion} · prepared, not yet tagged` },
         { label: "Updated", value: SITE.asOf },
       ]}
     />
@@ -66,7 +102,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
           <article class="release-card">
             <div class="release-head">
               <span class="release-version">v{release.version}</span>
-              <span class="release-meta">{release.date} · {release.kind} · {release.version === publishedVersion ? "npm latest" : "npm publication pending"}</span>
+              <span class="release-meta">{release.date} · {release.kind} · {status(release.version)}</span>
             </div>
             <div class="release-body">
               {release.entries.map(([kind, text]) => (
@@ -80,8 +116,13 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
         ))}
       </div>
       <div class="next-card">
-        <span class="next-label">Release cut · npm publication pending</span>
-        <p><code>v{nextVersion}</code> is tagged and ready for npm publication. Verify the registry artifact and a clean consumer before announcing it.</p>
+        <span class="next-label">Release prepared · not yet tagged</span>
+        <p>
+          <code>v{nextVersion}</code> is assembled from its changelog fragment and the package
+          metadata agrees with it. Tagging, the deploy branch and npm publication are the remaining
+          steps — each one deliberate, because the tag and the registry are the two things this
+          procedure cannot undo. The runbook is <code>docs/design/release-runbook.md</code>.
+        </p>
       </div>
     </section>
 
