@@ -9,6 +9,7 @@ import { loadAllModules, auditModules } from '../src/manifest.ts';
 import { blockedByParadigm } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
+import { boardReconcile } from '../src/engines3.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
@@ -138,6 +139,49 @@ test('explain collapses two gate ids reporting the identical finding set into on
 
   assert.equal(reported.length, 2, 'F-007: one check behind two ids is one finding, reported once');
   assert.equal(reported[0].gate, 'gates-links-resolve + gates-paths-exist', 'both ids stay visible');
+});
+
+/**
+ * WI-050. The board groups rows by status; each item declares its own. Nothing
+ * reconciled them, and on 2026-08-16 fourteen rows disagreed — nine under
+ * `Proposed`, five under `Planned`, all naming files whose status was `done`,
+ * nine of them already in `archive/`.
+ *
+ * Case C is why the plan's own requirement 4 was dropped: reporting every
+ * undeclared heading caught the board's narrative history tables, which are
+ * correct. The typo case it was aimed at is case D instead, and that one is
+ * exact rather than a guess.
+ */
+test('board-reconcile catches a mis-grouped row, ignores narrative, and notices a missing group', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-board-'));
+  mkdirSync(join(root, 'docs', 'backlog', 'items'), { recursive: true });
+  mkdirSync(join(root, 'docs', 'backlog', 'archive'), { recursive: true });
+  const item = (dir, name, status) =>
+    writeFileSync(join(root, 'docs', 'backlog', dir, name), `---\nid: WI-001\nstatus: ${status}\n---\n\nbody\n`);
+  item('items', 'WI-002-open.md', 'proposed');
+  item('archive', 'WI-001-done.md', 'done');
+
+  const table = {
+    file: 'docs/backlog/BACKLOG.md',
+    groups: { 'In progress': ['in_progress'], Planned: ['planned'], Proposed: ['proposed'] },
+  };
+  const board = (body) => writeFileSync(join(root, 'docs', 'backlog', 'BACKLOG.md'), body);
+  const fired = () => boardReconcile(table, root, []).findings;
+  const head = '## In progress\n\n| — | | |\n\n## Planned\n\n| — | | |\n\n';
+
+  board(`${head}## Proposed\n\n| [WI-001](archive/WI-001-done.md) | x | docs |\n`);
+  assert.match(fired()[0].message, /status is 'done'/, 'a done item filed as proposed is caught');
+
+  board(`${head}## Proposed\n\n| [WI-002](items/WI-002-open.md) | x | docs |\n`);
+  assert.deepEqual(fired(), [], 'a correctly grouped row passes');
+
+  board(`${head}## Proposed\n\n| — | | |\n\n---\n\n## The first-user path, closed\n\n| [WI-001](archive/WI-001-done.md) | what it fixed |\n`);
+  assert.deepEqual(fired(), [], 'a narrative table under an undeclared heading is not a board row');
+
+  board(`## In progress\n\n| — | | |\n\n## Planned\n\n| — | | |\n\n## Propsed\n\n| [WI-001](archive/WI-001-done.md) | x | docs |\n`);
+  assert.match(fired()[0].message, /declared group 'Proposed' has no heading/, 'a misspelled heading cannot hide rows');
+
+  rmSync(root, { recursive: true, force: true });
 });
 
 /**

@@ -11,7 +11,7 @@ import {
   renderFreshness,
   selfDeclaredClosure,
 } from './engines2.ts';
-import { gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
+import { boardReconcile, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
 
 export interface Finding {
   file?: string;
@@ -342,6 +342,7 @@ export const ENGINES: Record<string, Engine> = {
   'rule-propagation': rulePropagation,
   'git-state': gitState,
   'merge-driver-check': mergeDriverCheck,
+  'board-reconcile': boardReconcile,
 };
 
 /**

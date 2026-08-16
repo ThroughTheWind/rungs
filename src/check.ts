@@ -177,6 +177,7 @@ export const tableKey = (engine: string) =>
     'rule-propagation': 'rule_propagation',
     'git-state': 'git_state',
     'merge-driver-check': 'merge_driver_check',
+    'board-reconcile': 'board_reconcile',
   })[engine] ?? engine;
 
 /**

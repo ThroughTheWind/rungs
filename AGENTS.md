@@ -81,3 +81,16 @@ in [`.ai/rules/`](.ai/rules/README.md): six spec frontmatter fields and no more,
 lists the phrases people actually say, and **every skill names its neighbours** — the failure past a
 dozen skills is the wrong one firing and running to completion.
 <!-- rungs:end skills -->
+
+<!-- rungs:begin instructions@1.1.0 -->
+## Repo map
+
+<!-- rungs:begin repo-map -->
+<!-- Generated. Run `rungs render` after moving directories. -->
+<!-- rungs:end repo-map -->
+## Execution boundary
+
+Before an agent command runs, name the execution unit, what filesystem/environment/credential/network
+surfaces cross into it, and which controls are absent. This repository guidance declares boundaries;
+it does not install a sandbox, transport, rollback, or least-privilege runtime.
+<!-- rungs:end instructions -->

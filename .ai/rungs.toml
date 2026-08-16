@@ -1,43 +1,38 @@
-# Installed by `rungs`. Edit parameters here and re-run `rungs render`.
+# Installed by `rungs`. This is a record of what was written, not a control panel:
+# editing a parameter here does not rewrite a file that already exists. `rungs render`
+# re-emits path-scoped rules from `.ai/rules/`, and `rungs upgrade --apply` replaces
+# module files you have not edited — neither re-substitutes parameters. AGENTS.md,
+# CLAUDE.md, .gitignore, .gitattributes and .ai/gates.toml are shared between modules,
+# so only their `rungs:begin`/`rungs:end` blocks are ever updated; anything outside a
+# block, including the entry document's title, is yours to edit directly.
+#
+# Hashes are what rungs emitted; a file whose hash no longer matches is a
+# divergence rungs reports and never overwrites.
 
 [repo]
 harnesses = ["claude","agents-md"]
-installed = "2026-08-14"
+installed = "2026-08-16"
 
 [modules.instructions]
-version = "1.0.0"
+version = "1.1.0"
 state   = "managed"
-params  = { project_name = "", harnesses = ["claude","agents-md"], core_budget = 200 }
+params  = { project_name = "ai-cli", harnesses = ["claude","agents-md"], core_budget = 200 }
+
+[modules.instructions.kept]
+files = [".ai/rules/README.md"]
 
 [modules.gates]
 version = "1.0.0"
 state   = "managed"
 params  = { tiers = ["fast","full"], ledger = true, fast_budget_ms = 30000 }
 
+[modules.gates.kept]
+files = [".claude/skills/harden-rule/SKILL.md"]
+
 [modules.backlog]
-version = "1.0.0"
+version = "1.1.0"
 state   = "managed"
 params  = { id_prefix = "WI", root = "backlog", integration_branch = "main", branch_prefix = "feature" }
 
-[modules.findings]
-version = "1.0.0"
-state   = "managed"
-params  = { id_prefix = "F", path = "docs/backlog/FINDINGS.md" }
-
-[modules.adr]
-version = "1.0.0"
-state   = "managed"
-params  = { path = "docs/decisions", id_prefix = "ADR" }
-
-[modules.adr.kept]
-files = ["docs/decisions/README.md"]
-
-[modules.session]
-version = "1.0.0"
-state   = "managed"
-params  = { path = ".ai/session.md", archive = ".ai/archive" }
-
-[modules.skills]
-version = "1.0.0"
-state   = "managed"
-params  = { dir = ".claude/skills" }
+[modules.backlog.kept]
+files = ["docs/backlog/BACKLOG.md","docs/backlog/README.md","docs/backlog/TEMPLATE.md","docs/backlog/items/README.md","docs/backlog/archive/README.md",".ai/rules/work-items.md",".claude/skills/work-item/SKILL.md",".claude/skills/backlog-summary/SKILL.md"]

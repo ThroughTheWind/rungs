@@ -96,7 +96,7 @@ gate that matches nothing."""
 # 5. Prefer a gate that recomputes a number over one that compares a typed number. A probe
 #    encoding a guess is a gate that is confidently wrong, which is worse than the typed value.
 
-# rungs:begin instructions@1.0.0
+# rungs:begin instructions@1.1.0
 
 [[gates]]
 id     = "instructions-core-size"
@@ -139,8 +139,7 @@ rift-forge measured six occurrences and six repair passes in one session, docume
 broken three more times before making it a hook — which is the whole argument for the escalation
 ladder this module ships."""
 # rungs:end instructions
-
-# rungs:begin backlog@1.0.0
+# rungs:begin backlog@1.1.0
 
 [[gates]]
 id     = "backlog-ids"
@@ -172,8 +171,21 @@ tier   = "fast"
 why    = """An item whose branch is merged cannot still be on its way to review. Measured 2026-08-13 in
 rift-forge: 37 items sat at `review` with their code already landed, and one sat `in_progress`
 for eight days after its own merge."""
-# rungs:end backlog
 
+[[gates]]
+id     = "backlog-board-reconciled"
+kind   = "declared"
+module = "backlog"
+engine = "board-reconcile"
+table  = "backlog/ids.toml"
+tier   = "fast"
+why    = """The board groups rows by status and each item declares its own; nothing checked that the two agreed.
+Measured here 2026-08-16: fourteen rows disagreed — nine under `Proposed`, five under `Planned`, all
+naming items whose files read `status: done`, and nine of them already moved into `archive/`, so the
+board called work proposed while pointing at the directory for work that cannot change. An outside
+reader checking whether that work was done would have been told no. `backlog-merged-status`
+reconciles a branch against the same field; this is the layer above it."""
+# rungs:end backlog
 # rungs:begin findings@1.0.0
 
 [[gates]]
