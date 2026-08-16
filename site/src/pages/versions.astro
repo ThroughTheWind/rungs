@@ -36,12 +36,10 @@ const releases = [
   },
 ];
 
-const modules = [
-  ["instructions", "1.1.0"], ["gates", "1.0.0"], ["backlog", "1.0.0"], ["findings", "1.1.0"],
-  ["adr", "1.0.0"], ["session", "1.1.0"], ["ci", "1.0.0"], ["specs", "1.0.0"],
-  ["workflows", "1.1.0"], ["skills", "1.1.0"], ["audit", "1.0.0"], ["release", "1.0.0"],
-  ["design-sync", "1.0.0"], ["doc-authority", "1.0.0"], ["concurrency", "1.0.0"],
-];
+// Derived, not typed. This was a hand-kept table and three of its fifteen versions were already
+// wrong — `backlog`, `adr` and `session` were bumped this week and the page still named the old
+// numbers. Exactly what WI-051 fixed for the gate counts, on a page that had been missed.
+const modules = SITE.modules.map((m) => [m.name, m.version] as const);
 ---
 
 <Base
@@ -109,17 +107,21 @@ const modules = [
         and <code>release/&lt;version&gt;</code> deployable and rollbackable. The version is chosen from
         the fragments at release time; branch names are prefixes, not promises.
       </p>
-      <Console
-        date={SITE.asOf}
-        source="modules/release/skills/cut-release/SKILL.md — the procedure, not a transcript"
-        lines={[
-          { type: "out", text: "cut-release: gates → decide version from changelog fragments" },
-          { type: "out", text: "             → assemble changelog → bump everywhere" },
-          { type: "out", text: "             → tag → cut release/<version> → open next candidate" },
-          { type: "dim", text: "hotfix: fix → gate → patch tag → merge stable + forward into candidate" },
-          { type: "dim", text: "rollback: point deploy at previous release/<version>; never revert commits" },
-        ]}
-      />
+      {/*
+        Not a `Console`. Its own `source` used to say "the procedure, not a transcript" while the
+        component rendered `REAL OUTPUT` above it — a block honest in its text and contradicted by
+        its own chrome (WI-046). This is a summary of a skill document, so it is presented as one.
+      */}
+      <pre class="procedure"><code>{[
+        "cut-release: gates → decide version from changelog fragments",
+        "             → assemble changelog → bump everywhere",
+        "             → tag → cut release/<version> → open next candidate",
+        "hotfix:      fix → gate → patch tag → merge stable + forward into candidate",
+        "rollback:    point deploy at previous release/<version>; never revert commits",
+      ].join("\n")}</code></pre>
+      <p class="cap">
+        Summarised from <code>modules/release/skills/cut-release/SKILL.md</code>. Not command output.
+      </p>
     </section>
 
     <section class="sec">
@@ -162,6 +164,19 @@ const modules = [
 </Base>
 
 <style>
+  .procedure {
+    border: 1px solid var(--line);
+    background: var(--surface-card);
+    padding: 14px 16px;
+    overflow-x: auto;
+    font: 400 12.5px/1.65 var(--font-mono);
+    color: var(--ink-2);
+  }
+  .cap {
+    font: italic 400 12.5px/1.5 var(--font-serif);
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
   .sheet { padding: 40px 0 64px; }
   .releases { padding: 28px 0 4px; }
   .sec { padding: 32px 0; border-top: 1px solid var(--line); }

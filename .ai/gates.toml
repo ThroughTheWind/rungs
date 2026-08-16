@@ -325,3 +325,15 @@ why     = """WI-051. The site stated `20 gates register` while the registry held
 beside its own `generate-derivable` TODO and a comment calling typed numbers the thing this repo has
 the most scar tissue about. Structural counts are now generated into `site/src/generated/claims.json`;
 this refuses a snapshot that has drifted from `modules/` or the gate registry."""
+
+[[gates]]
+id      = "site-transcripts-real"
+kind    = "command"
+module  = "adopted"
+tier    = "fast"
+command = "node site/scripts/check-transcripts.mjs"
+why     = """F-011 / WI-046. The `Console` component renders its `source` as the literal label `real output ·
+<command>`, and nothing checked the lines beneath it had ever been produced. Two of the three blocks
+on the landing page were fabricated — one showed `doctor` emitting defect lines it did not emit until
+`--explain` shipped weeks later, and an outside reviewer read it as a shipped capability. Every
+displayed line must now appear in output captured against a fixture the capture script builds."""
