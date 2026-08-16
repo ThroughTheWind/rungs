@@ -47,7 +47,7 @@ the same pages and separating them would mean three passes over the same paragra
 
 ## Decision
 
-`accepted` — 2026-08-16, as a child of [WI-037](WI-037-act-on-external-review.md).
+`accepted` — 2026-08-16, as a child of [WI-037](../items/WI-037-act-on-external-review.md).
 
 ## Plan
 

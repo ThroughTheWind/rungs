@@ -44,7 +44,7 @@ warning-then-proceeding. That is only an open question if the default is being i
 is not: [ADR-0004](../../decisions/ADR-0004-adoption-detection.md) state 5 already says `add`
 *"prints the comparison and stops"*, and the ADR is accepted. Choosing the friendlier default would
 have been amending an accepted decision from inside a bug fix — the exact move
-[WI-037](WI-037-act-on-external-review.md)'s third requirement forbids. So: refuse by default,
+[WI-037](../items/WI-037-act-on-external-review.md)'s third requirement forbids. So: refuse by default,
 `--confirm-paradigm` to override, mirroring `--confirm-threshold`.
 
 ## Plan

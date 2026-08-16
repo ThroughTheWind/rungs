@@ -57,7 +57,7 @@ WI-015 is complete and this is the next planned child.
 ### Requirements
 
 - `docs/research/frameworks/openhands.md` on the
-  [WI-010](WI-010-framework-extraction-template.md) template, eight sections answered.
+  [WI-010](../items/WI-010-framework-extraction-template.md) template, eight sections answered.
 - Snapshot pins a commit SHA, license, read date, per-count commands, **and an explicit read
   boundary** — what was read and what was not. A partial read of a large repo that says so is
   evidence; one that does not is a claim about the whole repo.

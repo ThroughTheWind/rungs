@@ -193,7 +193,7 @@ track-specific candidates are deliberately not promoted: doing so would turn one
 or one protocol's lifecycle into a guarantee for another track. The single contradicted candidate,
 `test-substitution`, is retained as a warning in the DSPy extraction and is not added to the catalogue.
 
-**Boundary** — No module or CLI change follows from this synthesis. Existing [WI-029](../../backlog/items/WI-029-apply-framework-patterns-to-modules.md)
+**Boundary** — No module or CLI change follows from this synthesis. Existing [WI-029](../../backlog/archive/WI-029-apply-framework-patterns-to-modules.md)
 remains the only implementation-facing follow-up and is not silently expanded; any future adoption
 of follow-on evidence must be a separately planned work item with its own catalogue/ADR decision.
 

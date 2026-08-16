@@ -54,7 +54,7 @@ WI-012 is complete and this is the next planned child.
 ### Requirements
 
 - `docs/research/frameworks/openai-agents-sdk.md` on the
-  [WI-010](WI-010-framework-extraction-template.md) template, eight sections answered.
+  [WI-010](../items/WI-010-framework-extraction-template.md) template, eight sections answered.
 - Snapshot pins **two** commit SHAs — one per implementation — plus license and read date for each.
 - An explicit enumeration of the primitives, with what each covers and its escape hatch.
 - A short Python/TypeScript divergence table, each row saying whether the difference is design or

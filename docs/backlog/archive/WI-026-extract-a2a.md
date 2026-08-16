@@ -26,7 +26,7 @@ ownership without transferring internal state.
 ## Decision
 
 `accepted` — 2026-08-15. Captured as the remote-agent protocol child of
-[WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
+[WI-018](../items/WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
 

@@ -52,7 +52,7 @@ format change.
 
 ## A second corpus — proposed, not a phase
 
-[WI-009](backlog/items/WI-009-public-agent-framework-corpus.md), opened 2026-08-15, proposes
+[WI-009](backlog/archive/WI-009-public-agent-framework-corpus.md), opened 2026-08-15, proposes
 extracting six public agent frameworks — SWE-agent, LangGraph, the OpenAI Agents
 SDK, Pydantic AI, the Microsoft Agent Framework and OpenHands.
 

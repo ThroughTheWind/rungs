@@ -26,7 +26,7 @@ extraction must pin the actual version, compatibility contract, and one bounded 
 ## Decision
 
 `accepted` — 2026-08-15. Captured as the evolving multi-language framework child of
-[WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
+[WI-018](../items/WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
 
