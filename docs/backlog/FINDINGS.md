@@ -4,13 +4,19 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-017 -->
+<!-- NEXT-ID: F-018 -->
 
 ## Open
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-016 | high | now | `rungs upgrade --apply` does not rewrite `.ai/gates.toml`. A module version that adds, removes or renames a gate upgrades its **files** and leaves the **registry** at the old version, so the new gate never runs and the user is told the upgrade succeeded | Found 2026-08-16 during WI-050. Added `backlog-board-reconciled` and bumped `backlog` 1.0.0 → 1.1.0; `rungs upgrade --apply` reported `backlog 1.0.0 → 1.1.0  4 diverged · 4 current` and `.ai/gates.toml` still read `# rungs:begin backlog@1.0.0` with three gates. `grep -c backlog-board-reconciled .ai/gates.toml` → 0, and `rungs check` still reported 21 gates. `rungs add backlog` re-registered it and the count went to 22 | Now. Every consumer repo that upgrades a module silently keeps the old gate set, which is the failure mode the whole `unimplemented gates are not passes` rule exists to prevent — arriving through the upgrade path instead of the registry one. It also means the WI-050 gate will not reach any existing install by upgrading | `applyUpgrade` should call `registerGates` for each upgraded module, as `add` does. Check the reverse too: a gate **removed** from a manifest should leave the registry, or an upgraded repo keeps running a gate the module no longer ships |
+| F-017 | medium | next | `rungs upgrade --apply` does not update `.ai/rungs.toml`. After upgrading a module the record still names the old version, so the repo permanently believes it is behind and `planUpgrade` offers the same upgrade forever | Found 2026-08-16 reproducing [F-016](#) on a scratch consumer: `session` bumped 1.1.0 → 1.2.0, `upgrade --apply` registered the new gate and moved the registry block to `session@1.2.0`, and `[modules.session] version` in `.ai/rungs.toml` stayed `"1.1.0"`. Re-running `upgrade` reports the same move again | Next. It is cosmetic until someone trusts the record — but `doctor` reads it to report what is installed, so a repo on 1.2.0 is described to its owner as on 1.1.0 | **Not** by calling `writeInstallRecord`: it rewrites the whole record and re-hashes every emitted file that exists, which would stamp our hash onto a file the user had diverged and silently end its protection — a worse failure than the one being fixed. Update surgically instead: the `version` line for each upgraded module, plus hash entries for the files this upgrade actually rewrote |
+
+## Closed — 2026-08-16 by [WI-054](items/WI-054-upgrade-registers-gates.md)
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-016 | `rungs upgrade --apply` rewrote a module's files and never its gates, so a version that added, removed or renamed one left `.ai/gates.toml` on the old block and reported success. Every consumer repo that upgraded a module silently kept the old gate set | promoted | [WI-054](items/WI-054-upgrade-registers-gates.md), 2026-08-16, fixed the same day. Reproduced end to end on a scratch consumer before any change — `session` 1.1.0 → 1.2.0 with a new gate: registry 20 → 21 entries, block moved to `session@1.2.0`, and `rungs check` on that repo went 19 → 20, so the gate runs rather than merely appearing. **The row named one defect and the reproduction found two:** the apply step was also guarded by `if (apply && stale)`, and a version that only adds a gate has no stale file, so nothing ran at all — fixing the first without the second would have left the reported case broken. Removal was tested rather than assumed: a gate deleted from a manifest leaves the registry. The record half is [F-017](#) |
 
 ## Closed — 2026-08-16 by [WI-047](items/WI-047-backlog-archive-command.md)
 

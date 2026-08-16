@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { parse } from 'smol-toml';
 import type { Manifest } from './types.ts';
-import { contentHash, emittedFiles } from './add.ts';
+import { contentHash, emittedFiles, registerGates } from './add.ts';
 import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadRegistry } from './check.ts';
 
@@ -100,7 +100,21 @@ export function applyUpgrade(repoRoot: string, mods: Manifest[], record: Install
       written++;
     }
   }
-  return written;
+
+  // F-016. Upgrading rewrote a module's **files** and never its **gates**, so a
+  // module version that added, removed or renamed one left the registry on the
+  // old block and told the user the upgrade succeeded. Reproduced 2026-08-16
+  // against a scratch consumer: `session` 1.1.0 → 1.2.0 with a new gate, and
+  // `.ai/gates.toml` kept `rungs:begin session@1.1.0` and 20 entries.
+  //
+  // Registration is by whole merge block, so this fixes removal too — a gate
+  // dropped from a manifest leaves the registry with the block that replaces it.
+  // Idempotent, and cheap enough to run for every module in the plan rather than
+  // only the ones whose files happened to be stale.
+  const upgraded = plan.map((p) => mods.find((m) => m.name === p.module)!).filter(Boolean);
+  const gateActions = upgraded.length ? registerGates(upgraded, repoRoot, false) : [];
+
+  return { written, gates: gateActions.length };
 }
 
 function paramsFrom(record: InstallRecord): Params {
