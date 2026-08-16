@@ -625,8 +625,12 @@ function cmdUpgrade(root: string, apply: boolean) {
   // old block — F-016, measured on a scratch consumer where `session` 1.1.0 →
   // 1.2.0 added a gate and `rungs check` went on running the previous twenty.
   if (apply) {
-    const { written, gates } = applyUpgrade(root, mods, record, plan);
-    const parts = [written ? `${written} file(s)` : '', gates ? `${gates} gate registration(s)` : ''].filter(Boolean);
+    const { written, gates, recorded } = applyUpgrade(root, mods, record, plan);
+    const parts = [
+      written ? `${written} file(s)` : '',
+      gates ? `${gates} gate registration(s)` : '',
+      recorded ? `${recorded} record line(s)` : '',
+    ].filter(Boolean);
     console.log(c.green(`\n  updated ${parts.length ? parts.join(' · ') : 'nothing'}`));
   }
   console.log(

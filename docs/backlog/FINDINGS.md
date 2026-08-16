@@ -10,7 +10,13 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-017 | medium | next | `rungs upgrade --apply` does not update `.ai/rungs.toml`. After upgrading a module the record still names the old version, so the repo permanently believes it is behind and `planUpgrade` offers the same upgrade forever | Found 2026-08-16 reproducing [F-016](#) on a scratch consumer: `session` bumped 1.1.0 → 1.2.0, `upgrade --apply` registered the new gate and moved the registry block to `session@1.2.0`, and `[modules.session] version` in `.ai/rungs.toml` stayed `"1.1.0"`. Re-running `upgrade` reports the same move again | Next. It is cosmetic until someone trusts the record — but `doctor` reads it to report what is installed, so a repo on 1.2.0 is described to its owner as on 1.1.0 | **Not** by calling `writeInstallRecord`: it rewrites the whole record and re-hashes every emitted file that exists, which would stamp our hash onto a file the user had diverged and silently end its protection — a worse failure than the one being fixed. Update surgically instead: the `version` line for each upgraded module, plus hash entries for the files this upgrade actually rewrote |
+| — | | | | | | |
+
+## Closed — 2026-08-16 by [WI-055](items/WI-055-upgrade-updates-record.md)
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-017 | `rungs upgrade --apply` did not update `.ai/rungs.toml`, so a repo on 1.2.0 described itself to its owner as 1.1.0 and `planUpgrade` offered the same move forever | promoted | [WI-055](items/WI-055-upgrade-updates-record.md), 2026-08-16, fixed the same day. Surgical line-level update — the `version` line per upgraded module, plus hash entries **only for files that run actually rewrote** — rather than `writeInstallRecord`, which re-derives the whole record and would stamp our hash onto a **diverged** file, flipping it to `current` so the next upgrade overwrote an edit ADR-0004 promises never to touch. Verified end to end with the divergence in place: version moved, the diverged file's hash was unchanged, **and it was still reported as diverged afterwards** — both halves, because a surviving hash alone would not prove the classification held |
 
 ## Closed — 2026-08-16 by [WI-054](items/WI-054-upgrade-registers-gates.md)
 
