@@ -35,7 +35,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
 
 | [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
 
@@ -248,9 +247,19 @@ worth having — but every round also moves which fixtures fail, and a gate whos
 it cannot block a merge. The cause is structural: a fixture describes a *fragment* and an engine
 needs a *scenario*. The format needs a `setup` block, which is an ADR-0003 change.
 
-WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
-an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
-aggregation, including opt-in), and a spike that assumes its own outcome is not a spike.
+[WI-041](items/WI-041-decide-cross-repo-evidence.md), 2026-08-16 — the one review claim that
+collided with an accepted ADR, and **the expected outcome was wrong**. Separating the three things
+"cross-repo evidence" means showed that
+[ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C's wording forbade research this
+repo was **already doing**: "cross-repo aggregation" read plainly covers the fourteen public
+frameworks extracted under WI-009 and WI-018, each pinned to a commit SHA. One sentence in the ADR
+forbade the method another part of the repo required, and it had been there since 2026-08-14.
+
+The bullet now refuses what it always meant — data gathered **from users** — while reading public
+sources stays permitted. The local ledger is unchanged. Reopening the refused half is a
+three-condition test in the ADR's revisit triggers rather than a wall, because the proposal is
+reasonable and has already arrived twice. The argument, with the case *for* stated at its strongest,
+is [`cross-repo-evidence-2026-08-16.md`](../design/cross-repo-evidence-2026-08-16.md).
 
 WI-009's eight children are one fixed epic —
 [WI-009](archive/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted

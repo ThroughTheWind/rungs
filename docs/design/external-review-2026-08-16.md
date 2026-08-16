@@ -201,6 +201,13 @@ its cost, and the ADR's stated reason in front of a person; the honest outcomes 
 amendment with a new trust posture, or a written refusal that stops the idea returning every
 quarter.
 
+> **Answered 2026-08-16.** Both, in different halves. The phrase covered three things and only one
+> is refused: collection from users stays refused permanently, reading **public** sources was always
+> permitted and the ADR's wording had accidentally forbidden research this repo was already doing,
+> and the local ledger is unchanged. ADR-0005 is amended, with a three-part test for reopening the
+> refused half rather than a wall.
+> [`cross-repo-evidence-2026-08-16.md`](cross-repo-evidence-2026-08-16.md).
+
 ---
 
 ## 5. What the review did not look at
