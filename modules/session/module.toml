@@ -1,6 +1,6 @@
 [module]
 name    = "session"
-version = "1.1.0"
+version = "1.2.0"
 rung    = 1
 summary = "A handoff document carrying state between sessions: resume point, active constraints, and a dated archive."
 
@@ -27,7 +27,7 @@ default     = ".ai/archive"
 [[gates]]
 id     = "session-sections-present"
 kind   = "declared"
-engine = "frontmatter-schema"
+engine = "sections"
 applicability = "our-schema"
 table  = "gates/session.toml"
 tier   = "fast"

@@ -10,7 +10,14 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-018 | medium | next | The self-test runner is **sound**; the code that wires it into `gates-self-tests-both-directions` is not. Fixtures that pass when the runner is called directly are reported as mismatches through the gate, so the runner stays unwired and no fixture executes on a normal run | Narrowed 2026-08-16 by [WI-057](items/WI-057-selftest-setup.md) from 7 mismatches to 3, then localised: `session-sections-present`'s two fixtures return **`ok`, `ok`** when `runSelfTests` is called directly with the same table and blocks, and **mismatch** through `gateMeta`. Same inputs, different answer, so the defect is in the integration — table selection, substitution, or block filtering — not in the fixtures or the engines | Before wiring. This is now a bounded debugging task against a known-good reference: the direct call is the oracle, and the wiring must be made to agree with it | Diff what `gateMeta` passes to `runSelfTests` against what the direct call passes, for `session-sections-present` specifically, and fix the wiring. **Do not** add a `setup` block — that earlier recommendation was refuted by WI-057 |
+| — | | | | | | |
+
+## Closed — 2026-08-16 by [WI-059](items/WI-059-selftest-wiring.md)
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-018 | Self-test fixtures were declared and never executed, and three rounds of fixing mismatches never reached zero, so the runner stayed unwired | promoted | [WI-059](items/WI-059-selftest-wiring.md), 2026-08-16. **This row's own diagnosis was wrong and checking it was the first step:** it claimed the runner was sound and the wiring broken, on evidence from a direct call made with `engine = 'sections'` — inferred from the gate's name, where the registry says `frontmatter-schema`. The two paths were never running the same thing. Four defects then fell out, all the same family: `session-sections-present` declared an engine whose table its module does not have, so it **passed by examining nothing** on every run since it shipped — `pass … 0ms` with no examined count, printed all along; `[register_schema.open]` was read by nothing, so the Open table's Sev/Pri/Evidence rules had never been enforced; the table matcher was a substring test, so `resolve-open-findings` in a filename made a Closed section match the Open schema; and the runner did not bridge `opted_in`. Now **ok 17 · mismatch 0 · unrun 45**, wired in, and verified by flipping a fixture's expectation and watching the gate fail. This also completes [F-006](#), which was promoted to WI-045 under WI-044 and is what started the chain: fixtures now execute on every `rungs check`, and the 45 that cannot be reproduced are named on every run rather than silently skipped |
+
 
 ## Closed — 2026-08-16 by [WI-058](items/WI-058-skill-extensions.md)
 

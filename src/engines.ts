@@ -348,6 +348,7 @@ const filePopulation: Engine = (t, root, files) => {
 export const gateMeta: Engine = (_t, root) => {
   const findings: Finding[] = [];
 
+  let unrun = 0;
 
   const registry = join(root, '.ai', 'gates.toml');
   if (!existsSync(registry)) return { findings, examined: 0 };
@@ -372,7 +373,38 @@ export const gateMeta: Engine = (_t, root) => {
       }
     }
 
+    // WI-045 / F-018: declaring is not asserting. Every fixture whose shape and
+    // engine can be reproduced faithfully is executed, and a disagreement is a
+    // finding of this gate.
+    //
+    // Turning this on found, in order: `adr`'s orphaned `[sections]` table, two
+    // fixtures labelled for a gate that checks something else, a `reciprocal`
+    // rule read by nothing, a `non_empty` check that called any section with
+    // subsections empty, three fixtures orphaned by a schema that moved modules,
+    // `session-sections-present` wired to an engine whose table it does not have
+    // (so it passed by examining nothing), `[register_schema.open]` read by
+    // nothing, and a table matcher loose enough that "resolve-open-findings" in
+    // a filename made a Closed section match the Open schema.
+    //
+    // None of it was visible while the fixtures were documentation.
+    const engine = entry.match(/^engine\s*=\s*"(.+)"/m)?.[1];
+    const parsed = parseTable(tablePath, table.split('/')[0]);
+    if (engine && parsed) {
+      const blocks = (Array.isArray(parsed.self_test) ? parsed.self_test : [])
+        .filter((b: any) => b?.gate === id)
+        .map((b: any) => ({ expect: String(b.expect), input: b.input, fixture: b.fixture }));
+      for (const r of runSelfTests(id, engine, parsed[tableKeyFor(engine)] ?? parsed, blocks)) {
+        if (r.outcome === 'mismatch') findings.push({ message: `self-test for '${id}' ${r.detail}` });
+        else if (r.outcome === 'unrun') unrun++;
+      }
+    }
   }
+
+  // Stated, never silent. Most fixtures still cannot be reproduced — their
+  // shapes need context the format does not carry — and reporting green while
+  // most of the suite never executed would be F-006 one level up. A note rather
+  // than a failure: an unbuildable fixture is not a defect in the gate.
+  if (unrun) console.error(`      ${unrun} self-test fixture(s) have no builder and did not run — not passes (F-018)`);
   return { findings, examined };
 };
 

@@ -243,13 +243,13 @@ tier   = "fast"
 why    = """A record with no alternatives section is a description of what was done, not a decision. The
 admission rule exists to keep those out, and this gate is what makes the rule more than advice."""
 # rungs:end adr
-# rungs:begin session@1.0.0
+# rungs:begin session@1.2.0
 
 [[gates]]
 id     = "session-sections-present"
 kind   = "declared"
 module = "session"
-engine = "frontmatter-schema"
+engine = "sections"
 table  = "session/session.toml"
 tier   = "fast"
 why    = """The sections are the value. A handoff missing "Active constraints" is one where the next session
@@ -264,7 +264,6 @@ table  = "session/session.toml"
 tier   = "fast"
 why    = """An archive whose filenames do not say what closed and what came next is a folder nobody opens."""
 # rungs:end session
-
 # rungs:begin skills@1.0.0
 
 [[gates]]

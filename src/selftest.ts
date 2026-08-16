@@ -150,13 +150,20 @@ export function runSelfTests(
     const root = mkdtempSync(join(tmpdir(), 'rungs-selftest-'));
     try {
       const files = build(root, table, b.fixture, b.input);
+      // A fixture states an opt-in with `opted_in`; the engine reads it from the
+      // spec as `extensions_opted_in`. Without the bridge, the `pass` fixture for
+      // an opted-in extension fired `non-spec key` — the harness asserting the
+      // opposite of what the fixture said (F-018).
+      const spec = b.fixture?.opted_in
+        ? (Array.isArray(table) ? table.map((s: any) => ({ ...s, extensions_opted_in: b.fixture.opted_in })) : { ...table, extensions_opted_in: b.fixture.opted_in })
+        : table;
       if (!files) {
         out.push({ gate: gateId, expect, outcome: 'unrun', detail: `no builder for fixture ${JSON.stringify(b.fixture).slice(0, 60)}` });
         continue;
       }
       let findings: Finding[];
       try {
-        findings = ENGINES[engine](table, root, files).findings;
+        findings = ENGINES[engine](spec, root, files).findings;
       } catch (e: any) {
         out.push({ gate: gateId, expect, outcome: 'unrun', detail: `engine threw: ${e.message}`.slice(0, 90) });
         continue;
