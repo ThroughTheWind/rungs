@@ -62,7 +62,7 @@ const isRunnable = (g: Manifest['gates'][number]) => g.kind !== 'command' && !g.
  * measuring their solution against our shape is the same error with a nastier
  * tone.
  */
-const IN_SCOPE: ReadonlySet<string> = new Set(['theirs', 'ours-current', 'ours-diverged']);
+export const IN_SCOPE: ReadonlySet<string> = new Set(['theirs', 'ours-current', 'ours-diverged']);
 
 /**
  * The engines allowed to run over a repo's **own** artifacts (`theirs`), as

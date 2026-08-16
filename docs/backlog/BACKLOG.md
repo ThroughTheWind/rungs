@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-049](items/WI-049-doctor-advertises-analysis.md) | Make plain `doctor` say that the analysis exists | feature |
 | [WI-051](items/WI-051-derive-site-claims.md) | Stop typing the site's gate and status numbers by hand | feature |
 | [WI-052](items/WI-052-detector-applicability.md) | Make detector applicability a declared property rather than two lists | feature |
 | [WI-053](items/WI-053-false-positive-census.md) | Census `--explain` against every repo available | spike |
@@ -144,6 +143,15 @@ undeclared heading produced **seven findings against a correct document**, becau
 narrative sections tabulate finished work under prose headings. The typo case that requirement was
 aimed at is caught precisely instead — every *declared* group must appear, so a misspelled `Propsed`
 reports `Proposed` as missing rather than flagging an unfamiliar string.
+
+[WI-049](items/WI-049-doctor-advertises-analysis.md), 2026-08-16 — plain `doctor` now names
+`--explain`, which it never did: the capability both reviews called the strongest thing here was
+reachable only from `--help`. **Measuring changed the feature.** Built as specified, with a finding
+count, it took plain `doctor` on `rift-forge` from **1.6s to 16.8s** — a 10× tax on the entry point
+to advertise a flag, because counting means running the detectors. The plan named that fallback in
+advance, so it reports the number detection already computed and runs no engine. One acceptance
+criterion is recorded **unmet**: a repo where the analysis would find nothing is still told it
+exists, which is incompatible with not paying the 15 seconds.
 
 [F-016](FINDINGS.md) opened, high/now: `rungs upgrade --apply` does not rewrite `.ai/gates.toml`, so
 a module version that adds a gate upgrades its files, leaves the registry on the old version, and

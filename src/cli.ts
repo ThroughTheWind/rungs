@@ -8,7 +8,7 @@ import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
-import { explain } from './explain.ts';
+import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive } from './backlog.ts';
 import { existsSync } from 'node:fs';
 import type { DetectResult, Manifest } from './types.ts';
@@ -159,6 +159,7 @@ function cmdDoctor(target: string, doExplain = false) {
   reportLedger(root);
 
   if (doExplain) reportExplain(mods, results, root, files);
+  else advertiseAnalysis(results);
 
   // `doctor` is the command the README makes the entry point, and it used to stop on the sentence
   // above — fifteen `absent` lines and nothing to do next. The recommendation is deliberately a
@@ -191,6 +192,35 @@ function cmdDoctor(target: string, doExplain = false) {
 
 function firstSentence(s: string): string {
   return s.trim().replace(/\s+/g, ' ').split(/(?<=\.)\s/)[0];
+}
+
+/**
+ * Say that the analysis exists, and how much of it there is. Never what it
+ * found (WI-049).
+ *
+ * `--explain` is the capability both external reviews called the strongest
+ * thing here, and plain `doctor` printed no occurrence of the string `explain`
+ * — it was reachable only from `--help`. WI-038 put the *findings* behind a flag
+ * for a measured reason: 114 on `hexguard` would bury the `Next` line that
+ * WI-005 exists to protect. The flag was never the problem; the silence was.
+ *
+ * **It reports scope, not findings, and it runs no engine.** The first version
+ * printed a finding count, which meant running the detectors on the plain path.
+ * Measured on `rift-forge` 2026-08-16: plain `doctor` went from **1.6s to
+ * 16.8s** warm — a 10× tax on the entry point to advertise a flag. WI-049's
+ * plan named this outcome in advance and named this fallback.
+ *
+ * So the number is the one detection already computed. It claims what it can
+ * prove: these are things the repo has, and our checks can read them. It does
+ * not claim anything was found, because finding out costs the 15 seconds.
+ */
+function advertiseAnalysis(results: DetectResult[]) {
+  const inScope = results.filter((r) => EXPLAINABLE.has(r.state)).length;
+  if (!inScope) return;
+
+  console.log(c.bold('  Analysis\n'));
+  console.log(`  ${inScope} of these are things this repo already has, and can be checked against it.`);
+  console.log(`  ${c.cyan('rungs doctor --explain')}   ${c.dim('— evidenced findings, and the incident behind each check')}\n`);
 }
 
 /**
