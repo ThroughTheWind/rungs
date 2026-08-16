@@ -104,3 +104,36 @@ fixture = { items = ["{{id_prefix}}-001-a.md", "{{id_prefix}}-002-b.md"] }
 gate    = "backlog-ids"
 expect  = "fail"
 fixture = { items = ["{{id_prefix}}-001-a.md"], marker = "{{id_prefix}}-001" }
+
+# ── backlog-board-reconciled ──────────────────────────────────────────────────
+#
+# The board groups rows by status; each item declares its own. Nothing checked
+# that the two agreed, and on 2026-08-16 fourteen rows disagreed — nine under
+# `Proposed` and five under `Planned`, all naming files whose status was `done`,
+# nine of them already moved into `archive/`.
+#
+# The heading map is data, not code, because a repo may rename a column or drop
+# one. An undeclared heading is reported rather than skipped: a row that hides
+# from the check is exactly the case this exists for.
+
+[board_reconcile]
+file          = "docs/{{root}}/BACKLOG.md"
+exempt_marker = "board-ok:"        # ignored unless it states a reason
+
+[board_reconcile.groups]
+"In progress" = ["in_progress"]
+"Review"      = ["review"]
+"Planned"     = ["planned"]
+"Accepted"    = ["accepted"]
+"Proposed"    = ["proposed"]
+"Deferred"    = ["deferred"]
+
+[[self_test]]
+gate   = "backlog-board-reconciled"
+expect = "fail"
+input  = "## Proposed\n| [{{id_prefix}}-001](items/{{id_prefix}}-001-x.md) | done item filed as proposed | docs |"
+
+[[self_test]]
+gate   = "backlog-board-reconciled"
+expect = "pass"
+input  = "## Proposed\n| [{{id_prefix}}-001](items/{{id_prefix}}-001-x.md) | a genuinely proposed item | docs |"

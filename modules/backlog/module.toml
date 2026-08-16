@@ -1,6 +1,6 @@
 [module]
 name    = "backlog"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 1
 summary = "Work items with stable ids, an eight-status lifecycle, a board, and the three gates that keep the bookkeeping honest."
 
@@ -68,6 +68,21 @@ why    = """
 An item whose branch is merged cannot still be on its way to review. Measured 2026-08-13 in
 rift-forge: 37 items sat at `review` with their code already landed, and one sat `in_progress`
 for eight days after its own merge.
+"""
+
+[[gates]]
+id     = "backlog-board-reconciled"
+kind   = "declared"
+engine = "board-reconcile"
+table  = "gates/ids.toml"
+tier   = "fast"
+why    = """
+The board groups rows by status and each item declares its own; nothing checked that the two agreed.
+Measured here 2026-08-16: fourteen rows disagreed — nine under `Proposed`, five under `Planned`, all
+naming items whose files read `status: done`, and nine of them already moved into `archive/`, so the
+board called work proposed while pointing at the directory for work that cannot change. An outside
+reader checking whether that work was done would have been told no. `backlog-merged-status`
+reconciles a branch against the same field; this is the layer above it.
 """
 
 # ── skills ────────────────────────────────────────────────────────────────────

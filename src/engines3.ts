@@ -192,3 +192,83 @@ export const mergeDriverCheck: Engine = (t, root) => {
   }
   return { findings, examined: declared.length };
 };
+
+/**
+ * The board's grouping must agree with each item's own `status` field.
+ *
+ * `git-status-reconcile` already reconciles a **branch** against that field, and
+ * this repo cites it constantly as proof that typed bookkeeping decays. Nothing
+ * reconciled the **board** — so on 2026-08-16 `BACKLOG.md` filed fourteen items
+ * under `Proposed` and `Planned` whose files all read `status: done`, nine of
+ * them linking into `archive/`. The board said *proposed* about a document in
+ * the directory for work that can no longer change.
+ *
+ * It was found by an outside reviewer asserting the framework research was done.
+ * They were right; the board would have told them otherwise. That is the same
+ * failure the whole module exists to prevent, one layer up, in the file every
+ * session opens first.
+ *
+ * Only table rows are read. The board's prose deliberately discusses finished
+ * work, and a paragraph is not a claim about status.
+ */
+export const boardReconcile: Engine = (t, root, _files) => {
+  const rel = t.file as string;
+  const text = read(root, rel);
+  if (!text) return { findings: [{ message: `board not found at ${rel}` }], examined: 0 };
+  if (exempted(text, t.exempt_marker)) return { findings: [], examined: 0 };
+
+  const groups: Record<string, string[]> = t.groups ?? {};
+  const dir = rel.split('/').slice(0, -1).join('/');
+  const findings: Finding[] = [];
+  let heading = '';
+  let examined = 0;
+
+  for (const line of text.split('\n')) {
+    const h = /^##\s+(.+?)\s*$/.exec(line);
+    if (h) {
+      heading = h[1];
+      continue;
+    }
+    if (!line.startsWith('|')) continue;
+
+    const link = /^\|\s*\[[^\]]+\]\(([^)]+)\)/.exec(line);
+    if (!link) continue; // separator, header, or an empty `| — |` placeholder
+
+    // An undeclared heading is narrative, not a status group. The board's later
+    // sections are prose with their own tables — "The first-user path", closed
+    // 2026-08-15, tabulates seven finished items and says so in the heading.
+    //
+    // Reporting those was this gate's first behaviour and it was wrong: measured
+    // 2026-08-16, it produced seven findings against a document that is correct.
+    // The plan's requirement that every undeclared heading be reported was aimed
+    // at a *typo* hiding rows from the check, and it caught legitimate prose
+    // instead. That case is covered exactly, below, by requiring each declared
+    // group to appear — a misspelled `Propsed` makes `Proposed` go missing.
+    if (!Object.hasOwn(groups, heading)) continue;
+
+    examined++;
+    const target = `${dir}/${link[1]}`.replace(/[^/]+\/\.\.\//g, '');
+    const item = read(root, target);
+    if (!item) {
+      findings.push({ file: rel, message: `row under '${heading}' links to a missing file: ${link[1]}` });
+      continue;
+    }
+    const status = /^status:\s*(\S+)/m.exec(item)?.[1] ?? '';
+    if (!groups[heading].includes(status)) {
+      findings.push({
+        file: rel,
+        message: `${link[1]} is under '${heading}' but its status is '${status}' (expected ${groups[heading].join(' | ')})`,
+      });
+    }
+  }
+
+  // Every declared group must actually appear. This is the typo check: a board
+  // whose `Proposed` heading is misspelled would otherwise drop those rows
+  // silently, which is exactly what the group map exists to prevent.
+  const seen = new Set([...text.matchAll(/^##\s+(.+?)\s*$/gm)].map((m) => m[1]));
+  for (const g of Object.keys(groups)) {
+    if (!seen.has(g)) findings.push({ file: rel, message: `declared group '${g}' has no heading in the board` });
+  }
+
+  return { findings, examined };
+};

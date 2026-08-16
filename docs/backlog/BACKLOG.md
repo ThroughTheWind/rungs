@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
 | [WI-049](items/WI-049-doctor-advertises-analysis.md) | Make plain `doctor` say that the analysis exists | feature |
-| [WI-050](items/WI-050-board-reconciled-gate.md) | Refuse a board row whose group disagrees with the item's status | feature |
 | [WI-051](items/WI-051-derive-site-claims.md) | Stop typing the site's gate and status numbers by hand | feature |
 | [WI-052](items/WI-052-detector-applicability.md) | Make detector applicability a declared property rather than two lists | feature |
 | [WI-053](items/WI-053-false-positive-census.md) | Census `--explain` against every repo available | spike |
@@ -134,6 +133,21 @@ this. They were right and this file would have told them otherwise.
 `backlog-merged-status` reconciles a *branch* against the status field and nothing reconciles the
 *board* — the same failure one layer up, in the file every session opens first. The rows are
 corrected above; the gate is WI-050's.
+
+**Done under WI-048:** [WI-050](items/WI-050-board-reconciled-gate.md), 2026-08-16 — the board is
+now gated against the item files it names. It fires on exactly the shape that was live here when the
+review arrived: *"`archive/WI-001-done.md` is under 'Proposed' but its status is 'done'"*. Gate count
+21 → 22.
+
+Its plan's requirement 4 was dropped during execution and the item records why: reporting every
+undeclared heading produced **seven findings against a correct document**, because the board's
+narrative sections tabulate finished work under prose headings. The typo case that requirement was
+aimed at is caught precisely instead — every *declared* group must appear, so a misspelled `Propsed`
+reports `Proposed` as missing rather than flagging an unfamiliar string.
+
+[F-016](FINDINGS.md) opened, high/now: `rungs upgrade --apply` does not rewrite `.ai/gates.toml`, so
+a module version that adds a gate upgrades its files, leaves the registry on the old version, and
+reports success. This gate cannot reach any existing install by upgrading.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

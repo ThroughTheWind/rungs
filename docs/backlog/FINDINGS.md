@@ -4,13 +4,13 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-016 -->
+<!-- NEXT-ID: F-017 -->
 
 ## Open
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| — | | | | | | |
+| F-016 | high | now | `rungs upgrade --apply` does not rewrite `.ai/gates.toml`. A module version that adds, removes or renames a gate upgrades its **files** and leaves the **registry** at the old version, so the new gate never runs and the user is told the upgrade succeeded | Found 2026-08-16 during WI-050. Added `backlog-board-reconciled` and bumped `backlog` 1.0.0 → 1.1.0; `rungs upgrade --apply` reported `backlog 1.0.0 → 1.1.0  4 diverged · 4 current` and `.ai/gates.toml` still read `# rungs:begin backlog@1.0.0` with three gates. `grep -c backlog-board-reconciled .ai/gates.toml` → 0, and `rungs check` still reported 21 gates. `rungs add backlog` re-registered it and the count went to 22 | Now. Every consumer repo that upgrades a module silently keeps the old gate set, which is the failure mode the whole `unimplemented gates are not passes` rule exists to prevent — arriving through the upgrade path instead of the registry one. It also means the WI-050 gate will not reach any existing install by upgrading | `applyUpgrade` should call `registerGates` for each upgraded module, as `add` does. Check the reverse too: a gate **removed** from a manifest should leave the registry, or an upgraded repo keeps running a gate the module no longer ships |
 
 ## Closed — 2026-08-16 by [WI-047](items/WI-047-backlog-archive-command.md)
 
