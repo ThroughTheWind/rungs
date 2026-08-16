@@ -3,11 +3,18 @@ import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import { unified } from "@astrojs/markdown-remark";
+import { fileURLToPath } from "node:url";
 import { rehypeRungs } from "./src/plugins/rehype-rungs.mjs";
 
 // The wiki reads docs/ from the repo root, one level above this package. Vite has to be told
 // that directory is legal to serve in dev; the content layer itself reads via fs at build time.
-const REPO_ROOT = new URL("../", import.meta.url).pathname;
+//
+// `fileURLToPath`, not `.pathname`: on Windows the latter returns `/C:/…` with a leading slash,
+// which Vite then resolves against the drive as `C:/C:/…`. F-013 — every stylesheet request 403'd
+// as "outside of Vite serving allow list", 49 of them on one page load, so `astro dev` served an
+// unstyled site and local visual review was impossible. `npm run build` was unaffected, which is
+// why it survived: the content layer reads via fs at build time and never consults this.
+const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 // Canonical origin. Overridable because it is the one config value that differs per deployment:
 // on a *.up.railway.app URL the default would emit canonical tags pointing at a host that is not

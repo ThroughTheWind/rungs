@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-044 -->
+<!-- NEXT-ID: WI-047 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -49,6 +49,8 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-028](items/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
 | [WI-029](items/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
 | [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
+| [WI-045](items/WI-045-run-gate-self-tests.md) | Execute gate self-test fixtures instead of only declaring them | feature |
+| [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
 
 [WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
 the first assessment of this project by someone who did not build it, recorded and adjudicated in
@@ -98,6 +100,19 @@ WI-039's criterion 1 stays unmet on the record. No repo available here uses GitH
 unit of work, so the positive case rests on a fixture built to match the signature — the circular
 validation its own plan forbade. The negative evidence carries it; the gap is written down rather
 than closed.
+
+[WI-044](items/WI-044-resolve-open-findings.md), 2026-08-16 — the findings register went from seven
+open rows to one. Five fixed, two promoted ([WI-045](items/WI-045-run-gate-self-tests.md),
+[WI-046](items/WI-046-console-provenance.md)), and one new: [F-015](FINDINGS.md), because
+`rungs backlog archive` — which [README §8](README.md) tells contributors to use — **does not
+exist**, so the 39 `done` items in `items/` were left where they are rather than moved by hand.
+
+Two of the five fixes contradicted the row that proposed them, and both times measuring is what
+caught it. F-001's proposed test ("commits ahead of base") would have **silently deleted the gate**,
+because after any merge a branch is zero ahead. F-007's row recommended collapsing two gate ids;
+implementing the check instead produced ten findings that were all false, and narrowing it — rather
+than falling back to the collapse — kept a distinct measured incident the collapse would have
+deleted. Gate count 20 → 21; tests 12 → 14.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

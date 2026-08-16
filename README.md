@@ -64,7 +64,7 @@ So rungs does not ship a good idea about how to work. It ships **what four repos
 learned, with the incident attached**. Every module declares its provenance, and
 `doctor` quotes that incident back when a gate it installed has never fired:
 
-> `check-findings-register` has run 340 times and never fired. It exists because
+> `audit-output-is-rows` has run 340 times and never fired. It exists because
 > one repo produced 268 audit reports with no register to close them into. Is
 > that still a risk here — or is this gate scoped too narrowly?
 

@@ -5,7 +5,13 @@
 
 # ── gates-links-resolve · gates-paths-exist ───────────────────────────────────
 
-[link_integrity]
+# Two entries, one per gate. They were a single table shared by both gate ids, which ran the
+# identical markdown-link scan twice and reported every finding twice — 224 lines for 112 broken
+# links on one repo (F-007). Splitting them also lets `gates-paths-exist` do the job its `why`
+# actually describes: hexguard's instruction files name paths in code spans, not in markdown links.
+[[link_integrity]]
+id         = "gates-links-resolve"
+check      = ["relative_markdown_links"]
 scan       = ["**/*.md", ".ai/**/*.toml"]
 # `modules/**` is a rungs module source tree, not repo content: a fragment's
 # links are relative to the file it merges *into*, not to where it is authored,
@@ -13,13 +19,22 @@ scan       = ["**/*.md", ".ai/**/*.toml"]
 # repo nothing — it has no `modules/` — and was found by running this against
 # the rungs repo itself.
 exclude    = ["node_modules/**", "**/archive/**", ".git/**", "modules/*/fragments/**", "modules/*/files/**"]
-check      = ["relative_markdown_links", "backticked_paths"]
-# Backticked paths are checked only when they look like paths — containing a `/` or a known
-# extension — because prose is full of `identifiers` that are not files. Under-detection is the
-# correct bias: a missed stale path is a nuisance, a false refusal on every code span is a gate
-# people delete.
-path_hint  = ["/", ".md", ".ts", ".cs", ".mjs", ".toml", ".json", ".ps1"]
 exempt     = "path-ok:"       # ignored unless it states a reason
+
+[[link_integrity]]
+id         = "gates-paths-exist"
+check      = ["backticked_paths"]
+# Instruction files, where a named path going stale is the measured incident. Deliberately not
+# every markdown file: prose about a repo cites paths that were true when written, and a gate that
+# refuses history is one people delete.
+scan       = ["AGENTS.md", "CLAUDE.md", ".ai/**/*.md", ".ai/**/*.toml", ".github/instructions/**/*.md"]
+exclude    = ["node_modules/**", "**/archive/**", ".git/**"]
+# Checked only when it looks like a path — containing a `/` or a known extension — because prose is
+# full of `identifiers` that are not files. Resolved from the repo root, which is what an
+# instruction file's reader does. Under-detection is the correct bias: a missed stale path is a
+# nuisance, a false refusal on every code span is a gate people delete.
+path_hint  = ["/", ".md", ".ts", ".cs", ".mjs", ".toml", ".json", ".ps1"]
+exempt     = "path-ok:"
 
 [link_integrity.notes]
 external = "not fetched — a gate that needs the network is a gate that fails on a plane"
@@ -102,6 +117,20 @@ input  = "The store is built in [forge-store](./no-such-file.toml:222)."
 gate   = "gates-paths-exist"
 expect = "pass"
 input  = "The `Result<T>` type wraps it."          # a code span that is not a path
+
+# F-007. `backticked_paths` was declared in the table's `check` list and implemented nowhere, so
+# this gate silently ran the markdown-link scan instead and double-reported it. Implemented now,
+# and narrowed by measurement: the first run produced ten findings on this repo and all ten were
+# wrong — slash commands, `WI-###` placeholders, illustrative directories, bare filenames.
+[[self_test]]
+gate   = "gates-paths-exist"
+expect = "fail"
+input  = "Claim an id from `docs/backlog/DOES-NOT-EXIST.md` first."
+
+[[self_test]]
+gate   = "gates-paths-exist"
+expect = "pass"
+input  = "Run `/work-item`, branch `feature/WI-###-slug`, and read `.cursor/rules/`."
 
 [[self_test]]
 gate   = "gates-rules-declare-enforcement"
