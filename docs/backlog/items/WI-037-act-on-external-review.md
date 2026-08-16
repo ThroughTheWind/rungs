@@ -2,7 +2,7 @@
 id: WI-037
 title: Act on the 2026-08-16 external review
 type: epic
-status: accepted
+status: done
 branch:
 created: 2026-08-16
 updated: 2026-08-16
@@ -136,7 +136,12 @@ does not pre-empt it.
 
 ## Execution
 
-In progress, 2026-08-16. Landed in sequence order: WI-040, then WI-038.
+**Closed 2026-08-16.** All six children `done` — WI-040, WI-038, WI-042, WI-039, WI-043, and
+finally [WI-041](WI-041-decide-cross-repo-evidence.md), whose decision arrived last because it was
+deliberately left for a person and produced an amendment to
+[ADR-0005](../../decisions/ADR-0005-self-instrumentation.md) rather than the expected reaffirmation.
+
+Landed in sequence order: WI-040, then WI-038.
 
 **A fifth child was added mid-epic.** [WI-042](../archive/WI-042-link-line-references.md) came out of WI-038's
 own post-merge correction — `--explain` was reporting `path/file.ts:387` code references as broken

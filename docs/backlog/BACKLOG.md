@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-058 -->
+<!-- NEXT-ID: WI-059 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -29,13 +29,12 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-037](items/WI-037-act-on-external-review.md) | Act on the 2026-08-16 external review | epic |
+| — | | |
 
 ## Proposed
 
 | Id | Title | Type |
 | --- | --- | --- |
-
 | [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
 
 [WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
@@ -276,6 +275,20 @@ runner is called **directly** with the same table and blocks, and `mismatch` thr
 same inputs, different answer. So the runner is sound and the wiring is not, and every earlier round
 had been attributing wiring artifacts to fixtures. 7 → 3, and F-018 is now a bounded debugging task
 with an oracle rather than an open format question.
+
+[WI-058](items/WI-058-skill-extensions.md), 2026-08-16 — closes [F-019](FINDINGS.md), the most
+complete instance of a rule configured and unread: `[skills.work-item] extensions = { disable-model-invocation = true }`
+was declared in a manifest, documented in [`modules/README.md`](../../modules/README.md), and
+implemented at **four** layers' worth of nowhere — not parsed into `Manifest`, not emitted into the
+`SKILL.md`, not read by the gate that polices it. `work-item` creates branches and merges, and the
+stated reason for opting it out of model invocation had been inert since it was written.
+
+Implemented at all four. The injection happens at emit, so the source skill stays spec-pure per
+[ADR-0001](../decisions/ADR-0001-multi-harness-rendering.md) and the extension stays attached to the
+module that took the portability cost. **Two code paths emit skills** — `emittedFiles` and
+`addModule` — and patching only the first left `add` writing the un-extended file, so an install and
+an upgrade would have produced different content for the same skill; found by installing into a
+scratch repo and seeing the key still absent. Tests 22 → 24.
 
 WI-009's eight children are one fixed epic —
 [WI-009](archive/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted
