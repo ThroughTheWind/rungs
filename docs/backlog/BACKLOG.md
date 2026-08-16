@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-057 -->
+<!-- NEXT-ID: WI-058 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -260,6 +260,22 @@ sources stays permitted. The local ledger is unchanged. Reopening the refused ha
 three-condition test in the ADR's revisit triggers rather than a wall, because the proposal is
 reasonable and has already arrived twice. The argument, with the case *for* stated at its strongest,
 is [`cross-repo-evidence-2026-08-16.md`](../design/cross-repo-evidence-2026-08-16.md).
+
+[WI-057](items/WI-057-selftest-setup.md), 2026-08-16 — **its own premise was wrong, and that is the
+result.** F-018 had recommended giving the fixture format a `setup` block, because a fixture
+describes a fragment while an engine needs a scenario. Reading all seven remaining fixtures showed
+**not one of them needed a sibling file**: the recommendation had been generalised from a single
+example without checking the rest, and would have produced an ADR-0003 format change for a problem
+living in fifty lines of integration code.
+
+What they actually needed: three were fixtures orphaned when the skill schema moved modules, two
+were harness gaps (an array-form table, an ignored `table =` key), one is
+[F-019](FINDINGS.md) — `extensions_allowed_from` configured and unread, the **fifth** rule of that
+kind — and the last localised the real defect. `session-sections-present` returns `ok, ok` when the
+runner is called **directly** with the same table and blocks, and `mismatch` through `gateMeta`:
+same inputs, different answer. So the runner is sound and the wiring is not, and every earlier round
+had been attributing wiring artifacts to fixtures. 7 → 3, and F-018 is now a bounded debugging task
+with an oracle rather than an open format question.
 
 WI-009's eight children are one fixed epic —
 [WI-009](archive/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted

@@ -30,9 +30,17 @@ export interface SelfTestResult {
   detail?: string;
 }
 
-/** A concrete path the table's `scan` would match, for writing a fixture into. */
+/**
+ * A concrete path the table's `scan` would match, for writing a fixture into.
+ *
+ * The table may be an **array** — `[[frontmatter_schema]]` declares several — in
+ * which case `t.file`/`t.scan` are undefined and the first "scan pattern" was
+ * an entire schema object. That silently produced a nonsense path, the engine
+ * saw no file, and the fixture was reported as a gate failure (F-018).
+ */
 function targetPath(table: any): string {
-  const pattern: string = table?.file ?? [table?.scan ?? []].flat()[0] ?? '**/*.md';
+  const t = Array.isArray(table) ? table[0] ?? {} : table ?? {};
+  const pattern: string = t.file ?? [t.scan ?? []].flat()[0] ?? '**/*.md';
   if (!pattern.includes('*')) return pattern;
   return pattern
     .replace(/\*\*\//g, 'probe/')
@@ -70,9 +78,13 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
   }
 
   // A single markdown file described declaratively.
-  const contentKeys = ['frontmatter', 'sections', 'opening', 'body', 'row'];
+  const contentKeys = ['frontmatter', 'sections', 'opening', 'body', 'row', 'table'];
   if (contentKeys.some((k) => k in fx)) {
     const parts: string[] = [];
+    // `table = "Closed"` names the heading the row belongs under. A register
+    // engine finds rows by section, so a row written without its heading is in
+    // no table at all — which read as "the gate did not fire" (F-018).
+    if (fx.table) parts.push(`## ${fx.table}`, '');
     if (fx.frontmatter && typeof fx.frontmatter === 'object') {
       parts.push('---');
       for (const [k, v] of Object.entries(fx.frontmatter)) parts.push(`${k}: ${v}`);
