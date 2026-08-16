@@ -29,10 +29,10 @@ params  = { tiers = ["fast","full"], ledger = true, fast_budget_ms = 30000 }
 [modules.gates.kept]
 files = [".claude/skills/harden-rule/SKILL.md"]
 
-[modules.adr]
-version = "1.1.0"
+[modules.session]
+version = "1.2.0"
 state   = "managed"
-params  = { path = "docs/decisions", id_prefix = "ADR" }
+params  = { path = ".ai/session.md", archive = ".ai/archive" }
 
-[modules.adr.kept]
-files = ["docs/decisions/README.md","docs/decisions/TEMPLATE.md"]
+[modules.session.kept]
+files = [".ai/session.md",".ai/archive/README.md",".claude/skills/close-session/SKILL.md"]

@@ -2,7 +2,7 @@
 id: WI-045
 title: Execute gate self-test fixtures instead of only declaring them
 type: feature
-status: review
+status: done
 branch: feature/WI-045-run-gate-self-tests
 created: 2026-08-16
 updated: 2026-08-16
@@ -147,7 +147,20 @@ untriaged and are recorded as [F-018](../FINDINGS.md) rather than left in a comm
 
 **4 · `rungs check` and `npm test` pass.** 23 pass · 0 fail; `npm test` 22 pass, up from 21. **Met.**
 
-### What it would take to finish
+### Closed 2026-08-16 by [WI-059](WI-059-selftest-wiring.md)
+
+All four criteria now met. The runner is wired into `gates-self-tests-both-directions`, **ok 17 ·
+mismatch 0 · unrun 45**, and a fixture that disagrees with its engine fails the gate — verified by
+flipping one and watching it fail.
+
+The prediction below was wrong in an instructive way. It said the durable fix was a fixture format
+carrying its context, and named an ADR-0003 change. What actually blocked wiring was four ordinary
+defects — including a gate declared against an engine whose table its module does not have, which
+had been passing by examining nothing since it shipped. **The format was never the obstacle**; see
+[WI-057](WI-057-selftest-setup.md), which refuted the `setup` block, and WI-059, which refuted the
+"broken wiring" diagnosis that replaced it.
+
+### What it would have taken, as predicted at the time — and why it was wrong
 
 Either a fixture format that carries its context — a `setup` block naming the sibling files a
 fixture assumes — or per-fixture triage of the remaining 5 followed by wiring. The first is a change

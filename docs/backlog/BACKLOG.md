@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-059 -->
+<!-- NEXT-ID: WI-060 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -17,7 +17,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
-| [WI-045](items/WI-045-run-gate-self-tests.md) | Execute gate self-test fixtures instead of only declaring them | feature | `feature/WI-045-run-gate-self-tests` |
 
 ## Planned
 
@@ -289,6 +288,26 @@ module that took the portability cost. **Two code paths emit skills** — `emitt
 `addModule` — and patching only the first left `add` writing the un-extended file, so an install and
 an upgrade would have produced different content for the same skill; found by installing into a
 scratch repo and seeing the key still absent. Tests 22 → 24.
+
+[WI-059](items/WI-059-selftest-wiring.md), 2026-08-16 — **self-test fixtures now execute on every
+`rungs check`**, closing [F-018](FINDINGS.md) and, with it, F-006 which started the chain four items
+ago. ok 17 · mismatch 0 · unrun 45, and a fixture that disagrees with its engine fails the gate.
+
+**F-018's own diagnosis was wrong, and checking it was the first step.** It claimed the runner was
+sound and the wiring broken — on evidence from a direct call I had made with `engine = 'sections'`,
+inferred from the gate's *name*, where the registry says `frontmatter-schema`. The two paths were
+never running the same thing.
+
+Four defects then fell out, all one family. `session-sections-present` declared an engine whose
+table its own module does not contain, so it scanned nothing and **passed by examining nothing since
+it shipped** — the session handoff's seven required sections had never been checked, and
+`pass … 0ms` with no examined count had been printed on every run all along. `[register_schema.open]`
+was read by nothing, so the Open table's Sev/Pri/Evidence rules had never been enforced. The table
+matcher was a substring test, so `resolve-open-findings` inside a *filename* made a Closed section
+match the Open schema. And the runner did not bridge `opted_in`.
+
+45 fixtures still have no builder and are named on every run rather than skipped — the honest
+position is that 17 of 62 executable fixtures assert something and the rest visibly do not.
 
 WI-009's eight children are one fixed epic —
 [WI-009](archive/WI-009-public-agent-framework-corpus.md) — opened 2026-08-15. The four extracted

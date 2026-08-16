@@ -121,12 +121,31 @@ export const renderFreshness: Engine = (t, root, files) => {
 export const registerSchema: Engine = (t, root, files) => {
   const findings: Finding[] = [];
   let examined = 0;
-  const targets = t.file ? [t.file] : expand(files, t.scan);
+
+  // A register file holds more than one table, and each gets its own spec —
+  // `[register_schema]` for Closed and `[register_schema.open]` for Open. Only
+  // the top-level one was ever read (F-018), so the Open table's rules —
+  // `non_empty = ["Sev", "Pri", "What", "Evidence"]` and the Sev/Pri enums —
+  // had never been enforced on any repo. Found because the fixture asserting
+  // them could not fire, once fixtures started running.
+  //
+  // A sub-spec is any nested object naming a `table`; `enum` and `min_words` are
+  // objects too and do not.
+  const specs = [t, ...Object.values(t).filter((v: any) => v && typeof v === 'object' && !Array.isArray(v) && v.table)];
+  for (const t of specs as any[]) {
+  const targets = t.file ?? specs[0].file ? [t.file ?? (specs[0] as any).file] : expand(files, t.scan);
   for (const rel of targets) {
     const text = read(root, rel);
     if (!text) continue;
     for (const table of parseTables(text)) {
-      if (t.table && !sectionOf(text, table.headerLine).toLowerCase().includes(String(t.table).toLowerCase())) continue;
+      // The heading must **start with** the table's name, not merely contain it.
+      // A substring match sent every Closed row through the Open schema, because
+      // `## Closed — 2026-08-16 by [WI-044](archive/WI-044-resolve-open-findings.md)`
+      // contains "open" inside a filename. Latent until `[register_schema.open]`
+      // was read for the first time (F-018) — a loose matcher is invisible while
+      // only one spec exists to match.
+      const heading = sectionOf(text, table.headerLine).replace(/^#+\s*/, '').trim().toLowerCase();
+      if (t.table && !heading.startsWith(String(t.table).toLowerCase())) continue;
       const cols = t.required_cols ?? t.table_columns ?? [];
       const present = cols.filter((c: string) =>
         table.headers.some((h) => h.toLowerCase() === String(c).toLowerCase()),
@@ -163,6 +182,7 @@ export const registerSchema: Engine = (t, root, files) => {
         }
       }
     }
+  }
   }
   return { findings, examined };
 };
