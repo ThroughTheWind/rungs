@@ -96,7 +96,8 @@ const sections: Engine = (t, root, files) => {
       if (excluded.has(rel) || !existsSync(join(root, rel))) continue;
       examined++;
       const text = read(root, rel);
-      const heads = [...text.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)].map((m) => m[1]);
+      const matches = [...text.matchAll(/^(#{1,6})\s+(.+?)\s*$/gm)];
+      const heads = matches.map((m) => m[2]);
       for (const want of spec.required ?? []) {
         const idx = heads.findIndex((h) => h.toLowerCase().startsWith(String(want).toLowerCase()));
         if (idx === -1) {
@@ -104,8 +105,18 @@ const sections: Engine = (t, root, files) => {
           continue;
         }
         if (spec.non_empty) {
-          const after = text.split(new RegExp(`^#{1,6}\\s+${escapeRe(heads[idx])}\\s*$`, 'm'))[1] ?? '';
-          const body = after.split(/^#{1,6}\s+/m)[0].replace(/<!--[\s\S]*?-->/g, '').trim();
+          // Content runs to the next heading of the **same or higher** level, so
+          // a section made of subsections is not empty. Splitting on any heading
+          // reported ADR-0002's `## Decision` as empty because a `### (a)`
+          // follows it immediately — the first finding this gate produced, and a
+          // false one (F-018). A section whose whole body is subsections is the
+          // normal shape for a long decision.
+          const level = matches[idx][1].length;
+          const after = text.slice(matches[idx].index! + matches[idx][0].length);
+          const body = after
+            .split(new RegExp(`^#{1,${level}}\\s+`, 'm'))[0]
+            .replace(/<!--[\s\S]*?-->/g, '')
+            .trim();
           if (!body) findings.push({ file: rel, message: `section '${want}' is empty` });
         }
       }
@@ -140,10 +151,40 @@ const frontmatterSchema: Engine = (t, root, files) => {
           if (!spec.allowed.includes(k)) findings.push({ file: rel, message: `non-spec key '${k}'` });
         }
       }
+      const field = (k: string) => m[1].match(new RegExp(`^${k}:\\s*(.+)$`, 'm'))?.[1].trim().replace(/^["']|["']$/g, '');
       for (const [key, values] of Object.entries(spec.enum ?? {})) {
-        const v = m[1].match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))?.[1].trim().replace(/^["']|["']$/g, '');
+        const v = field(key);
         if (v && !(values as string[]).map(String).includes(v)) {
           findings.push({ file: rel, message: `${key}='${v}' not one of ${(values as string[]).join(', ')}` });
+        }
+      }
+
+      // `[frontmatter_schema.reciprocal]` was configured in the `adr` table and
+      // implemented nowhere — the third instance of F-007's shape, and this one
+      // was found by *executing* a self-test rather than by reading (F-018).
+      // Its fail fixture is a `superseded` record with no `superseded_by`, which
+      // could never have failed while nothing read the rule.
+      //
+      // A one-way supersession leaves a reader on the stale record with no route
+      // to the live one, which is the whole point of recording it.
+      for (const pair of spec.reciprocal?.pairs ?? []) {
+        const from = field(pair.from);
+        if (!from) continue;
+        const target = expand(files, spec.scan).find((r) => r.includes(from.replace(/\.md$/, '')));
+        if (!target) {
+          findings.push({ file: rel, message: `${pair.from} names '${from}', which is not a record here` });
+          continue;
+        }
+        const back = read(root, target).match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+        const id = field('id') ?? '';
+        if (!new RegExp(`^${pair.to}:\\s*.*${escapeRe(id)}`, 'm').test(back)) {
+          findings.push({ file: rel, message: `${pair.from} → ${from}, but it does not name this record back in '${pair.to}'` });
+        }
+      }
+      // A status that implies the pairing must actually carry it.
+      for (const [status, requires] of Object.entries(spec.reciprocal?.required_when ?? {})) {
+        if (field('status') === status && !field(String(requires))) {
+          findings.push({ file: rel, message: `status is '${status}' but '${requires}' is absent` });
         }
       }
     }
@@ -299,6 +340,7 @@ const filePopulation: Engine = (t, root, files) => {
  */
 export const gateMeta: Engine = (_t, root) => {
   const findings: Finding[] = [];
+
 
   const registry = join(root, '.ai', 'gates.toml');
   if (!existsSync(registry)) return { findings, examined: 0 };

@@ -1,8 +1,9 @@
 {
-  "gateCount": 23,
+  "gateCount": 24,
   "gateIds": [
     "adr-index-current",
     "adr-required-fields",
+    "adr-sections-present",
     "backlog-board-reconciled",
     "backlog-ids",
     "backlog-merged-status",
@@ -221,7 +222,7 @@
     }
   ],
   "run": {
-    "pass": 23,
+    "pass": 24,
     "fail": 0,
     "unimplemented": 0,
     "error": 0,

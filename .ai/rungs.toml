@@ -29,10 +29,10 @@ params  = { tiers = ["fast","full"], ledger = true, fast_budget_ms = 30000 }
 [modules.gates.kept]
 files = [".claude/skills/harden-rule/SKILL.md"]
 
-[modules.backlog]
+[modules.adr]
 version = "1.1.0"
 state   = "managed"
-params  = { id_prefix = "WI", root = "backlog", integration_branch = "main", branch_prefix = "feature" }
+params  = { path = "docs/decisions", id_prefix = "ADR" }
 
-[modules.backlog.kept]
-files = ["docs/backlog/BACKLOG.md","docs/backlog/README.md","docs/backlog/TEMPLATE.md","docs/backlog/items/README.md","docs/backlog/archive/README.md",".ai/rules/work-items.md",".claude/skills/work-item/SKILL.md",".claude/skills/backlog-summary/SKILL.md"]
+[modules.adr.kept]
+files = ["docs/decisions/README.md","docs/decisions/TEMPLATE.md"]
