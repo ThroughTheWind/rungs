@@ -10,6 +10,7 @@ import { blockedByParadigm } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
+import { applyUpgrade } from '../src/lifecycle.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
@@ -139,6 +140,46 @@ test('explain collapses two gate ids reporting the identical finding set into on
 
   assert.equal(reported.length, 2, 'F-007: one check behind two ids is one finding, reported once');
   assert.equal(reported[0].gate, 'gates-links-resolve + gates-paths-exist', 'both ids stay visible');
+});
+
+/**
+ * F-016. `upgrade --apply` rewrote a module's files and never its gates, so a
+ * module version that added one left the registry on the old block and reported
+ * success. Worse, the apply step only ran when a file was *stale* — and a
+ * version that only adds a gate has none, so nothing happened at all.
+ *
+ * Unit-level here; the end-to-end reproduction against a scratch consumer is in
+ * the item. This pins the two properties that matter: registration happens for
+ * every module in the plan, not only ones with stale files, and it goes through
+ * the same whole-block merge that makes removal work.
+ */
+test('applyUpgrade registers gates even when no file is stale', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-upg-'));
+  mkdirSync(join(root, '.ai'), { recursive: true });
+  writeFileSync(join(root, '.ai', 'gates.toml'), '# registry\n');
+
+  const mod = {
+    name: 'demo',
+    version: '1.1.0',
+    dir: join(root, 'nonexistent'),
+    params: {},
+    gates: [{ id: 'demo-new', kind: 'declared', engine: 'sections', table: 'gates/demo.toml', tier: 'fast', why: 'x' }],
+    requires: [],
+    detect: {},
+  };
+  const record = { harnesses: ['claude'], modules: { demo: { version: '1.0.0' } } };
+  // Every file current: the exact shape that skipped the apply step entirely.
+  const plan = [{ module: 'demo', from: '1.0.0', to: '1.1.0', files: [{ rel: 'a.md', state: 'current' }] }];
+
+  const result = applyUpgrade(root, [mod], record, plan);
+  const registry = readFileSync(join(root, '.ai', 'gates.toml'), 'utf8');
+
+  assert.equal(result.written, 0, 'no file was stale, so none is written');
+  assert.equal(result.gates, 1, 'the module is still registered');
+  assert.match(registry, /demo-new/, 'the new gate reaches the registry');
+  assert.match(registry, /rungs:begin demo@1\.1\.0/, 'and the block carries the new version');
+
+  rmSync(root, { recursive: true, force: true });
 });
 
 /**

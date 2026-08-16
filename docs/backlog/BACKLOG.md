@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-054 -->
+<!-- NEXT-ID: WI-055 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -165,9 +165,15 @@ says *"23 gates register, plus 1 hook"* rather than merging them. And the run re
 generated too: left typed as the plan allowed, it read `23 gates register` beside `22 pass` on the
 same page within minutes. The new gate caught **its own registration** as drift on its first run.
 
-[F-016](FINDINGS.md) opened, high/now: `rungs upgrade --apply` does not rewrite `.ai/gates.toml`, so
-a module version that adds a gate upgrades its files, leaves the registry on the old version, and
-reports success. This gate cannot reach any existing install by upgrading.
+[WI-054](items/WI-054-upgrade-registers-gates.md), 2026-08-16 — promoted from
+[F-016](FINDINGS.md) and fixed the same day, because WI-050's new gate could not reach a single
+existing install: `upgrade --apply` rewrote a module's files and never its gates. Reproduced end to
+end on a scratch consumer first, which found a **second** defect the finding had not — the apply step
+was guarded by `if (apply && stale)`, and a version that only adds a gate has no stale file, so
+nothing ran at all. Registry 20 → 21 and `rungs check` 19 → 20 on that consumer. Removal was tested
+rather than assumed. The record half — `.ai/rungs.toml` still names the old version — is
+[F-017](FINDINGS.md), left open deliberately: the obvious fix rewrites the whole record and would
+stamp our hash onto a user-diverged file, ending its protection silently.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo

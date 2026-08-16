@@ -617,9 +617,14 @@ function cmdUpgrade(root: string, apply: boolean) {
     }
   }
 
-  if (apply && stale) {
-    const written = applyUpgrade(root, mods, record, plan);
-    console.log(c.green(`\n  updated ${written} file(s)`));
+  // Not `apply && stale`. A module version that only adds a gate has no stale
+  // file, so the whole apply step was skipped and the registry silently kept the
+  // old block — F-016, measured on a scratch consumer where `session` 1.1.0 →
+  // 1.2.0 added a gate and `rungs check` went on running the previous twenty.
+  if (apply) {
+    const { written, gates } = applyUpgrade(root, mods, record, plan);
+    const parts = [written ? `${written} file(s)` : '', gates ? `${gates} gate registration(s)` : ''].filter(Boolean);
+    console.log(c.green(`\n  updated ${parts.length ? parts.join(' · ') : 'nothing'}`));
   }
   console.log(
     `\n  ${stale} to update · ${diverged} diverged\n` +
