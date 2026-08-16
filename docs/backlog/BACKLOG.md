@@ -30,7 +30,6 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore |
 | [WI-038](items/WI-038-doctor-explain-detectors.md) | Make `doctor` report a repo's own defects, not only which modules it resembles | feature |
 | [WI-039](items/WI-039-external-tracker-paradigm.md) | Detect an external issue tracker as a different paradigm, not as an absent backlog | feature |
-| [WI-040](items/WI-040-public-surface-first-command.md) | Make every public surface agree on the first command, and name the vocabulary once | docs |
 
 ## Accepted
 
@@ -59,6 +58,14 @@ the first assessment of this project by someone who did not build it, recorded a
 claims were checked against the working tree; four became work. Its own first requirement is that
 **it adds no module and no pattern** — every child makes an existing capability reachable,
 reconciles a surface that contradicts another surface, or puts a decision in front of a person.
+
+**Done under WI-037:** [WI-040](items/WI-040-public-surface-first-command.md), 2026-08-16 — the
+first command now agrees across the landing page, the README and getting-started, and both surfaces
+show what `doctor` returns before what `rungs` installs. It found more than it was opened for: two
+of the three landing-page consoles showed **fabricated output**, labelled `REAL OUTPUT` by the
+component that rendered them. The external reviewer had read one of those blocks as shipped
+capability, which is where the review's best claim came from. Three findings opened
+([F-011](FINDINGS.md), F-012, F-013), none folded in.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
