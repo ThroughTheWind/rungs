@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
 import { blockedByParadigm } from '../src/add.ts';
-import { selfDeclaredClosure } from '../src/engines2.ts';
+import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
 import { linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
@@ -137,6 +137,75 @@ test('explain collapses two gate ids reporting the identical finding set into on
 
   assert.equal(reported.length, 2, 'F-007: one check behind two ids is one finding, reported once');
   assert.equal(reported[0].gate, 'gates-links-resolve + gates-paths-exist', 'both ids stay visible');
+});
+
+/**
+ * F-007. `backticked_paths` sat in the table's `check` list, implemented
+ * nowhere, so `gates-paths-exist` ran the markdown-link scan instead and
+ * reported every link finding a second time. The shape below is not a guess:
+ * the first working version produced ten findings on this repo and all ten were
+ * wrong, and each exclusion here is one of them.
+ */
+test('backticked-path checking catches a stale repo path and ignores everything that is not one', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-f007-'));
+  mkdirSync(join(root, 'docs'), { recursive: true });
+  writeFileSync(join(root, 'docs', 'real.md'), 'here\n');
+  writeFileSync(
+    join(root, 'AGENTS.md'),
+    [
+      'Read `docs/real.md` before starting.', //          exists
+      'Then run `/work-item` on `feature/WI-###-slug`.', // slash command, placeholder
+      'Rules render into `.cursor/rules/`.', //           a directory
+      'The `Result<T>` type wraps it.', //                not a path
+      'See `docs/gone.md` for the rest.', //              THE finding
+    ].join('\n\n'),
+  );
+
+  const table = { check: ['backticked_paths'], scan: ['AGENTS.md'], path_hint: ['/', '.md'] };
+  const { findings } = linkIntegrity(table, root, ['AGENTS.md']);
+
+  assert.equal(findings.length, 1, 'exactly one of the five spans is a stale repo path');
+  assert.match(findings[0].message, /docs\/gone\.md/);
+
+  rmSync(root, { recursive: true, force: true });
+});
+
+/**
+ * F-001. `git branch --merged` is true of a branch cut and never committed to,
+ * so the gate fired on every item between `git switch -c` and the first commit
+ * — four times in two days. The obvious fix ("has commits ahead of base") is
+ * wrong and this test is why: after any merge the branch is zero ahead, so that
+ * version would never fire again, silently deleting the check.
+ */
+test('merged-status ignores a branch that landed nothing, and still catches one that landed work', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-f001-'));
+  const git = (cmd) => execSync(`git ${cmd}`, { cwd: root, stdio: 'pipe' }).toString().trim();
+  const item = 'docs/backlog/items/WI-001-x.md';
+  const write = (branch, status) =>
+    writeFileSync(join(root, item), `---\nid: WI-001\nbranch: ${branch}\nstatus: ${status}\n---\n\nbody\n`);
+
+  git('init -q -b main .');
+  git('config user.email t@t.t');
+  git('config user.name t');
+  mkdirSync(join(root, 'docs', 'backlog', 'items'), { recursive: true });
+  write('', 'planned');
+  git('add -A');
+  git('commit -qm base');
+
+  const table = { integration_branch: 'main', pre_review_statuses: ['planned', 'in_progress'] };
+  const fired = () => gitStatusReconcile(table, root, [item]).findings.length;
+
+  git('switch -q -c feature/WI-001-x main');
+  write('feature/WI-001-x', 'in_progress');
+  assert.equal(fired(), 0, 'a branch cut and not yet committed to has not landed anything');
+
+  git('add -A');
+  git('commit -qm work');
+  git('switch -q main');
+  git('merge --no-ff -q feature/WI-001-x -m merge');
+  assert.equal(fired(), 1, 'a branch that landed work and left the status behind is still caught');
+
+  rmSync(root, { recursive: true, force: true });
 });
 
 /**

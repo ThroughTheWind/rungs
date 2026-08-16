@@ -297,6 +297,48 @@ export const crossReference: Engine = (t, root, files) => {
 };
 
 /** A merged branch cannot still sit at a pre-review status. One-directional. */
+/**
+ * Did this branch actually land work, or is it a label pointing at a commit the
+ * base already had?
+ *
+ * `git branch --merged` answers "is the tip an ancestor", which is true of a
+ * branch cut five seconds ago and never committed to. F-001: reproduced
+ * 2026-08-15 on WI-001 and hit three more times on 2026-08-16 — every item
+ * worked through `/work-item` trips it in the window between `git switch -c`
+ * and the first commit. A gate that cries wolf on the happy path is one people
+ * learn to ignore, which is the failure it exists to prevent.
+ *
+ * The obvious fix — "has commits ahead of base" — is wrong, and measuring it
+ * proved so: **after any merge the branch is zero commits ahead**, so the gate
+ * would never fire again. That silently deletes the check while looking like a
+ * fix, which is worse than the false positive.
+ *
+ * What actually distinguishes them is the merge commit. This repo merges
+ * `--no-ff` (backlog README §4), so a branch that landed work leaves a commit in
+ * the base whose *second* parent is that branch's tip. A branch that landed
+ * nothing never appears as anyone's second parent.
+ *
+ * **Known gap, stated rather than hidden:** a fast-forward merge that keeps the
+ * branch produces no merge commit and no second parent, so this reads it as
+ * having landed nothing and stays quiet. That is a false negative on a workflow
+ * this repo does not use — it deletes branches on merge — and it is the
+ * direction to be wrong in, because the alternative is the daily false positive.
+ */
+function landedWork(root: string, branch: string, base: string): boolean {
+  const git = (cmd: string) => execSync(`git ${cmd}`, { cwd: root, stdio: 'pipe' }).toString().trim();
+  try {
+    const tip = git(`rev-parse ${branch}`);
+    if (tip === git(`rev-parse ${base}`)) return false;
+    return git(`log ${base} --merges --format=%P`)
+      .split('\n')
+      .some((line) => line.trim().split(/\s+/).slice(1).includes(tip));
+  } catch {
+    // Unreadable is not provably empty. Report, which fails loudly rather than
+    // silently — the same rule the runner applies to a missing engine.
+    return true;
+  }
+}
+
 export const gitStatusReconcile: Engine = (t, root, files) => {
   const findings: Finding[] = [];
   let merged: Set<string>;
@@ -323,7 +365,11 @@ export const gitStatusReconcile: Engine = (t, root, files) => {
     const status = text.match(new RegExp(`^${t.status_field ?? 'status'}:\\s*(\\S+)`, 'm'))?.[1];
     if (!branch || !status) continue;
     examined++;
-    if (merged.has(branch) && (t.pre_review_statuses ?? []).includes(status)) {
+    if (
+      merged.has(branch) &&
+      (t.pre_review_statuses ?? []).includes(status) &&
+      landedWork(root, branch, t.integration_branch ?? 'main')
+    ) {
       findings.push({ file: rel, message: `branch ${branch} is merged but status is '${status}'` });
     }
   }

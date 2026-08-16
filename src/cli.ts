@@ -154,6 +154,8 @@ function cmdDoctor(target: string, doExplain = false) {
   console.log(c.dim('  system is good, complete, or working — only that files are where a'));
   console.log(c.dim("  module's files would be. Signatures under-detect on purpose.\n"));
 
+  reportLedger(root);
+
   if (doExplain) reportExplain(mods, results, root, files);
 
   // `doctor` is the command the README makes the entry point, and it used to stop on the sentence
@@ -465,25 +467,36 @@ function cmdCheck(root: string, tier: string | undefined, stamp: string) {
     );
   }
 
-  const { gates } = loadRegistry(root);
-  const q = ledgerQuestions(root, gates);
-  if (q.neverFired.length || q.alwaysFires.length) {
-    console.log(c.bold(`\n  Ledger questions ${c.dim(`(${q.runs} recorded runs)`)}`));
-    for (const g of q.neverFired.slice(0, 3)) {
-      console.log(`    ${c.cyan(g.id)} has never fired. ${c.dim(firstSentence(g.why ?? ''))}`);
-      console.log(c.dim('      Is that still a risk here, or is the gate scoped too narrowly?'));
-    }
-    for (const g of q.alwaysFires.slice(0, 3)) {
-      console.log(`    ${c.cyan(g.id)} fails ${g.rate}. ${c.dim('Red by default is a gate people learn to bypass.')}`);
-    }
-    console.log(
-      c.dim('\n    These are questions, not verdicts. The ledger records whether a gate ran'),
-    );
-    console.log(c.dim('    and whether it fired — never whether it is valuable. Gates invoked'));
-    console.log(c.dim('    directly, and CI runs, are not counted.'));
-  }
   console.log();
   return n('fail') + n('unimplemented') + n('error') > 0 ? 1 : 0;
+}
+
+/**
+ * ADR-0005 tier B: the two questions the ledger can ask without judgement.
+ *
+ * This printed from `check` and belonged in `doctor`, which is what both the
+ * ADR and the README say (F-012). The ADR does not merely name the command, it
+ * gives the reason: *"They must be pull (`doctor`), never push; no output
+ * during normal runs."* `check` is the normal run — it is what CI and every
+ * pre-merge habit invoke — so printing there was the push the tier was written
+ * to forbid, arriving inside the feature that forbade it.
+ */
+function reportLedger(root: string) {
+  const { gates } = loadRegistry(root);
+  const q = ledgerQuestions(root, gates);
+  if (!q.neverFired.length && !q.alwaysFires.length) return;
+
+  console.log(c.bold(`  Ledger questions ${c.dim(`(${q.runs} recorded runs)`)}`));
+  for (const g of q.neverFired.slice(0, 3)) {
+    console.log(`    ${c.cyan(g.id)} has never fired. ${c.dim(firstSentence(g.why ?? ''))}`);
+    console.log(c.dim('      Is that still a risk here, or is the gate scoped too narrowly?'));
+  }
+  for (const g of q.alwaysFires.slice(0, 3)) {
+    console.log(`    ${c.cyan(g.id)} fails ${g.rate}. ${c.dim('Red by default is a gate people learn to bypass.')}`);
+  }
+  console.log(c.dim('\n    These are questions, not verdicts. The ledger records whether a gate ran'));
+  console.log(c.dim('    and whether it fired — never whether it is valuable. Gates invoked'));
+  console.log(c.dim('    directly, and CI runs, are not counted.\n'));
 }
 
 function cmdInit(root: string, profile: string, dryRun: boolean, harnesses: Harness[], stamp: string) {

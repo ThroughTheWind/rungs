@@ -276,3 +276,17 @@ why    = """Past about a dozen skills with overlapping vocabulary the failure st
 becomes "a plausible-but-wrong skill fires and runs to completion". Every skill naming its
 neighbours makes each one a correction surface."""
 # rungs:end skills
+
+# Repo-owned, outside every managed block on purpose: `upgrade` rewrites only what sits between
+# `rungs:begin`/`rungs:end` markers, so an entry here survives. The design system is this repo's
+# and no module could know about it.
+[[gates]]
+id      = "site-vendored-unedited"
+kind    = "command"
+module  = "adopted"
+tier    = "fast"
+command = "node site/scripts/check-vendored.mjs"
+why     = """F-003. `site/src/design-system/VENDORED.md` records a sha per vendored file and nothing re-read one,
+so a directory that says "do not edit any file here" could be edited and its own provenance line
+would not say so. Measured 2026-08-15: a file was listed at the sha of text that was not on disk,
+and the record that disproved it sat in the same commit, unread."""

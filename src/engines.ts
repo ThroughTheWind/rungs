@@ -174,7 +174,50 @@ function resolvesHere(root: string, rel: string, href: string): boolean {
   return stripped !== decoded && existsSync(resolve(root, from, stripped));
 }
 
+/**
+ * A backticked path in an instruction file — `docs/backlog/BACKLOG.md` — that no
+ * longer exists. F-007: `backticked_paths` was named in the table's `check` list
+ * and implemented nowhere, so `gates-paths-exist` silently ran the markdown-link
+ * scan instead and reported every finding a second time.
+ *
+ * Resolved from the **repo root**, because that is what an instruction file's
+ * reader does with a path it is told to go and read. Skipped when the span is a
+ * glob, a template token, a URL, or has no path shape at all: prose is full of
+ * `identifiers`, and a gate that refuses every code span is one people delete.
+ */
+function backtickedPaths(rel: string, text: string, root: string, hints: string[]): Finding[] {
+  const out: Finding[] = [];
+  const seen = new Set<string>();
+  for (const m of text.matchAll(/`([^`\n]+)`/g)) {
+    const raw = m[1].trim();
+    if (seen.has(raw) || !hints.some((h) => raw.includes(h))) continue;
+    seen.add(raw);
+
+    // Every exclusion below is a measured false positive from the first run of
+    // this check against this repo, 2026-08-16 — which produced ten findings,
+    // all ten wrong. The table's own instruction is that under-detection is the
+    // correct bias, so the shape is narrowed to the incident it was written for:
+    // hexguard's instruction files naming a **repo-relative file** that moved.
+    if (raw.startsWith('/')) continue; //            `/work-item` — a skill invocation
+    if (/[*?{}#\s]|^\w+:/.test(raw)) continue; //    globs, `WI-###` placeholders, prose, URLs
+    if (!raw.includes('/')) continue; //             `work-items.md` — a bare name, anchor unknown
+    if (!/\.[a-z0-9]{1,5}$/i.test(raw)) continue; // `.cursor/rules/` — a directory, often illustrative
+
+    // Two anchors, because instruction files use both: repo-root paths for "go
+    // read this", and `../` paths relative to the file itself.
+    const bare = raw.replace(/^\.\//, '');
+    if (!existsSync(join(root, bare)) && !existsSync(resolve(root, dirname(rel), bare))) {
+      out.push({ message: `stale path in a code span → ${raw}` });
+    }
+  }
+  return out;
+}
+
 export const linkIntegrity: Engine = (t, root, files) => {
+  // The table is now one entry per gate (F-007). The runner hands an array
+  // through when it selects by id; take the single entry it selected.
+  if (Array.isArray(t)) t = t[0] ?? {};
+  const checks: string[] = t.check ?? ['relative_markdown_links'];
   const scan = expand(files, t.scan, ['**/*.md']);  // link checks DO cover generated files
   const excluded = new Set(expand(files, t.exclude, []));
   const findings: Finding[] = [];
@@ -184,6 +227,10 @@ export const linkIntegrity: Engine = (t, root, files) => {
     const text = read(root, rel);
     examined++;
     if (/path-ok:\s*\S/.test(text)) continue;
+    if (checks.includes('backticked_paths')) {
+      findings.push(...backtickedPaths(rel, text, root, t.path_hint ?? ['/']).map((f) => ({ ...f, file: rel })));
+    }
+    if (!checks.includes('relative_markdown_links')) continue;
     // A link written inside a code span is prose *quoting* a link — most often a document
     // explaining that some link is wrong. Blanked rather than removed, so every offset after it
     // is unchanged and the reported text still matches what the author sees.

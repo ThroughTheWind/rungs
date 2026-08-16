@@ -9,6 +9,7 @@
   },
   "scripts": {
     "vendor": "node scripts/vendor-design-system.mjs",
+    "check:vendored": "node scripts/check-vendored.mjs",
     "dev": "astro dev",
     "build": "astro build && node scripts/precompress.mjs",
     "preview": "astro preview",
