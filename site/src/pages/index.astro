@@ -44,7 +44,7 @@ const g = SITE.gates;
 
 <Base
   title="rungs — reinforce the repo you already have"
-  description="rungs installs and maintains a repository's agentic development system — backlog, findings, gates, skills — as 15 composable modules extracted from four repos that already paid for the lessons. Retrofit first: npx @rungs/cli add <module>."
+  description="rungs CLI — repository infrastructure for coding agents. It reports what your repo's agentic development system already has, then installs only what is missing, as 15 composable modules extracted from four repos that already paid for the lessons. Start with npx @rungs/cli doctor."
 >
   <section class="hero">
     <div>
@@ -54,7 +54,7 @@ const g = SITE.gates;
         gates, skills — composed from modules extracted from four repos that already paid for the
         lessons.
       </p>
-      <p class="sub">Retrofit first: <code>npx @rungs/cli add &lt;module&gt;</code>, then <code>rungs doctor</code>.</p>
+      <p class="sub">Start read-only: <code>npx @rungs/cli doctor</code>. It writes nothing.</p>
       <div class="cta">
         <Button href="#modules">Browse the 15 modules</Button>
         <Button variant="ghost" href="#extracted">How the content was extracted</Button>
@@ -62,16 +62,18 @@ const g = SITE.gates;
     </div>
     <div>
       <Console
-        date={SITE.asOf}
-        source="npx @rungs/cli add"
+        date="2026-08-16"
+        source="npx @rungs/cli doctor, on a repo that has never installed anything"
         lines={[
-          { type: "cmd", text: "npx @rungs/cli add concurrency" },
-          { type: "out", text: "  concurrency is rung 5 (~5+ concurrent sessions)." },
-          { type: "warn", text: "  This repo shows 1 active session." },
-          { type: "dim", text: "  Install anyway? [y/N]" },
+          { type: "cmd", text: "npx @rungs/cli doctor" },
+          { type: "out", text: "  ci             theirs" },
+          { type: "dim", text: "      1× .github/workflows/*.yml  e.g. .github/workflows/ci.yml" },
+          { type: "dim", text: "  1 present · 0 different paradigm · 14 absent" },
+          { type: "out", text: "  Next" },
+          { type: "out", text: "  rungs add ci  — adopt what you already built, in place" },
         ]}
       />
-      <p class="cap">The rung check: modules state their threshold before installing above your level.</p>
+      <p class="cap">Detection runs on repos that never installed rungs. It ends by naming one command — never the maximal one.</p>
     </div>
   </section>
 
@@ -144,17 +146,40 @@ const g = SITE.gates;
   </section>
 
   <section class="sec">
-    <span class="lab">doctor · the research, made detectable</span>
+    <span class="lab">The rung check · stated before it installs</span>
     <Console
-      date={SITE.asOf}
-      source="npx @rungs/cli doctor"
+      date="2026-08-16"
+      source="npx @rungs/cli add concurrency, on a rung-1 repo"
       lines={[
-        { type: "cmd", text: "npx @rungs/cli doctor" },
-        { type: "out", text: "  you have an audit skill and no findings register" },
-        { type: "out", text: "  this rule says MANDATORY and has no gate" },
-        { type: "out", text: "  14 near-identical release workflows" },
+        { type: "cmd", text: "npx @rungs/cli add concurrency" },
+        { type: "warn", text: "  concurrency: requires 5+ concurrent sessions on one integration branch." },
+        { type: "dim", text: "  Skipped — pass --confirm-threshold to install it." },
       ]}
     />
+    <p class="body">
+      Selling rung 5 to a rung-1 repo is the most likely way this tool does harm, so the refusal is
+      the default and the override is explicit. Nothing is interactive: rungs runs unattended in the
+      same sessions your agents do.
+    </p>
+  </section>
+
+  <section class="sec">
+    <span class="lab">Bring your own agent</span>
+    <p class="body">
+      rungs is not a methodology and not an orchestrator. It does not decide how your agent plans,
+      specifies, or executes — it checks that the repository underneath stays coherent while it
+      does. Whatever writes your code is welcome to keep writing it.
+    </p>
+    <p class="body">
+      <code>AGENTS.md</code> is embraced rather than competed with. Skills are written to the
+      Agent Skills spec and are portable unchanged; only <em>path-scoped rules</em> are genuinely
+      fragmented across harnesses, so that is the only thing rungs renders per target — and anything
+      a target cannot express is reported in <code>.ai/render-report.md</code>, never silently
+      dropped (<a href="/wiki/decisions/adr-0001-multi-harness-rendering/">ADR-0001</a>).
+    </p>
+    <p class="cap">
+      New here? <a href="/wiki/glossary/">The nine words this page uses</a>, defined once.
+    </p>
   </section>
 </Base>
 
