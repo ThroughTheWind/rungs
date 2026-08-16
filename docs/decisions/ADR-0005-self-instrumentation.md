@@ -170,9 +170,22 @@ Explicitly out of scope, permanently, not "not yet":
 - **Rework rate, session outcomes, instruction attribution.** The first two need judgement about
   what counts; the third is a counterfactual. Shipping a number for any of them would be the
   confidently-wrong probe the corpus warns about.
-- **Any network transmission or cross-repo aggregation.** Including opt-in. It is a different
-  product with a different trust posture, and offering it would make every other guarantee here
-  conditional.
+- **Any network transmission or aggregation of data gathered from users' repositories.** Including
+  opt-in. It is a different product with a different trust posture, and offering it would make every
+  other guarantee here conditional.
+
+  > **Amended 2026-08-16 by [WI-041](../backlog/items/WI-041-decide-cross-repo-evidence.md).** This
+  > bullet said *"cross-repo aggregation"*, which read plainly also forbade counting things across
+  > **public repositories the operator reads** — research this project had already done twice, in
+  > the fourteen pinned framework extractions. One sentence forbade the method and another required
+  > it, which is precisely the decayed-rule failure the whole repo argues against, sitting inside
+  > the ADR that argues it.
+  >
+  > The bullet now refuses what it always meant: **data gathered from users**. Reading public
+  > sources, pinned to a commit, by an operator accountable for the reading, is permitted and always
+  > was. The full argument — including the strongest form of the case *for* collection, and the
+  > three conditions that would reopen it — is
+  > [`cross-repo-evidence-2026-08-16.md`](../design/cross-repo-evidence-2026-08-16.md).
 - **Any composite health score.** A single number over incommensurable signals is the purest form
   of a probe encoding a guess.
 
@@ -244,6 +257,11 @@ same error, and it would be the first thing anyone screenshots.
    gates, the signal is not worth its plumbing and Tier B should be cut while Tier A stays.
 3. **A cross-vendor session-lifecycle standard emerges** that makes rework observable without
    judgement → reopen Tier C's first bullet only.
+4. **Collection from users** (Tier C's second bullet) reopens only on all three of: a repo owner
+   producing and reading the count themselves before anything is published; evidence that the
+   pattern catalogue is wrong in a way only breadth could have caught; and demand from someone other
+   than this project's author. Stated as a test rather than a wall, because the proposal is
+   reasonable and will recur — it has arrived twice already.
 
 ## Admission check
 

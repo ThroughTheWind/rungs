@@ -2,8 +2,8 @@
 id: WI-041
 title: Decide whether cross-repo pattern evidence is ever in scope, and record it
 type: spike
-status: proposed
-branch:
+status: done
+branch: spike/WI-041-decide-cross-repo-evidence
 created: 2026-08-16
 updated: 2026-08-16
 related: [WI-037, ADR-0005]
@@ -46,8 +46,9 @@ that the review did not make and that already has an accepted answer of its own
 
 ## Decision
 
-Undecided — awaiting the decision this item exists to produce. Opened `proposed` deliberately: a
-spike that assumes its own outcome is not a spike.
+`accepted` — 2026-08-16, directed by the user. Opened `proposed` deliberately, because a spike that
+assumes its own outcome is not a spike; the outcome below was not the one expected when it was
+opened.
 
 ## Plan
 
@@ -111,8 +112,59 @@ Timebox it. This is a decision, not a research programme, and it must not block 
 
 ## Execution
 
-Not started.
+Branch `spike/WI-041-decide-cross-repo-evidence`, cut from `main` at `4e2b8f1`. The argument is
+[`docs/design/cross-repo-evidence-2026-08-16.md`](../../design/cross-repo-evidence-2026-08-16.md);
+the outcome is in [ADR-0005](../../decisions/ADR-0005-self-instrumentation.md) itself, which is what
+this item existed to produce.
+
+### The expected outcome was "reaffirm". It was not.
+
+Separating (a), (b) and (c) — the requirement that looked like bookkeeping when this was planned —
+is what produced the result. **Tier C's wording forbade research this repo was already doing.**
+
+The bullet said *"any network transmission or cross-repo aggregation"*. Read plainly, "cross-repo
+aggregation" covers counting things across the **fourteen public frameworks** extracted under
+WI-009 and WI-018 — each pinned to a commit SHA with its licence recorded, precisely so the counts
+are reproducible. One sentence in the ADR forbade the method another part of the repo required.
+
+That is the decayed-rule failure this whole project argues against, sitting inside the ADR that
+argues it, and it had been there since 2026-08-14 with nobody noticing — because nobody had had
+cause to read the bullet against the research until an outside reviewer proposed something it
+appeared to forbid.
 
 ## Review
 
-Not started.
+Verified 2026-08-16.
+
+**1 · ADR-0005 carries a dated outcome with the reasoning.** Tier C's second bullet is amended in
+place, with the old wording and the reason for the change quoted beneath it rather than replaced —
+an amended-away error reads as an error that never happened. **Met.**
+
+**2 · (a), (b) and (c) separately answered; a single verdict would be a failed spike.**
+
+| | Verdict |
+| --- | --- |
+| (a) counts collected from users' repos | **refused, permanently** — an opt-in path makes every other guarantee conditional, and inverts the product's own argument that a repo's claims should be checkable *by its owner* |
+| (b) counts from public repos the operator reads | **permitted, and already in use** — this was never what the bullet meant to forbid |
+| (c) a count that never leaves the machine | **unchanged** — Tier A, the gate ledger |
+
+**Met, and the split is the finding.**
+
+**3 · The argument for is stated at its strongest before it is answered.** The document opens with
+the reviewer's case and their strongest supporting fact — that this repo's own worst weakness is one
+operator agreeing with themselves, so an argument for breadth is not obviously wrong here. **Met.**
+
+**4 · The adjudication links to the outcome.** Both the first review's §4.2 and this item.
+**Met.**
+
+**5 · A future proposer meets the refusal somewhere they will actually read it.** The item worried
+this would be buried in a 250-line ADR. It is now a **revisit trigger** — the section a reader
+checks when they want to reopen something — stated as three conditions rather than a wall, because
+the proposal is reasonable and has already arrived twice. **Met.**
+
+### What this deliberately did not do
+
+No collection, endpoint, opt-in flag or schema was built, including a disabled one — the item's own
+Out of scope. And the census's 0% false-positive result is **not** treated as evidence that breadth
+is unnecessary: it was measured across one operator's repos, which is the limit at issue, and it
+appears in the reopening conditions as the experiment to run properly rather than as an answer.
