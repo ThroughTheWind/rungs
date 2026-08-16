@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-048 -->
+<!-- NEXT-ID: WI-054 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -16,38 +16,30 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
 
 ## Planned
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-031](archive/WI-031-integrate-rift-forge-capabilities.md) | Integrate transferable Rift Forge workflow capabilities into rungs | feature |
-| [WI-032](archive/WI-032-sync-docs-roadmap-frontend.md) | Sync public docs, roadmap, and frontend surfaces with the current product | docs |
-| [WI-033](archive/WI-033-assess-quality-and-adoption-readiness.md) | Assess repo quality, improvements, and external-adoption readiness | spike |
-| [WI-034](archive/WI-034-remediate-readiness-findings.md) | Remediate release-readiness findings | chore |
-| [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore |
+| [WI-049](items/WI-049-doctor-advertises-analysis.md) | Make plain `doctor` say that the analysis exists | feature |
+| [WI-050](items/WI-050-board-reconciled-gate.md) | Refuse a board row whose group disagrees with the item's status | feature |
+| [WI-051](items/WI-051-derive-site-claims.md) | Stop typing the site's gate and status numbers by hand | feature |
+| [WI-052](items/WI-052-detector-applicability.md) | Make detector applicability a declared property rather than two lists | feature |
+| [WI-053](items/WI-053-false-positive-census.md) | Census `--explain` against every repo available | spike |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-037](items/WI-037-act-on-external-review.md) | Act on the 2026-08-16 external review | epic |
+| [WI-048](items/WI-048-act-on-second-external-review.md) | Act on the second external review | epic |
 
 ## Proposed
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-021](archive/WI-021-extract-inspect-ai.md) | Extract Inspect AI — reproducible agent evaluation and sandboxed evidence | docs |
-| [WI-022](archive/WI-022-extract-aider.md) | Extract Aider — git-first coding, repository context, and validation | docs |
-| [WI-023](archive/WI-023-extract-goose.md) | Extract goose — local extensibility, MCP/ACP, and session isolation | docs |
-| [WI-024](archive/WI-024-extract-google-adk.md) | Extract Google ADK — multi-language evolution, task delegation, and evaluation | docs |
-| [WI-025](archive/WI-025-extract-mcp.md) | Extract MCP — the tool and context interoperability boundary | docs |
-| [WI-026](archive/WI-026-extract-a2a.md) | Extract A2A — remote agent discovery, tasks, and artifacts | docs |
-| [WI-027](archive/WI-027-extract-dspy.md) | Extract DSPy — metric-driven agent program optimization | docs |
-| [WI-028](archive/WI-028-follow-on-research-synthesis.md) | Synthesize the follow-on research and reconcile the catalogue | docs |
-| [WI-029](archive/WI-029-apply-framework-patterns-to-modules.md) | Apply framework-derived patterns to shipped modules | docs |
 | [WI-041](items/WI-041-decide-cross-repo-evidence.md) | Decide whether cross-repo pattern evidence is ever in scope, and record it | spike |
 | [WI-045](items/WI-045-run-gate-self-tests.md) | Execute gate self-test fixtures instead of only declaring them | feature |
 | [WI-046](items/WI-046-console-provenance.md) | Make the site's "real output" label provable rather than asserted | feature |
@@ -125,6 +117,23 @@ site's 1,721 links are still 0 broken, which is the whole test. `items/` went fr
 Both of its bugs were caught by trialling on a throwaway clone rather than here: a doubled
 destination path, and a version that wanted to rewrite **334** links across 58 files including
 module templates — a repo-wide link reflow disguised as an archive.
+
+[WI-048](items/WI-048-act-on-second-external-review.md) is the third fixed epic — opened 2026-08-16
+from a **second** review by the same outside reader, after WI-037 shipped. Recorded and adjudicated
+in [`external-review-2026-08-16b.md`](../design/external-review-2026-08-16b.md). Most of it agrees
+with decisions already made, including one the reviewer had argued against first time: they withdrew
+their own recommendation for tracker adapters after reading why it was refused. Agreement produces
+no work; five things did.
+
+**The board was lying when that review arrived, and correcting it is why the epic contains
+[WI-050](items/WI-050-board-reconciled-gate.md).** Fourteen rows named items whose files read
+`status: done` — nine under *Proposed*, five under *Planned* — and nine of them linked into
+`archive/`, so the board filed work as proposed while pointing at the directory for work that can no
+longer change. The reviewer asserted the framework research was done; checking them is what found
+this. They were right and this file would have told them otherwise.
+`backlog-merged-status` reconciles a *branch* against the status field and nothing reconciles the
+*board* — the same failure one layer up, in the file every session opens first. The rows are
+corrected above; the gate is WI-050's.
 
 WI-041 sits under Proposed rather than Planned on purpose: it is the one claim that collides with
 an accepted ADR ([ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses cross-repo
