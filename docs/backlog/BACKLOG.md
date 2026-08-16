@@ -23,7 +23,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
-| [WI-051](items/WI-051-derive-site-claims.md) | Stop typing the site's gate and status numbers by hand | feature |
 | [WI-052](items/WI-052-detector-applicability.md) | Make detector applicability a declared property rather than two lists | feature |
 | [WI-053](items/WI-053-false-positive-census.md) | Census `--explain` against every repo available | spike |
 
@@ -152,6 +151,19 @@ to advertise a flag, because counting means running the detectors. The plan name
 advance, so it reports the number detection already computed and runs no engine. One acceptance
 criterion is recorded **unmet**: a repo where the analysis would find nothing is still told it
 exists, which is incompatible with not paying the 15 seconds.
+
+[WI-051](items/WI-051-derive-site-claims.md), 2026-08-16 — the site's structural counts are derived
+and gated instead of typed. It closes the `generate-derivable` TODO that sat directly beneath a
+comment calling typed numbers *"the thing this repo has the most scar tissue about"*, in the file
+that had gone stale at 20 while the registry reached 22.
+
+Three things measurement changed. Splitting on the bare string `[[gates]]` counted the registry's own
+`# [[gates]]` header examples and produced **24** — a derived number wrong in the same direction as
+the typed one, which would have been worse than doing nothing. Registered and run turned out to be
+different numbers, because a hook fires on a tool call rather than in the runner, so the page now
+says *"23 gates register, plus 1 hook"* rather than merging them. And the run result had to be
+generated too: left typed as the plan allowed, it read `23 gates register` beside `22 pass` on the
+same page within minutes. The new gate caught **its own registration** as drift on its first run.
 
 [F-016](FINDINGS.md) opened, high/now: `rungs upgrade --apply` does not rewrite `.ai/gates.toml`, so
 a module version that adds a gate upgrades its files, leaves the registry on the old version, and

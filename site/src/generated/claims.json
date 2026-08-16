@@ -1,0 +1,230 @@
+{
+  "gateCount": 23,
+  "gateIds": [
+    "adr-index-current",
+    "adr-required-fields",
+    "backlog-board-reconciled",
+    "backlog-ids",
+    "backlog-merged-status",
+    "backlog-stale-blocker",
+    "findings-disposition-has-reason",
+    "findings-ids",
+    "gates-frontmatter-valid",
+    "gates-links-resolve",
+    "gates-paths-exist",
+    "gates-rules-declare-enforcement",
+    "gates-self-tests-both-directions",
+    "instructions-core-size",
+    "instructions-render-current",
+    "instructions-repo-map-current",
+    "session-archive-named",
+    "session-sections-present",
+    "site-claims-current",
+    "site-vendored-unedited",
+    "skills-description-routes",
+    "skills-names-neighbours",
+    "skills-spec-pure"
+  ],
+  "hookCount": 1,
+  "hookIds": [
+    "instructions-shell-backticks"
+  ],
+  "modules": [
+    {
+      "name": "instructions",
+      "rung": 0,
+      "summary": "The agent entry point, the harness bridge, path-scoped rule sources, and the render pipeline. The one module every repo installs.",
+      "requires": []
+    },
+    {
+      "name": "adr",
+      "rung": 1,
+      "summary": "Numbered, immutable decision records, with an admission rule that keeps the directory from becoming a second documentation tree.",
+      "requires": []
+    },
+    {
+      "name": "backlog",
+      "rung": 1,
+      "summary": "Work items with stable ids, an eight-status lifecycle, a board, and the three gates that keep the bookkeeping honest.",
+      "requires": [
+        "instructions"
+      ]
+    },
+    {
+      "name": "ci",
+      "rung": 1,
+      "summary": "One workflow that runs the gate registry, a matrix instead of a file per item, and a check that keeps it that way.",
+      "requires": [
+        "gates"
+      ]
+    },
+    {
+      "name": "findings",
+      "rung": 1,
+      "summary": "A register for what is noticed before it is decided, with a triage path into work items.",
+      "requires": [
+        "backlog"
+      ]
+    },
+    {
+      "name": "gates",
+      "rung": 1,
+      "summary": "The gate runner, the registry every other module registers into, the run ledger, and the generic structural gate set.",
+      "requires": [
+        "instructions"
+      ]
+    },
+    {
+      "name": "session",
+      "rung": 1,
+      "summary": "A handoff document carrying state between sessions: resume point, active constraints, and a dated archive.",
+      "requires": []
+    },
+    {
+      "name": "audit",
+      "rung": 2,
+      "summary": "A repeatable assessment whose output is rows in the findings register, never a document per subject.",
+      "requires": [
+        "findings"
+      ]
+    },
+    {
+      "name": "skills",
+      "rung": 2,
+      "summary": "Skill-authoring discipline and the gates that hold it: spec-pure frontmatter, descriptions that route, neighbours named, and output that lands somewhere.",
+      "requires": [
+        "instructions"
+      ]
+    },
+    {
+      "name": "specs",
+      "rung": 2,
+      "summary": "Behaviour specifications with stable feature and story ids, per-story status, a mandatory scope section, and a gate against overclaiming.",
+      "requires": []
+    },
+    {
+      "name": "workflows",
+      "rung": 2,
+      "summary": "Decision procedures: how to decompose work, whether to reuse or build, and how much planning a piece of work earns.",
+      "requires": [
+        "instructions"
+      ]
+    },
+    {
+      "name": "design-sync",
+      "rung": 3,
+      "summary": "An external design authority pulled into a local mirror, with every delta routed to a work item, a future item, or an upstream change request — never silent divergence.",
+      "requires": [
+        "backlog",
+        "skills"
+      ]
+    },
+    {
+      "name": "release",
+      "rung": 3,
+      "summary": "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file.",
+      "requires": [
+        "backlog",
+        "ci"
+      ]
+    },
+    {
+      "name": "doc-authority",
+      "rung": 4,
+      "summary": "One owner per topic, declared in a registry and checked — plus a propagation gate for rules that live in more surfaces than their authority.",
+      "requires": [
+        "gates"
+      ]
+    },
+    {
+      "name": "concurrency",
+      "rung": 5,
+      "summary": "Many sessions on one integration branch: a verified base to cut from, attributed failures, a land protocol that cannot redden the branch, and merge drivers per conflict class.",
+      "requires": [
+        "backlog",
+        "gates",
+        "ci"
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "name": "minimal",
+      "modules": [
+        "instructions"
+      ]
+    },
+    {
+      "name": "tracked",
+      "modules": [
+        "instructions",
+        "gates",
+        "backlog",
+        "findings",
+        "adr",
+        "session"
+      ]
+    },
+    {
+      "name": "disciplined",
+      "modules": [
+        "instructions",
+        "gates",
+        "backlog",
+        "findings",
+        "adr",
+        "session",
+        "ci",
+        "specs",
+        "workflows",
+        "skills",
+        "audit"
+      ]
+    },
+    {
+      "name": "hardened",
+      "modules": [
+        "instructions",
+        "gates",
+        "backlog",
+        "findings",
+        "adr",
+        "session",
+        "ci",
+        "specs",
+        "workflows",
+        "skills",
+        "audit",
+        "release",
+        "doc-authority"
+      ]
+    },
+    {
+      "name": "fleet",
+      "modules": [
+        "instructions",
+        "gates",
+        "backlog",
+        "findings",
+        "adr",
+        "session",
+        "ci",
+        "specs",
+        "workflows",
+        "skills",
+        "audit",
+        "release",
+        "doc-authority",
+        "concurrency",
+        "design-sync"
+      ]
+    }
+  ],
+  "run": {
+    "pass": 23,
+    "fail": 0,
+    "unimplemented": 0,
+    "error": 0,
+    "at": "2026-08-16"
+  }
+}

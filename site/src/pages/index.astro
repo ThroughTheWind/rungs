@@ -3,34 +3,33 @@ import Base from "../layouts/Base.astro";
 import { SITE } from "../site.config";
 import { Button, Callout, Console, Measurement, ModuleCard } from "../design-system/components/index.js";
 
-// TODO (`generate-derivable`): read these from `modules/*/module.toml` and
-// `docs/design/module-catalog.md` §4 at build time. Hand-listed inventories go stale — that is
-// the whole argument of CLAUDE.md's evidence rule, and this file is currently a counter-example.
-const MODULES = [
-  ["instructions", 0, [], "The entry point, the bridge, path-scoped rules, and the render pipeline"],
-  ["gates", 1, ["instructions"], "The runner, the registry, the ledger, and the structural gate set"],
-  ["backlog", 1, ["instructions"], "Work items with ids, a lifecycle, and a board"],
-  ["findings", 1, ["backlog"], "The register for what is noticed before it is decided, with self-declared closure detection"],
-  ["adr", 1, [], "Decision records, with an admission rule"],
-  ["session", 1, [], "Handoff state across sessions"],
-  ["ci", 1, ["gates"], "Matrix workflows, and a proliferation check"],
-  ["specs", 2, [], "Behaviour specs with story ids and honest status"],
-  ["workflows", 2, ["instructions"], "Decision procedures — reuse, tiering, decomposition"],
-  ["skills", 2, ["instructions"], "Skill-authoring discipline, and the gates that hold it"],
-  ["audit", 2, ["findings"], "An audit procedure whose output is rows, not documents"],
-  ["release", 3, ["backlog", "ci"], "Candidate/release lines, and the release procedure"],
-  ["design-sync", 3, ["backlog", "skills"], "An external design authority, synced two ways"],
-  ["doc-authority", 4, ["gates"], "Topic ownership, and rule propagation across surfaces"],
-  ["concurrency", 5, ["backlog", "gates", "ci"], "Many sessions on one integration branch"],
-] as const;
+// Derived, not typed (WI-051). These were two hand-kept inventories under a `generate-derivable`
+// TODO, in a file arguing that hand-kept inventories go stale. Name, rung, dependencies and summary
+// now come from `modules/*/module.toml` through `generated/claims.json`; `npm run claims` rewrites
+// it and the `site-claims-current` gate refuses a snapshot that has drifted.
+const MODULES = SITE.modules.map((m) => [m.name, m.rung, m.requires, m.summary] as const);
 
-const PROFILES = [
-  ["minimal", 0, "instructions", "any repo with an agent"],
-  ["tracked", 1, "+ gates · backlog · findings · adr · session", "more than one work item in flight"],
-  ["disciplined", 2, "+ ci · specs · workflows · skills · audit", "repeated work of the same shape"],
-  ["hardened", 3, "+ release · doc-authority", "rules broken at least once"],
-  ["fleet", 5, "+ concurrency · design-sync", "5+ concurrent sessions"],
-] as const;
+// The "for what" line stays authored: it is editorial, not a fact about the repo, and there is
+// nowhere in `modules/` it could honestly be read from. The module *set* per profile is derived,
+// so a profile that gains a module cannot silently keep the old list.
+const PROFILE_FOR: Record<string, string> = {
+  minimal: "any repo with an agent",
+  tracked: "more than one work item in flight",
+  disciplined: "repeated work of the same shape",
+  hardened: "rules broken at least once",
+  fleet: "5+ concurrent sessions",
+};
+const RUNG_OF = new Map(SITE.modules.map((m) => [m.name, m.rung]));
+const PROFILES = SITE.profiles.map((p, i) => {
+  const prior = new Set(i ? SITE.profiles[i - 1].modules : []);
+  const added = p.modules.filter((m) => !prior.has(m));
+  return [
+    p.name,
+    Math.max(...p.modules.map((m) => RUNG_OF.get(m) ?? 0)),
+    (i ? "+ " : "") + added.join(" · "),
+    PROFILE_FOR[p.name] ?? "",
+  ] as const;
+});
 
 const REPOS = [
   ["axiom-mesh", "2026-03 → 04", "73 commits · 48+ ADRs", "doc authority + prompt library"],
@@ -39,7 +38,7 @@ const REPOS = [
   ["rift-forge", "2026-07-29 → 08-15", "3,585 commits · 433 branches", "mechanical gates + concurrency"],
 ] as const;
 
-const g = SITE.gates;
+const g = SITE.run;
 ---
 
 <Base
@@ -81,7 +80,7 @@ const g = SITE.gates;
     <span class="lab">Status · stated, not softened</span>
     <div class="status">
       <Measurement
-        value={`${g.registered} gates register, all ${g.withEngines} have engines`}
+        value={`${SITE.registered} gates register, plus ${SITE.hooks} hook that fires on a tool call`}
         date={SITE.asOf}
         command="npx @rungs/cli check"
       />

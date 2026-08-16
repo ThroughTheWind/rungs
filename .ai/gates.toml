@@ -302,3 +302,14 @@ why     = """F-003. `site/src/design-system/VENDORED.md` records a sha per vendo
 so a directory that says "do not edit any file here" could be edited and its own provenance line
 would not say so. Measured 2026-08-15: a file was listed at the sha of text that was not on disk,
 and the record that disproved it sat in the same commit, unread."""
+
+[[gates]]
+id      = "site-claims-current"
+kind    = "command"
+module  = "adopted"
+tier    = "fast"
+command = "node site/scripts/check-claims.mjs"
+why     = """WI-051. The site stated `20 gates register` while the registry held 22, from a typed constant sitting
+beside its own `generate-derivable` TODO and a comment calling typed numbers the thing this repo has
+the most scar tissue about. Structural counts are now generated into `site/src/generated/claims.json`;
+this refuses a snapshot that has drifted from `modules/` or the gate registry."""
