@@ -35,9 +35,15 @@ deliberate question, never as a ritual.
 
 ## A failure is attributed, never just counted
 
-`check` re-runs each failing gate against the merge base in a throwaway worktree and reports it as
-**inherited** (already red before you started — stated, never blocking) or **INTRODUCED** (yours —
-blocks). Anything it cannot attribute also blocks: **we do not land on an unknown.**
+> **Not built yet, and said so here rather than described as if it were.** `land` currently blocks
+> on *any* red gate in the merged tree, which is the safe half of this and the annoying half. The
+> attribution below is the design, not the behaviour — it is tracked, and this paragraph is what
+> the rest of this document did wrong for weeks about four other commands.
+
+The intent: `check` re-runs each failing gate against the merge base in a throwaway worktree and
+reports it as **inherited** (already red before you started — stated, never blocking) or
+**INTRODUCED** (yours — blocks). Anything it cannot attribute also blocks: **we do not land on an
+unknown.**
 
 This is not politeness about blame. *A gate that is red for reasons you did not cause and cannot
 fix is a gate you learn to bypass, and a bypassed gate reports nothing.*
@@ -62,8 +68,8 @@ bug in whatever it is doing.
 
 ## Three things to know when a land refuses
 
-- **Your worktree is left detached.** Your branch and commits are safe; the files in front of you
-  are simply not yours. Switch back and carry on. Do not "restore" anything.
+- **Your worktree is untouched.** `land` does all its work in a throwaway worktree of its own, so
+  whatever you had checked out is still checked out. A refusal costs you nothing to recover from.
 - **Check the exit code of `land` itself.** Piping it through `tail` or `grep` reports *that*
   command's status, so a refused land reads as success.
 - **Reconcile generated artifacts by regenerating, never by merging text.** Take one side, re-run

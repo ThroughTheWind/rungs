@@ -55,6 +55,20 @@ nobody verifies is the one that goes stale."""
 # *which sentence* is the claim — a scan for version-shaped strings would fire on "first published
 # 2026-08-14 at v0.1.0", which is history and correct. A pattern that stops matching fails too:
 # a claim reworded out of existence must not silently become unverified (F-021).
+# Both sides derived — the command list from the `switch (cmd)` in src/cli.ts, the subcommands from
+# the guards inside it — so this gate cannot drift the way the hand-kept list it replaces would.
+[[gates]]
+id      = "module-commands-exist"
+kind    = "command"
+module  = "adopted"
+tier    = "fast"
+command = "node scripts/check-module-commands.mjs"
+why    = """The `concurrency` module told repos to run four commands that did not exist — `session start`,
+`land`, `preflight`, `worktrees` — for weeks, in a table headed "The loop", with no note anywhere
+that they were unimplemented. One of the three files merges into the consumer's *agent* entry
+document, so an agent was instructed to run them and told never to merge by hand (F-026). WI-062
+built the commands; this refuses the next one."""
+
 [[gates]]
 id      = "docs-version-claims"
 kind    = "command"

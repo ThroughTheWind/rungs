@@ -138,6 +138,10 @@ reported as diverged and left alone.
 | `rungs setup git [path]` | Install the merge drivers `.gitattributes` names |
 | `rungs modules` | List the set and audit the manifests |
 | `rungs backlog archive` | Move finished items to `archive/`, repointing every link that cites them |
+| `rungs session start <branch>` | Cut a branch and worktree from the last **verified** merge, not the tip |
+| `rungs preflight [path]` | Did the integration branch change files *you* changed? |
+| `rungs land <branch>` | Merge → verify the merged tree → advance with a compare-and-swap, or refuse and park it |
+| `rungs worktrees [path]` | Which worktrees are merged, prunable, or merged and still dirty |
 
 | Option | Effect |
 | --- | --- |
@@ -168,6 +172,10 @@ you when you are installing above your level.
 | **3** shipping versions, external design | `release` `design-sync` |
 | **4** docs that restate each other | `doc-authority` |
 | **5** 5+ concurrent sessions | `concurrency` |
+
+The last four commands are the `concurrency` loop. They drive git, which nothing else in rungs
+does — [ADR-0009](docs/decisions/ADR-0009-rungs-drives-git.md) sets the rules they obey: verify
+before you advance, never destroy (only refuse), and never hold the integration branch.
 
 `concurrency` refuses to install without `--confirm-threshold`, because below
 five simultaneous sessions every mechanism in it costs more than it returns.
@@ -222,7 +230,7 @@ Whether a release is **pending**, and what npm currently serves, live on
 file and the roadmap both carried their own copy and both said `v0.1.2` for two days after v0.1.3
 went to npm. Cutting the next one follows the [release runbook](docs/design/release-runbook.md).
 
-rungs is installed in its own repo and its 28 gates run on every change — 28 pass,
+rungs is installed in its own repo and its 29 gates run on every change — 29 pass,
 0 fail (`rungs check`, 2026-08-17). A clean consumer has installed from the **public
 registry** and run the binary, and another completed the doctor → init → add → check →
 render → upgrade/eject journey from a packed artifact. Detection is
@@ -249,7 +257,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~4,700 lines (`wc -l src/*.ts`, 2026-08-17; held within 10% by `docs-version-claims`) |
+| [`src/`](src/) | The CLI, ~5,100 lines (`wc -l src/*.ts`, 2026-08-17; held within 10% by `docs-version-claims`) |
 
 ## Licence
 

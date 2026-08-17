@@ -39,9 +39,11 @@ rule    = "all-agree"
 # sitting at its own version beside the CLI (F-023).
 exclude = []
 
-# No `autofix` key. It said `rungs release sync-version`, and that command does not exist and never
+# No `autofix` key. It named a "rungs release sync-version" command that does not exist and never
 # has, so the message told whoever hit this gate to run something that would fail. The engine now
 # names each file beside the version it states, which is what you need to fix it by hand.
+# (Deliberately not in a code span: `module-commands-exist` reads those as command claims, and it
+# is right to — a phantom command in backticks is exactly what it exists to refuse.)
 message = """
 Version disagrees across {count} locations: {values}. One of them was bumped and the others were
 not, which is discovered by a user rather than by us.

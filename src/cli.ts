@@ -10,6 +10,7 @@ import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, Un
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive } from './backlog.ts';
+import { land, preflight, sessionStart, worktrees } from './concurrency.ts';
 import { existsSync } from 'node:fs';
 import type { DetectResult, Manifest } from './types.ts';
 
@@ -495,6 +496,52 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
   return 0;
 }
 
+/** The loop commands return lines and a verdict; printing them is the CLI's job. */
+function report(r: { ok: boolean; lines: string[] }): number {
+  console.log();
+  for (const l of r.lines) console.log(`  ${r.ok ? l : c.yellow(l)}`);
+  console.log();
+  return r.ok ? 0 : 1;
+}
+
+/**
+ * `land` verifies the *merged* tree, so it needs the gate runner pointed at a
+ * directory that exists only inside the command. This is the reason the loop is
+ * CLI commands rather than scripts the module writes (ADR-0009).
+ */
+function landRunner(dir: string) {
+  const runs = runGates(dir);
+  const fail = runs.filter((r) => r.status === 'fail' || r.status === 'error');
+  return {
+    pass: runs.filter((r) => r.status === 'pass').length,
+    fail: fail.length,
+    detail: fail.map((r) => `  ${c.red('FAIL')} ${r.id}${r.findings[0] ? c.dim(` — ${r.findings[0].message}`) : ''}`),
+  };
+}
+
+function cmdWorktrees(root: string) {
+  const { rows, integration } = worktrees(root);
+  console.log(c.bold(`\nrungs worktrees — merged into ${integration}?\n`));
+  if (!rows.length) {
+    console.log(c.dim('  no linked worktrees. `rungs session start <branch>` creates one.\n'));
+    return 0;
+  }
+  for (const w of rows) {
+    const state = w.merged && w.dirty ? c.red('merged · DIRTY') : w.merged ? c.green('merged · prunable') : c.dim('in flight');
+    console.log(`  ${state.padEnd(28)} ${w.branch.padEnd(30)} ${c.dim(w.path)}`);
+  }
+  const risky = rows.filter((w) => w.merged && w.dirty);
+  const prunable = rows.filter((w) => w.merged && !w.dirty);
+  console.log();
+  if (risky.length) {
+    console.log(c.red(`  ${risky.length} worktree(s) hold uncommitted work on a branch that already landed.`));
+    console.log(c.dim('  That is where work actually gets lost. Commit it somewhere or decide to drop it.'));
+  }
+  if (prunable.length) console.log(c.dim(`  ${prunable.length} prunable. Removing a worktree is your call, not this command's.`));
+  console.log();
+  return 0;
+}
+
 function cmdCheck(root: string, tier: string | undefined, stamp: string) {
   let runs: GateRun[];
   try {
@@ -746,6 +793,10 @@ const COMMANDS: [usage: string, blurb: string][] = [
   ['setup git [path]', 'install the merge drivers .gitattributes names'],
   ['modules', 'list the module set and audit the manifests'],
   ['backlog archive [path]', 'move finished items to archive/, repointing every link'],
+  ['session start <branch>', 'cut a branch and worktree from the last verified merge'],
+  ['preflight [path]', 'did the integration branch change files you changed?'],
+  ['land <branch>', 'merge → verify the merged tree → advance, or refuse and park it'],
+  ['worktrees [path]', 'which worktrees are merged, prunable, or merged and still dirty'],
 ];
 
 /** Every flag the parser honours. A flag absent here is a flag nobody can find. */
@@ -884,6 +935,19 @@ switch (cmd) {
   }
   case 'render':
     process.exit(cmdRender(resolve(args[0] ?? process.cwd()), HARNESSES, STAMP));
+  case 'session': {
+    if (args[0] !== 'start') {
+      console.log(c.red(`\n  unknown: rungs session ${args[0] ?? ''}`.trimEnd()) + c.dim('\n  The only subcommand is `start`: `rungs session start <branch> [path]`.\n'));
+      process.exit(1);
+    }
+    process.exit(report(sessionStart(process.cwd(), args[1], args[2], flags.has('--dry-run'))));
+  }
+  case 'preflight':
+    process.exit(report(preflight(resolve(args[0] ?? process.cwd()))));
+  case 'land':
+    process.exit(report(land(process.cwd(), args[0], landRunner, flags.has('--dry-run'))));
+  case 'worktrees':
+    process.exit(cmdWorktrees(resolve(args[0] ?? process.cwd())));
   case 'add': {
     const target = flags.has('--into') ? args[args.length - 1] : process.cwd();
     const names = flags.has('--into') ? args.slice(0, -1) : args;

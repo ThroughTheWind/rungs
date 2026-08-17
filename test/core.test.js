@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execSync, spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { hostname, tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
+import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 
 import { loadAllModules, auditModules } from '../src/manifest.ts';
 import { blockedByParadigm, emittedFiles } from '../src/add.ts';
@@ -603,4 +604,126 @@ test('the shell hook blocks interpreter heredocs and multi-line -e, and nothing 
   assert.equal(verdict("perl -0777 -pe 's/a/b/' docs/x.md"), 'allowed', 'a one-line re-derivation is rule 1 compliant');
   assert.equal(verdict("git commit -F- <<'EOF'\nmsg\nEOF"), 'allowed', 'a heredoc that feeds no interpreter');
   assert.equal(verdict('node src/cli.ts check'), 'allowed');
+});
+
+// WI-062 / F-026. These four commands were documented for weeks without existing, so the tests
+// assert the guarantees ADR-0009 makes rather than that the happy path prints something: verify
+// before you advance, refuse rather than destroy, and never leave the integration branch moved by
+// a merge nobody gated.
+function loopRepo() {
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-loop-'));
+  const g = (...a) => execSync(`git ${a.join(' ')}`, { cwd: dir, stdio: 'pipe' }).toString().trim();
+  g('init', '-q', '-b', 'main', '.');
+  g('config', 'user.email', 't@t');
+  g('config', 'user.name', 't');
+  writeFileSync(join(dir, 'a.txt'), 'base\n');
+  g('add', '-A');
+  g('commit', '-qm', 'init');
+  return { dir, g };
+}
+
+test('session start states a fallback to the tip instead of silently cutting from an unverified merge', () => {
+  const { dir, g } = loopRepo();
+  try {
+    const first = sessionStart(dir, 'feature/one', join(dir, '..', `wt-${basename(dir)}-1`), true);
+    assert.ok(first.ok);
+    assert.match(first.lines.join('\n'), /no green\/main ref yet/, 'the fallback must be stated');
+    assert.match(first.lines.join('\n'), /has not been verified/);
+
+    // With a green ref present it cuts from that, and says which.
+    g('update-ref', 'refs/heads/green/main', 'main');
+    const second = sessionStart(dir, 'feature/two', join(dir, '..', `wt-${basename(dir)}-2`), true);
+    assert.match(second.lines.join('\n'), /base green\/main/);
+    assert.doesNotMatch(second.lines.join('\n'), /has not been verified/);
+
+    // It refuses a branch that exists rather than moving it.
+    g('branch', 'feature/taken');
+    assert.equal(sessionStart(dir, 'feature/taken', join(dir, '..', 'nope'), true).ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses a red merged tree, leaves the integration branch untouched, and parks the merge', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('branch', 'feature/red');
+    execSync('git checkout -q feature/red', { cwd: dir });
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'work');
+    execSync('git checkout -q main', { cwd: dir });
+
+    const before = g('rev-parse', 'main');
+    const red = () => ({ pass: 3, fail: 1, detail: ['  FAIL a-gate'] });
+    const r = land(dir, 'feature/red', red);
+
+    assert.equal(r.ok, false, 'a red merged tree must not land');
+    assert.equal(g('rev-parse', 'main'), before, 'the integration branch must be bit-for-bit unchanged');
+    assert.match(r.lines.join('\n'), /parked on 'integ\/feature\/red'/);
+    assert.ok(g('rev-parse', '--verify', 'refs/heads/integ/feature/red'), 'the merge is kept, not discarded');
+    assert.equal(existsSync(join(dir, '.git', 'rungs-land.lock')), false, 'the lock is released');
+
+    // Green now advances it, and marks the result verified.
+    const green = () => ({ pass: 4, fail: 0, detail: [] });
+    const ok = land(dir, 'feature/red', green);
+    assert.equal(ok.ok, true, ok.lines.join('\n'));
+    assert.notEqual(g('rev-parse', 'main'), before);
+    assert.equal(g('rev-parse', 'green/main'), g('rev-parse', 'main'), 'green marks the verified tip');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses a conflict, and refuses to run while another land holds the lock', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('branch', 'feature/conflict');
+    execSync('git checkout -q feature/conflict', { cwd: dir });
+    writeFileSync(join(dir, 'a.txt'), 'theirs\n');
+    g('add', '-A');
+    g('commit', '-qm', 'theirs');
+    execSync('git checkout -q main', { cwd: dir });
+    writeFileSync(join(dir, 'a.txt'), 'ours\n');
+    g('add', '-A');
+    g('commit', '-qm', 'ours');
+
+    const before = g('rev-parse', 'main');
+    const conflict = land(dir, 'feature/conflict', () => ({ pass: 1, fail: 0, detail: [] }));
+    assert.equal(conflict.ok, false);
+    assert.match(conflict.lines.join('\n'), /merge conflict/);
+    assert.equal(g('rev-parse', 'main'), before);
+
+    // A live holder is refused by name, not silently merged alongside.
+    writeFileSync(
+      join(dir, '.git', 'rungs-land.lock'),
+      JSON.stringify({ pid: process.pid, host: hostname(), started: '2026-08-17T02:00:00Z', branch: 'feature/other' }),
+    );
+    const busy = land(dir, 'feature/conflict', () => ({ pass: 1, fail: 0, detail: [] }));
+    assert.equal(busy.ok, false);
+    assert.match(busy.lines.join('\n'), /another land is in progress/);
+    assert.match(busy.lines.join('\n'), /feature\/other/, 'it names the holder');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('worktrees reports merged-and-dirty, and never removes anything', () => {
+  const { dir, g } = loopRepo();
+  const wt = join(dir, '..', `wt-${basename(dir)}`);
+  try {
+    g('worktree', 'add', '-q', '-b', 'feature/landed', wt, 'main');
+    const before = worktrees(dir).rows;
+    assert.equal(before.length, 1);
+    assert.equal(before[0].merged, true, 'a branch at the tip is merged');
+    assert.equal(before[0].dirty, false);
+
+    writeFileSync(join(wt, 'a.txt'), 'uncommitted\n');
+    const after = worktrees(dir).rows;
+    assert.equal(after[0].dirty, true, 'uncommitted work on a landed branch is the dangerous row');
+    assert.ok(existsSync(wt), 'reporting must never remove the worktree');
+  } finally {
+    rmSync(wt, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

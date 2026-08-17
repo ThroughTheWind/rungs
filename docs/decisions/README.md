@@ -18,6 +18,7 @@ Architecture decision records for rungs itself.
 | [0006](ADR-0006-the-name.md) | The name: `rungs`, and why a name here is an identifier rather than a brand | accepted | 2026-08-14 |
 | [0007](ADR-0007-detector-applicability.md) | Detector applicability is declared per gate, and has no default | accepted | 2026-08-16 |
 | [0008](ADR-0008-gate-tiers-are-levels.md) | A gate tier is an ordered level, and an unknown tier is refused | accepted | 2026-08-17 |
+| [0009](ADR-0009-rungs-drives-git.md) | rungs drives git for the concurrency loop, and only where the loop is the product | accepted | 2026-08-17 |
 
 > 0001–0005 were decided out of numeric order, each because it blocked the next: 0005 set the
 > gate-shipping contract, 0002 set what a scaffolded repo may depend on, 0003 is largely 0002's

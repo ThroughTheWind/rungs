@@ -1,0 +1,344 @@
+/**
+ * The concurrency loop: `session start`, `preflight`, `land`, `worktrees`.
+ *
+ * These are the four commands the `concurrency` module documented for weeks
+ * without any of them existing (F-026). The module is the specification —
+ * `modules/concurrency/files/docs/concurrent-sessions.md` — and the rules they
+ * obey are [ADR-0009](../docs/decisions/ADR-0009-rungs-drives-git.md):
+ *
+ *   1. Verify before you advance. `land` merges onto a scratch ref, gates *that*
+ *      tree, and only then moves the branch, with a compare-and-swap.
+ *   2. Never destroy, only refuse. Nothing here deletes a branch, a worktree or
+ *      a commit; a refusal parks its work rather than discarding it.
+ *   3. Never hold the integration branch. Everything runs from a throwaway
+ *      worktree, which the module already gates for.
+ */
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { hostname } from 'node:os';
+import { join, resolve, dirname, basename } from 'node:path';
+import { tmpdir } from 'node:os';
+import { installedParams } from './check.ts';
+
+export interface LoopParams {
+  integration: string;
+  greenRef: string;
+  integPrefix: string;
+}
+
+export function loopParams(root: string): LoopParams {
+  const p = (installedParams(root).concurrency ?? {}) as Record<string, unknown>;
+  const integration = String(p.integration_branch ?? 'main');
+  const greenPrefix = String(p.green_prefix ?? 'green/');
+  return {
+    integration,
+    // The green ref marks the last *verified* merge of the integration branch,
+    // so it is prefix + that branch — not prefix + whatever you are cutting.
+    greenRef: `${greenPrefix}${integration}`,
+    integPrefix: String(p.integ_prefix ?? 'integ/'),
+  };
+}
+
+/** `git`, never through a shell: branch names are user input and contain slashes. */
+export function git(root: string, args: string[]): string {
+  return execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' }).trim();
+}
+
+function gitOk(root: string, args: string[]): boolean {
+  try {
+    git(root, args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function revParse(root: string, ref: string): string | null {
+  try {
+    return git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+  } catch {
+    return null;
+  }
+}
+
+export interface Result {
+  ok: boolean;
+  lines: string[];
+}
+
+// ── session start ─────────────────────────────────────────────────────────────
+
+/**
+ * Cut a branch and a worktree from the last **verified** merge.
+ *
+ * Falling back to the tip is allowed and is always **stated**. A silent fallback
+ * would put the session on top of an unverified merge, which is the one thing
+ * the green ref exists to prevent — and the operator would never know.
+ */
+export function sessionStart(root: string, branch: string, at?: string, dryRun = false): Result {
+  const { integration, greenRef } = loopParams(root);
+  const lines: string[] = [];
+
+  if (!branch) return { ok: false, lines: ['a branch name is required: `rungs session start <branch> [path]`'] };
+  if (revParse(root, `refs/heads/${branch}`)) {
+    return { ok: false, lines: [`branch '${branch}' already exists — pick another name, or check out the worktree that holds it`] };
+  }
+
+  const green = revParse(root, `refs/heads/${greenRef}`);
+  const base = green ? greenRef : integration;
+  const baseSha = green ?? revParse(root, integration);
+  if (!baseSha) return { ok: false, lines: [`neither '${greenRef}' nor '${integration}' resolves — is this the right repo?`] };
+
+  if (green) {
+    lines.push(`base ${greenRef} (${baseSha.slice(0, 8)}) — the last verified merge`);
+  } else {
+    // Stated, never silent. See the doc comment above.
+    lines.push(`no ${greenRef} ref yet — cutting from the tip of ${integration} (${baseSha.slice(0, 8)}) instead.`);
+    lines.push(`That tip has not been verified by a land. The first successful \`rungs land\` creates ${greenRef}.`);
+  }
+
+  const path = resolve(at ?? join(dirname(root), `${basename(root)}-${branch.replace(/[^\w.-]+/g, '-')}`));
+  if (existsSync(path)) return { ok: false, lines: [`${path} already exists — rungs never writes over a directory it did not create`] };
+
+  lines.push(`worktree ${path}`);
+  lines.push(`branch   ${branch}`);
+  if (dryRun) return { ok: true, lines };
+
+  try {
+    git(root, ['worktree', 'add', '-b', branch, path, baseSha]);
+  } catch (e: any) {
+    return { ok: false, lines: [...lines, `git refused: ${String(e.stderr ?? e.message).trim().split('\n').slice(-2).join(' ')}`] };
+  }
+  return { ok: true, lines };
+}
+
+// ── preflight ─────────────────────────────────────────────────────────────────
+
+/**
+ * Did the integration branch change files *you* changed?
+ *
+ * The commit count is the number everyone looks at and it predicts nothing: a
+ * hundred commits nowhere near your files are irrelevant, and one commit in the
+ * file you are rewriting is the whole story.
+ */
+export function preflight(root: string): Result {
+  const { integration } = loopParams(root);
+  if (!revParse(root, integration)) return { ok: false, lines: [`'${integration}' does not resolve — is this the right repo?`] };
+
+  let base: string;
+  try {
+    base = git(root, ['merge-base', 'HEAD', integration]);
+  } catch {
+    return { ok: false, lines: [`no merge base between HEAD and ${integration}; nothing to compare`] };
+  }
+
+  const names = (args: string[]) => new Set(git(root, args).split('\n').map((s) => s.trim()).filter(Boolean));
+  const theirs = names(['diff', '--name-only', base, integration]);
+  // Committed *and* uncommitted: work you have not committed still collides.
+  const mine = new Set([
+    ...names(['diff', '--name-only', base, 'HEAD']),
+    ...names(['diff', '--name-only', 'HEAD']),
+    ...names(['diff', '--name-only', '--cached']),
+  ]);
+
+  const ahead = Number(git(root, ['rev-list', '--count', `${base}..${integration}`]));
+  const overlap = [...mine].filter((f) => theirs.has(f)).sort();
+
+  const lines = [
+    `${integration} is ${ahead} commit(s) ahead of your base, touching ${theirs.size} file(s).`,
+    `You have touched ${mine.size} file(s).`,
+  ];
+  if (!overlap.length) {
+    lines.push('No overlap. The commit count is not the signal — these two sets not intersecting is.');
+    return { ok: true, lines };
+  }
+  lines.push(`${overlap.length} file(s) changed on both sides:`);
+  for (const f of overlap.slice(0, 20)) lines.push(`  ${f}`);
+  if (overlap.length > 20) lines.push(`  …and ${overlap.length - 20} more`);
+  lines.push('Merge sooner rather than later. Shared code is a scheduling problem, not a tooling one.');
+  return { ok: true, lines };
+}
+
+// ── land ──────────────────────────────────────────────────────────────────────
+
+interface Lock {
+  pid: number;
+  host: string;
+  started: string;
+  branch: string;
+}
+
+function lockPath(root: string): string {
+  return join(git(root, ['rev-parse', '--git-common-dir']).replace(/^\.git$/, join(root, '.git')), 'rungs-land.lock');
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e: any) {
+    return e?.code === 'EPERM';
+  }
+}
+
+/**
+ * Merge → verify the merged tree → advance with a compare-and-swap.
+ *
+ * The order is the guarantee. Merging into the branch and testing afterwards has
+ * already moved the branch, so a red result is something you now have to undo;
+ * here a refusal leaves the integration branch bit-for-bit unchanged and parks
+ * the merged tree on a scratch ref for you to fix.
+ */
+export function land(
+  root: string,
+  branch: string,
+  runner: (dir: string) => { pass: number; fail: number; detail: string[] },
+  dryRun = false,
+): Result {
+  const { integration, greenRef, integPrefix } = loopParams(root);
+  const lines: string[] = [];
+
+  if (!branch) return { ok: false, lines: ['a branch name is required: `rungs land <branch>`'] };
+  const head = revParse(root, `refs/heads/${branch}`);
+  if (!head) return { ok: false, lines: [`branch '${branch}' does not exist`] };
+  const before = revParse(root, `refs/heads/${integration}`);
+  if (!before) return { ok: false, lines: [`'${integration}' does not resolve`] };
+
+  // A real lock: it names its holder and start time, and is taken over if that
+  // holder is gone. A lock nobody can break is a lock somebody deletes.
+  const lp = lockPath(root);
+  if (existsSync(lp)) {
+    try {
+      const held = JSON.parse(readFileSync(lp, 'utf8')) as Lock;
+      if (held.host === hostname() && alive(held.pid)) {
+        return {
+          ok: false,
+          lines: [`another land is in progress: pid ${held.pid} on ${held.host}, landing '${held.branch}' since ${held.started}.`,
+            'Concurrent landing is refused, not silently merged.'],
+        };
+      }
+      lines.push(`taking over a stale lock from pid ${held.pid} (${held.started}) — that process is gone.`);
+    } catch {
+      lines.push('an unreadable lock file was replaced.');
+    }
+  }
+  if (dryRun) {
+    lines.push(`would merge ${branch} (${head.slice(0, 8)}) onto ${integration} (${before.slice(0, 8)}) via ${integPrefix}${branch}, verify, then advance.`);
+    return { ok: true, lines };
+  }
+
+  const lock: Lock = { pid: process.pid, host: hostname(), started: new Date().toISOString(), branch };
+  writeFileSync(lp, JSON.stringify(lock));
+  const scratch = mkdtempSync(join(tmpdir(), 'rungs-land-'));
+  const parked = `${integPrefix}${branch}`;
+
+  try {
+    // Rule 3: a throwaway worktree, detached. The integration branch is never
+    // checked out — holding it blocks every other session and does not prevent
+    // concurrent landing anyway.
+    git(root, ['worktree', 'add', '--detach', scratch, before]);
+
+    try {
+      git(scratch, ['-c', 'user.email=rungs@localhost', '-c', 'user.name=rungs', 'merge', '--no-ff', '-m', `land ${branch}`, head]);
+    } catch (e: any) {
+      const conflicts = (() => {
+        try {
+          return git(scratch, ['diff', '--name-only', '--diff-filter=U']).split('\n').filter(Boolean);
+        } catch {
+          return [];
+        }
+      })();
+      lines.push(`merge conflict — ${integration} is unchanged.`);
+      for (const f of conflicts.slice(0, 15)) lines.push(`  ${f}`);
+      lines.push('Reconcile generated artifacts by regenerating, never by merging text.');
+      return { ok: false, lines };
+    }
+
+    const merged = git(scratch, ['rev-parse', 'HEAD']);
+    const res = runner(scratch);
+    lines.push(`merged tree ${merged.slice(0, 8)} — ${res.pass} pass · ${res.fail} fail`);
+
+    if (res.fail > 0) {
+      // Rule 2: park it, do not discard it. The merge is the expensive part and
+      // throwing it away means doing it again to see the same failure.
+      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
+      lines.push(...res.detail.slice(0, 6));
+      lines.push(`${integration} is unchanged. The merged tree is parked on '${parked}' — fix it there and land again.`);
+      return { ok: false, lines };
+    }
+
+    // Rule 1: compare-and-swap. If someone else advanced the branch while we
+    // verified, this fails and nothing is lost — their merge is not overwritten.
+    try {
+      git(root, ['update-ref', `refs/heads/${integration}`, merged, before]);
+    } catch {
+      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
+      return {
+        ok: false,
+        lines: [...lines,
+          `${integration} moved while this land was verifying, so the advance was refused rather than overwriting it.`,
+          `Your verified merge is parked on '${parked}'. Re-run \`rungs land ${branch}\` to rebuild it on the new tip.`],
+      };
+    }
+    git(root, ['update-ref', `refs/heads/${greenRef}`, merged]);
+    lines.push(`${integration} → ${merged.slice(0, 8)}, and ${greenRef} now marks it verified.`);
+    if (revParse(root, `refs/heads/${parked}`)) git(root, ['update-ref', '-d', `refs/heads/${parked}`]);
+    return { ok: true, lines };
+  } finally {
+    // The scratch worktree is ours and only ours, so removing it is not rule 2's
+    // "never destroy" — that is about the operator's branches and worktrees.
+    try {
+      git(root, ['worktree', 'remove', '--force', scratch]);
+    } catch {
+      rmSync(scratch, { recursive: true, force: true });
+      try {
+        git(root, ['worktree', 'prune']);
+      } catch {
+        /* leaving a stale worktree record is not worth failing a successful land */
+      }
+    }
+    try {
+      unlinkSync(lp);
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+// ── worktrees ─────────────────────────────────────────────────────────────────
+
+export interface WorktreeRow {
+  path: string;
+  branch: string;
+  merged: boolean;
+  dirty: boolean;
+}
+
+/**
+ * What is finished and prunable — **reports only**.
+ *
+ * Removing someone else's worktree is not a script's call (ADR-0009 rule 2), and
+ * the interesting row is not the clean one. A worktree that is merged *and*
+ * dirty holds uncommitted work in a branch that has already landed, which is the
+ * shape work actually gets lost in.
+ */
+export function worktrees(root: string): { rows: WorktreeRow[]; integration: string } {
+  const { integration } = loopParams(root);
+  const out = git(root, ['worktree', 'list', '--porcelain']);
+  const rows: WorktreeRow[] = [];
+
+  for (const block of out.split('\n\n').filter((b) => b.trim())) {
+    const path = block.match(/^worktree (.+)$/m)?.[1];
+    const branch = block.match(/^branch refs\/heads\/(.+)$/m)?.[1];
+    if (!path || !branch || branch === integration) continue;
+    const merged = gitOk(root, ['merge-base', '--is-ancestor', branch, integration]);
+    let dirty = false;
+    try {
+      dirty = git(path, ['status', '--porcelain']).length > 0;
+    } catch {
+      dirty = false;
+    }
+    rows.push({ path, branch, merged, dirty });
+  }
+  return { rows, integration };
+}

@@ -67,7 +67,10 @@ const CLAIMS = [
   ['README.md', 'current release version', /\*\*Current release: v(\d+\.\d+\.\d+)\*\*/, pkg.version, 'exact'],
   ['docs/roadmap.md', 'released version', /v(\d+\.\d+\.\d+) released from/, pkg.version, 'exact'],
   ['README.md', 'CLI size', /The CLI, ~([\d,]+) lines/, String(srcLines), 'approx'],
-  ['docs/roadmap.md', 'CLI size', /Ten commands, ~([\d,]+) lines/, String(srcLines), 'approx'],
+  // Not `/Ten commands, ~…/`: coupling the size claim to the command *word* made adding a command
+  // break the size check, which is a pattern failing for a reason that has nothing to do with what
+  // it checks. The command count has its own check below.
+  ['docs/roadmap.md', 'CLI size', /\w+ commands, ~([\d,]+) lines/, String(srcLines), 'approx'],
   // Added 2026-08-17. This gate's own header names the gate count as one of the numbers
   // that had drifted — README said 20 against an actual 25 — and then did not check it,
   // so it drifted again to 25-against-27 **inside the release that added the gate**. A
@@ -105,7 +108,7 @@ for (const [file, name, pattern, expected, kind] of CLAIMS) {
 
 // The command count is prose in one place and derivable, so it is checked the same way.
 const roadmapCommands = /\|\s*\*\*5\*\*\s*\|\s*CLI\s*\|\s*✅\s*(\w+) commands/.exec(read('docs/roadmap.md'));
-const WORDS = { Nine: 9, Ten: 10, Eleven: 11, Twelve: 12 };
+const WORDS = { Nine: 9, Ten: 10, Eleven: 11, Twelve: 12, Thirteen: 13, Fourteen: 14, Fifteen: 15 };
 if (!roadmapCommands) {
   problems.push('docs/roadmap.md: the Phase 5 command-count claim no longer matches its pattern');
 } else if (WORDS[roadmapCommands[1]] !== commands) {

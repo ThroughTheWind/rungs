@@ -18,6 +18,7 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- | --- |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
 | [WI-060](items/WI-060-release-0.2.0.md) | Prepare the v0.2.0 release and close the release-integrity findings it surfaced | chore | `feature/WI-060-release-0.2.0` |
+| [WI-062](items/WI-062-concurrency-phantom-commands.md) | Decide what the concurrency module is — four commands, or the manual protocol it actually documents | chore | `feature/WI-062-concurrency-loop` |
 
 ## Planned
 
@@ -35,7 +36,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-062](items/WI-062-concurrency-phantom-commands.md) | Decide what the concurrency module is — four commands, or the manual protocol it actually documents | chore |
 
 [WI-061](items/WI-061-imperative-staleness-detection.md), accepted 2026-08-17 — **the first
 capability here opened because outsiders assumed it already existed.** A third external review, a
