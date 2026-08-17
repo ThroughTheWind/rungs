@@ -50,6 +50,18 @@ const status = (v: string) =>
 
 const releases = [
   {
+    version: "0.3.1",
+    date: "2026-08-17",
+    kind: "patch",
+    entries: [
+      ["fixed", "backlog-merged-status had never worked on Linux or macOS — it passed a git format string through a shell, where the parentheses are a syntax error. It ships in four of five profiles."],
+      ["fixed", "Three more gates read the module set through a path that only resolved on Windows, so a legitimate opt-in read as a non-spec key and gates with fixtures read as having none."],
+      ["fixed", "CRLF checkouts defeated the anchors in emitted module content, so a rule that was present read as missing."],
+      ["changed", "rungs runs its own gates in CI across ubuntu, macos and windows. Its first runs found every fix above in under a minute."],
+      ["changed", "The release runbook now opens its irreversible section by reading the CI run for the commit being tagged. 0.3.0 was published on a red build."],
+    ],
+  },
+  {
     version: "0.3.0",
     date: "2026-08-17",
     kind: "minor",

@@ -220,7 +220,7 @@ Four promises that shape everything else:
 
 ## Status
 
-**Current release: v0.3.0** — that number is checked against [`package.json`](package.json) by the
+**Current release: v0.3.1** — that number is checked against [`package.json`](package.json) by the
 `docs-version-claims` gate, so this sentence cannot drift from what ships — and the gate fails if
 the sentence is reworded out of existence, because a claim nothing checks any more should not look
 the same as a claim that passes.

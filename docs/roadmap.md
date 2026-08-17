@@ -15,8 +15,8 @@ depended on was measured.
 | **3** | Product definition | ✅ [Product brief](design/product-brief.md) + [ADRs 0001–0005](decisions/README.md) |
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
 | **5** | CLI | ✅ Fourteen commands, ~5,100 lines (`wc -l src/*.ts`, 2026-08-17); gate count on [the versions page](https://docs.rungscli.com/versions/), derived rather than typed |
-| **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; WI-034 verified a clean packed-consumer journey; a clean consumer installed from the **public registry** on 2026-08-17; **writing to a repo rungs did not scaffold, and a platform matrix, remain** |
-| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; current published version on [the versions page](https://docs.rungscli.com/versions/); v0.3.0 released from [`package.json`](../package.json); what is tagged and on npm is the versions page's to say, not this row's) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
+| **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; WI-034 verified a clean packed-consumer journey; a clean consumer installed from the **public registry** on 2026-08-17; the **platform matrix now runs on every push** and its first runs found four defects that had never worked off Windows; **writing to a repo rungs did not scaffold remains** |
+| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; current published version on [the versions page](https://docs.rungscli.com/versions/); v0.3.1 released from [`package.json`](../package.json); what is tagged and on npm is the versions page's to say, not this row's) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 
 ## What each phase produced that the next one needed
 
@@ -42,13 +42,15 @@ root `package.json` added). Neither has been written to. WI-031 integrated the
 portable self-declared-finding-closure gate. WI-034 then exercised a clean
 git-backed consumer from a packed artifact, including a safe failure path.
 
-The **public-registry install landed with v0.2.0 on 2026-08-17** — `npm view
-@rungs/cli dist-tags` returns `latest: 0.2.0`, and a clean consumer installed that
-artifact and ran the binary. That command proves the package resolves and executes;
-it says nothing about the two tests still outstanding. **Nothing has been written to
-a repo rungs did not scaffold** — every `add` against a source repo so far has been a
-dry run — and only Windows is verified, so the platform matrix is unmeasured rather
-than passing.
+The **public-registry install landed on 2026-08-17**: a clean consumer installed the
+published artifact and ran the binary. That proves the package resolves and executes;
+it says nothing about the test still outstanding. **Nothing has been written to a repo
+rungs did not scaffold** — every `add` against a source repo so far has been a dry run.
+
+The platform matrix is no longer unmeasured. CI runs `{ubuntu, macos, windows} ×
+node {22.18, 22}` on every push, and its first runs found **four defects that had never
+worked off Windows** — including a gate shipped in four of five profiles. Those are
+fixed; what the matrix has *not* yet done is run against a repo that is not this one.
 
 **Phase 7.** Publishing and the docs site have landed: `@rungs/cli` is on npm
 (v0.1.0 first published 2026-08-14; the current published version is tracked on
