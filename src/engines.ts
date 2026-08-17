@@ -1,9 +1,11 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { matchAny, walk } from './glob.ts';
 import { parse as parseToml } from 'smol-toml';
 import { runSelfTests } from './selftest.ts';
 import { loadAllModules } from './manifest.ts';
+
 import { resolveParams, substitute } from './substitute.ts';
 import {
   computedClaim,
@@ -16,6 +18,23 @@ import {
   selfDeclaredClosure,
 } from './engines2.ts';
 import { boardReconcile, changelogFreshness, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
+
+/**
+ * Where the CLI's own `modules/` lives.
+ *
+ * This was `new URL(import.meta.url).pathname.slice(1)` in three places. The
+ * `.slice(1)` strips a leading `/`, which is right on Windows — `/C:/…` becomes
+ * `C:/…` — and **wrong everywhere else**, where `/home/runner/…` becomes the
+ * relative `home/runner/…`. On Linux and macOS the directory did not resolve,
+ * `loadAllModules` found nothing, and three gates silently lost the data they
+ * read from the module set: `skills-spec-pure` and `skills-description-routes`
+ * reported every opted-in extension as a non-spec key, and
+ * `gates-self-tests-both-directions` reported gates that have fixtures as
+ * having none. All three passed here and failed on the first Linux run (F-036).
+ *
+ * `fileURLToPath` is what the rest of the codebase already used.
+ */
+const CLI_MODULES = join(dirname(fileURLToPath(import.meta.url)), '..', 'modules');
 
 export interface Finding {
   file?: string;
@@ -362,7 +381,7 @@ export const gateMeta: Engine = (_t, root) => {
     if (!id || kind !== 'declared' || !table) continue;
     examined++;
     // Tables live in the CLI, not the repo, so read them from the module set.
-    const tablePath = join(dirname(new URL(import.meta.url).pathname.slice(1)), '..', 'modules', dirname(table), 'gates', table.split('/').pop()!);
+    const tablePath = join(CLI_MODULES, dirname(table), 'gates', table.split('/').pop()!);
     const src = existsSync(tablePath) ? readFileSync(tablePath, 'utf8') : '';
     const forGate = [...src.matchAll(/\[\[self_test\]\][\s\S]*?(?=\n\[\[|\n\[|$)/g)]
       .map((m) => m[0])
@@ -426,7 +445,7 @@ function optedInExtensions(rel: string, spec: any): Set<string> {
   const name = rel.split('/').slice(-2)[0];
   if (!name) return new Set();
   try {
-    const mods = loadAllModules(join(dirname(new URL(import.meta.url).pathname.slice(1)), '..', 'modules'));
+    const mods = loadAllModules(CLI_MODULES);
     const owner = mods.find((m) => m.skills?.[name]?.extensions);
     return new Set(Object.keys(owner?.skills?.[name]?.extensions ?? {}));
   } catch {
@@ -450,7 +469,7 @@ function parseTable(path: string, module: string): any | null {
     // and the runner reported the gate broken — a mismatch entirely of the
     // harness's making. A fixture and the table it tests must resolve against
     // the same parameters or neither means anything.
-    const mods = loadAllModules(join(dirname(new URL(import.meta.url).pathname.slice(1)), '..', 'modules'));
+    const mods = loadAllModules(CLI_MODULES);
     const params = resolveParams(mods, {}, '.');
     return parseToml(substitute(readFileSync(path, 'utf8'), module, params));
   } catch {
