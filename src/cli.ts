@@ -316,6 +316,34 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     }
     (overrides[modName] ??= {})[param] = rhs.join('=');
   }
+
+  // …and an unknown *name* is refused for the same reason a malformed key is.
+  // The comment above says a dropped `--set` "proceeded with the default and
+  // looked successful"; a mistyped module or parameter did exactly that, and the
+  // echo below then printed `set nosuch.param = 1` as though it had applied
+  // (F-028). The whole module set is loaded here, so the names are checkable —
+  // there was never a reason to trust them.
+  for (const [modName, vals] of Object.entries(overrides)) {
+    const mod = mods.find((m) => m.name === modName);
+    if (!mod) {
+      console.log(
+        c.red(`\n  --set names a module that does not exist: ${modName}`) +
+          c.dim(`\n  Known: ${mods.map((m) => m.name).join(', ')}\n`),
+      );
+      return 1;
+    }
+    for (const k of Object.keys(vals)) {
+      if (!(k in mod.params)) {
+        const known = Object.keys(mod.params);
+        console.log(
+          c.red(`\n  --set names a parameter ${modName} does not have: ${k}`) +
+            c.dim(`\n  ${known.length ? `${modName} takes: ${known.join(', ')}` : `${modName} takes no parameters`}`) +
+            c.dim('\n  `rungs modules --params` lists every parameter and its default.\n'),
+        );
+        return 1;
+      }
+    }
+  }
   const params = resolveParams(mods, overrides, root);
   for (const [m, vals] of Object.entries(overrides)) {
     for (const [k, v] of Object.entries(vals)) console.log(c.dim(`  set ${m}.${k} = ${v}`));
@@ -831,6 +859,19 @@ switch (cmd) {
   case 'eject':
     process.exit(cmdEject(resolve(args[0] ?? process.cwd()), flags.has('--dry-run')));
   case 'setup': {
+    // The path is `args[1]`, *after* the subcommand — so an omitted `git` put the
+    // path into the subcommand slot, where it was discarded, and `setup` then
+    // wrote git config into the current directory while reporting success about
+    // the repo you named (F-027). `backlog` had refused an unknown subcommand
+    // since it shipped; this one accepted anything and exited 0. The asymmetry
+    // between the two subcommand-taking commands was the whole bug.
+    if (args[0] !== 'git') {
+      console.log(
+        c.red(`\n  unknown: rungs setup ${args[0] ?? ''}`.trimEnd()) +
+          c.dim('\n  The only subcommand is `git`, and the path comes after it: `rungs setup git [path]`.\n'),
+      );
+      process.exit(1);
+    }
     const r = setupGit(resolve(args[1] ?? process.cwd()), flags.has('--dry-run'));
     console.log(
       r.drivers.length

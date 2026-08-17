@@ -4,13 +4,21 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-026 -->
+<!-- NEXT-ID: F-029 -->
 
 ## Open
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
 | F-025 | low | next | `release-fragment-current` cannot catch the fragment of the release **just published**. It flags a fragment *below* the package version, and immediately after a cut the two are equal — so the one file most likely to be left behind is the one file in the gate's blind spot | Measured on this repo 2026-08-17: `changelog.d/0.2.0.md` was assembled into the versions page, v0.2.0 was tagged and published, and the fragment was still present afterwards with the gate green. Deleted by hand. This is the same miss as [F-022](#) — by the author of the gate written to prevent it, inside the release that shipped it, which is the strongest evidence available that the prose step does not hold | Before the next cut, or if a fragment survives a release again | Needs a signal for "this version is published" that works offline, since the runner does no network. The candidate is the versions page's own `publishedVersion`, but that is site-specific and the gate ships in a module — so probably a `released_through` value the repo states and the cut-release step advances. Do **not** widen the rule to `<=` the package version: during preparation the fragment for the version being prepared is exactly what must exist, and that would refuse it |
+
+## Closed — 2026-08-17 by the command audit
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-026 | The `concurrency` module's documented workflow is four commands that do not exist — `session start`, `land`, `preflight`, `worktrees` — including in `fragments/AGENTS.md`, which merges into the consumer's agent entry document and tells the agent "never `git merge` by hand" | promoted | [WI-062](items/WI-062-concurrency-phantom-commands.md), 2026-08-17, `proposed`. Deliberately **not** fixed inside the audit that found it: the two honest options — build the four commands, or rewrite the module as the manual protocol it already documents — are a judgement about what the module is for, and one of them expands what rungs *is* (every current command writes files or runs gates; `land` and `session start` would drive git). The item rejects a third option in advance: labelling them "planned" leaves a rung-5 consumer's agent with instructions it cannot follow. It also carries the part that is **not** a judgement — a gate that every `rungs <word>` in `modules/**` resolves to a dispatched command, which is what makes this class impossible to reintroduce |
+| F-027 | `rungs setup <path>` reported success and wrote git config into the **current directory** instead, because the path sat in the unvalidated subcommand slot | fixed | 2026-08-17. `setup` now refuses any subcommand but `git` and names the correct form, exactly as `backlog` has always done for `archive` — the asymmetry between the two subcommand-taking commands was the entire cause. Regression test in `test/package.test.js` asserts the mistaken form exits 1, that **neither** repo is configured by it, and that `setup git <path>` still targets what it names; verified by disabling the check and watching it fail |
+| F-028 | `--set` refused a malformed key but not an unknown module or parameter name, then printed `set nosuch.param = 1` as though it had applied | fixed | 2026-08-17. Both names are checked against the loaded module set, which was already in scope — an unknown module lists the fifteen, an unknown parameter lists what that module actually takes, so a mistyped `core_budgets` sees `core_budget` in the reply. The existing malformed-key check already carried the reasoning (a dropped `--set` "proceeded with the default and looked successful"); this is the same failure one level up. Regression test covers both rejections and that a real override still applies |
 
 ## Closed — 2026-08-17 by [WI-060](items/WI-060-release-0.2.0.md)
 

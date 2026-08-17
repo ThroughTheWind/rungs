@@ -86,3 +86,72 @@ test('a higher tier is a superset, an unknown tier is refused, and neither can l
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// F-027: `setup` read its path from args[1], so omitting the `git` subcommand put the path in the
+// subcommand slot where it was discarded — and the command then wrote git config into the *current
+// directory* while printing the success line about the repo you named. Measured with the published
+// 0.2.0 binary before the fix: the named repo got nothing, the cwd got the driver.
+test('setup refuses an unknown subcommand and never writes to the wrong repo', () => {
+  const bin = resolve(root, manifest.bin.rungs);
+  const base = mkdtempSync(join(tmpdir(), 'rungs-setup-'));
+  const target = join(base, 'target');
+  const elsewhere = join(base, 'elsewhere');
+
+  try {
+    for (const dir of [target, elsewhere]) {
+      mkdirSync(dir, { recursive: true });
+      spawnSync('git', ['init', '-q', dir], { encoding: 'utf8' });
+      writeFileSync(join(dir, '.gitattributes'), '*.md merge=rungs-ledger\n');
+    }
+    const driver = (dir) =>
+      spawnSync('git', ['-C', dir, 'config', '--get', 'merge.rungs-ledger.name'], { encoding: 'utf8' }).stdout.trim();
+
+    // The exact shape that used to silently target the cwd.
+    const slipped = spawnSync(process.execPath, [bin, 'setup', target], { cwd: elsewhere, encoding: 'utf8' });
+    assert.equal(slipped.status, 1, 'a mistaken subcommand must not report success');
+    assert.match(slipped.stdout, /The only subcommand is/);
+    assert.equal(driver(elsewhere), '', 'it must not configure the directory it happened to be run from');
+    assert.equal(driver(target), '', 'and it must not configure the target either — it did nothing');
+
+    assert.equal(spawnSync(process.execPath, [bin, 'setup', 'banana'], { cwd: elsewhere, encoding: 'utf8' }).status, 1);
+
+    // The real form still works, and targets what it names.
+    const ok = spawnSync(process.execPath, [bin, 'setup', 'git', target], { cwd: elsewhere, encoding: 'utf8' });
+    assert.equal(ok.status, 0, ok.stdout);
+    assert.equal(driver(target), 'rungs ledger driver');
+    assert.equal(driver(elsewhere), '', 'the cwd is still not the target');
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+// F-028: `--set` refused a malformed key but not an unknown name, then printed `set nosuch.param = 1`
+// as though it had applied. The install proceeded on defaults and looked successful — the exact
+// failure the malformed-key check already existed to prevent, one level up.
+test('--set refuses a module or parameter that does not exist, and still accepts a real one', () => {
+  const bin = resolve(root, manifest.bin.rungs);
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-set-'));
+  const run = (...set) =>
+    spawnSync(process.execPath, [bin, 'init', dir, 'minimal', '--dry-run', ...set.flatMap((s) => ['--set', s])], {
+      encoding: 'utf8',
+    });
+
+  try {
+    spawnSync('git', ['init', '-q', dir], { encoding: 'utf8' });
+
+    const badModule = run('nosuch.param=1');
+    assert.equal(badModule.status, 1);
+    assert.match(badModule.stdout, /module that does not exist: nosuch/);
+
+    const badParam = run('instructions.core_budgets=999');
+    assert.equal(badParam.status, 1);
+    assert.match(badParam.stdout, /parameter instructions does not have: core_budgets/);
+    assert.match(badParam.stdout, /core_budget/, 'the real name should be in the list it prints');
+
+    const good = run('instructions.core_budget=150');
+    assert.equal(good.status, 0, good.stdout);
+    assert.match(good.stdout, /set instructions\.core_budget = 150/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
