@@ -1,6 +1,6 @@
 [module]
 name    = "concurrency"
-version = "1.1.0"
+version = "1.2.0"
 rung    = 5
 summary = "Many sessions on one integration branch: a verified base to cut from, attributed failures, a land protocol that cannot redden the branch, and merge drivers per conflict class."
 

@@ -509,13 +509,17 @@ function report(r: { ok: boolean; lines: string[] }): number {
  * directory that exists only inside the command. This is the reason the loop is
  * CLI commands rather than scripts the module writes (ADR-0009).
  */
-function landRunner(dir: string) {
-  const runs = runGates(dir);
-  const fail = runs.filter((r) => r.status === 'fail' || r.status === 'error');
+function landRunner(dir: string, only?: ReadonlySet<string>) {
+  const runs = runGates(dir, undefined, undefined, only);
+  const failing = runs.filter((r) => r.status === 'fail' || r.status === 'error');
   return {
     pass: runs.filter((r) => r.status === 'pass').length,
-    fail: fail.length,
-    detail: fail.map((r) => `  ${c.red('FAIL')} ${r.id}${r.findings[0] ? c.dim(` — ${r.findings[0].message}`) : ''}`),
+    // `file: message`, so the same broken link in the same file is the same
+    // finding across two runs, and a *new* one is visibly not.
+    failing: failing.map((r) => ({
+      id: r.id,
+      findings: r.findings.map((f) => `${f.file ? `${f.file}: ` : ''}${f.message}`),
+    })),
   };
 }
 

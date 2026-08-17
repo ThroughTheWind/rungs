@@ -79,7 +79,13 @@ export class UnknownTierError extends Error {
   }
 }
 
-export function runGates(repoRoot: string, tier?: string, now = () => Date.now()): GateRun[] {
+/**
+ * `only` narrows the run to named gate ids. Attribution needs it: after a merged
+ * tree goes red, `land` re-runs **just the failing gates** against the merge base
+ * to decide whether they were already red. Re-running all of them would give the
+ * same verdict and cost a second full pass for gates nobody asked about.
+ */
+export function runGates(repoRoot: string, tier?: string, now = () => Date.now(), only?: ReadonlySet<string>): GateRun[] {
   const { runner, gates } = loadRegistry(repoRoot);
   const runnerTiers: string[] = Array.isArray(runner?.tiers) ? runner.tiers : [];
   // A tier nobody declared selects nothing, and "selected nothing" is
@@ -95,6 +101,7 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
     // A hook fires on a tool call, not in the runner. Skipping it here is
     // correct; counting it as a pass would not be.
     if (g.trigger) continue;
+    if (only && !only.has(g.id)) continue;
     if (tier && !tierSelects(runnerTiers, tier, g.tier)) continue;
 
     const started = now();

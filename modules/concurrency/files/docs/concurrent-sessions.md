@@ -35,15 +35,15 @@ deliberate question, never as a ritual.
 
 ## A failure is attributed, never just counted
 
-> **Not built yet, and said so here rather than described as if it were.** `land` currently blocks
-> on *any* red gate in the merged tree, which is the safe half of this and the annoying half. The
-> attribution below is the design, not the behaviour — it is tracked, and this paragraph is what
-> the rest of this document did wrong for weeks about four other commands.
-
-The intent: `check` re-runs each failing gate against the merge base in a throwaway worktree and
-reports it as **inherited** (already red before you started — stated, never blocking) or
-**INTRODUCED** (yours — blocks). Anything it cannot attribute also blocks: **we do not land on an
+`land` re-runs each failing gate against the merge base in the throwaway worktree it already has,
+and reports each failure as **inherited** (already red before you started — stated, never blocking)
+or **INTRODUCED** (yours — blocks). Anything it cannot attribute also blocks: **we do not land on an
 unknown.**
+
+Attribution is **per finding, not per gate.** The first implementation compared gate ids, which
+made an already-red gate a blind spot: a branch could add new broken links and land them as
+inherited, because that gate was red either way. Measured on a scratch repo, and fixed the same
+day — a gate you have not fixed does not excuse the new violations of it you bring.
 
 This is not politeness about blame. *A gate that is red for reasons you did not cause and cannot
 fix is a gate you learn to bypass, and a bypassed gate reports nothing.*

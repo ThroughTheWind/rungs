@@ -705,21 +705,94 @@ test('land refuses a red merged tree, leaves the integration branch untouched, a
     execSync('git checkout -q main', { cwd: dir });
 
     const before = g('rev-parse', 'main');
-    const red = () => ({ pass: 3, fail: 1, detail: ['  FAIL a-gate'] });
-    const r = land(dir, 'feature/red', red);
+    // `only` is set on the merge-base re-run and absent on the merged run, so a
+    // runner can answer differently for each. This one is clean at the base and
+    // red after the merge: the branch caused it.
+    const introduced = (_dir, only) => (only ? { pass: 1, failing: [] } : { pass: 3, failing: [{ id: 'a-gate', findings: ['boom'] }] });
+    const r = land(dir, 'feature/red', introduced);
 
-    assert.equal(r.ok, false, 'a red merged tree must not land');
+    assert.equal(r.ok, false, 'a failure this branch introduced must not land');
+    assert.match(r.lines.join('\n'), /INTRODUCED a-gate/);
     assert.equal(g('rev-parse', 'main'), before, 'the integration branch must be bit-for-bit unchanged');
     assert.match(r.lines.join('\n'), /parked on 'integ\/feature\/red'/);
     assert.ok(g('rev-parse', '--verify', 'refs/heads/integ/feature/red'), 'the merge is kept, not discarded');
     assert.equal(existsSync(join(dir, '.git', 'rungs-land.lock')), false, 'the lock is released');
 
     // Green now advances it, and marks the result verified.
-    const green = () => ({ pass: 4, fail: 0, detail: [] });
+    const green = () => ({ pass: 4, failing: [] });
     const ok = land(dir, 'feature/red', green);
     assert.equal(ok.ok, true, ok.lines.join('\n'));
     assert.notEqual(g('rev-parse', 'main'), before);
     assert.equal(g('rev-parse', 'green/main'), g('rev-parse', 'main'), 'green marks the verified tip');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// F-029. A gate that is red for reasons you did not cause and cannot fix is a gate you learn to
+// bypass, and a bypassed gate reports nothing. So `land` re-runs each failing gate against the
+// merge base and only blocks on what this branch caused — and an unattributable failure blocks,
+// because we do not land on an unknown.
+test('land distinguishes an inherited failure from an introduced one, and blocks on an unattributable one', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('branch', 'feature/x');
+    execSync('git checkout -q feature/x', { cwd: dir });
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'work');
+    execSync('git checkout -q main', { cwd: dir });
+    const before = g('rev-parse', 'main');
+
+    // Red after the merge *and* red at the base: not this branch's doing.
+    const red = { id: 'old-gate', findings: ['a.txt: already broken'] };
+    const inherited = (_d, only) => (only ? { pass: 0, failing: [red] } : { pass: 2, failing: [red] });
+    const landed = land(dir, 'feature/x', inherited);
+
+    assert.equal(landed.ok, true, 'a failure that predates the branch must not block it');
+    assert.match(landed.lines.join('\n'), /inherited\s+old-gate/);
+    assert.doesNotMatch(landed.lines.join('\n'), /INTRODUCED/);
+    assert.notEqual(g('rev-parse', 'main'), before, 'the branch landed');
+    assert.equal(g('rev-parse', 'green/main'), g('rev-parse', 'main'), 'and the green ref followed it');
+
+    // The blind spot attribution-by-gate created, and the reason it is by finding: an already-red
+// gate must not excuse the *new* violations of it this branch brings. Measured before the fix —
+    // a branch adding its own broken link landed clean because the link gate was already red.
+    g('branch', 'feature/sneaky');
+    execSync('git checkout -q feature/sneaky', { cwd: dir });
+    writeFileSync(join(dir, 'c.txt'), 'more\n');
+    g('add', '-A');
+    g('commit', '-qm', 'sneaky');
+    execSync('git checkout -q main', { cwd: dir });
+
+    const held = g('rev-parse', 'main');
+    const sameGateNewFinding = (_d, only) =>
+      only
+        ? { pass: 0, failing: [{ id: 'old-gate', findings: ['a.txt: already broken'] }] }
+        : { pass: 2, failing: [{ id: 'old-gate', findings: ['a.txt: already broken', 'c.txt: brand new'] }] };
+    const sneaky = land(dir, 'feature/sneaky', sameGateNewFinding);
+    assert.equal(sneaky.ok, false, 'a new violation of an already-red gate is still this branch\'s');
+    assert.match(sneaky.lines.join('\n'), /INTRODUCED old-gate — c\.txt: brand new/);
+    assert.equal(g('rev-parse', 'main'), held);
+
+    // A base that cannot be gated at all attributes nothing, so everything blocks.
+    g('branch', 'feature/y');
+    execSync('git checkout -q feature/y', { cwd: dir });
+    writeFileSync(join(dir, 'b.txt'), 'more\n');
+    g('add', '-A');
+    g('commit', '-qm', 'more');
+    execSync('git checkout -q main', { cwd: dir });
+
+    const tip = g('rev-parse', 'main');
+    const unknowable = (_d, only) => {
+      if (only) throw new Error('the base could not be gated');
+      return { pass: 1, failing: [{ id: 'mystery', findings: ['unknown'] }] };
+    };
+    const blocked = land(dir, 'feature/y', unknowable);
+    assert.equal(blocked.ok, false, 'an unattributable failure must block');
+    assert.match(blocked.lines.join('\n'), /INTRODUCED mystery/);
+    assert.match(blocked.lines.join('\n'), /do not land on an unknown|could not be gated/);
+    assert.equal(g('rev-parse', 'main'), tip, 'and the branch does not move');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -739,7 +812,7 @@ test('land refuses a conflict, and refuses to run while another land holds the l
     g('commit', '-qm', 'ours');
 
     const before = g('rev-parse', 'main');
-    const conflict = land(dir, 'feature/conflict', () => ({ pass: 1, fail: 0, detail: [] }));
+    const conflict = land(dir, 'feature/conflict', () => ({ pass: 1, failing: [] }));
     assert.equal(conflict.ok, false);
     assert.match(conflict.lines.join('\n'), /merge conflict/);
     assert.equal(g('rev-parse', 'main'), before);
@@ -749,7 +822,7 @@ test('land refuses a conflict, and refuses to run while another land holds the l
       join(dir, '.git', 'rungs-land.lock'),
       JSON.stringify({ pid: process.pid, host: hostname(), started: '2026-08-17T02:00:00Z', branch: 'feature/other' }),
     );
-    const busy = land(dir, 'feature/conflict', () => ({ pass: 1, fail: 0, detail: [] }));
+    const busy = land(dir, 'feature/conflict', () => ({ pass: 1, failing: [] }));
     assert.equal(busy.ok, false);
     assert.match(busy.lines.join('\n'), /another land is in progress/);
     assert.match(busy.lines.join('\n'), /feature\/other/, 'it names the holder');

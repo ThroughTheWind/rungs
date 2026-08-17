@@ -189,12 +189,23 @@ function alive(pid: number): boolean {
  * here a refusal leaves the integration branch bit-for-bit unchanged and parks
  * the merged tree on a scratch ref for you to fix.
  */
-export function land(
-  root: string,
-  branch: string,
-  runner: (dir: string) => { pass: number; fail: number; detail: string[] },
-  dryRun = false,
-): Result {
+export interface GateOutcome {
+  pass: number;
+  /**
+   * Findings per failing gate, not just the gate id.
+   *
+   * Attributing by **gate** was the first implementation and it was wrong in a
+   * way that mattered: `gates-links-resolve` red at the base made that gate a
+   * blind spot, so a branch could add its own broken links and land them as
+   * "inherited". Measured — a branch adding `./also-missing.md` on top of an
+   * already-red link gate landed clean. Attribution is per finding.
+   */
+  failing: { id: string; findings: string[] }[];
+}
+
+export type LandRunner = (dir: string, only?: ReadonlySet<string>) => GateOutcome;
+
+export function land(root: string, branch: string, runner: LandRunner, dryRun = false): Result {
   const { integration, greenRef, integPrefix } = loopParams(root);
   const lines: string[] = [];
 
@@ -256,15 +267,72 @@ export function land(
 
     const merged = git(scratch, ['rev-parse', 'HEAD']);
     const res = runner(scratch);
-    lines.push(`merged tree ${merged.slice(0, 8)} — ${res.pass} pass · ${res.fail} fail`);
+    lines.push(`merged tree ${merged.slice(0, 8)} — ${res.pass} pass · ${res.failing.length} fail`);
 
-    if (res.fail > 0) {
-      // Rule 2: park it, do not discard it. The merge is the expensive part and
-      // throwing it away means doing it again to see the same failure.
-      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
-      lines.push(...res.detail.slice(0, 6));
-      lines.push(`${integration} is unchanged. The merged tree is parked on '${parked}' — fix it there and land again.`);
-      return { ok: false, lines };
+    if (res.failing.length) {
+      // **Attribution.** A gate that is red for reasons you did not cause and
+      // cannot fix is a gate you learn to bypass, and a bypassed gate reports
+      // nothing. So each failure is re-run against the merge base — the same
+      // scratch worktree, reset back — and only the ones *this branch* caused
+      // block the land.
+      //
+      // The trade this makes is real and the module states it: a survivable red
+      // gate also removes the pressure to fix it. What is supposed to catch that
+      // is the ledger's ageing signal, not this command.
+      const ids = new Set(res.failing.map((f) => f.id));
+      let base: GateOutcome | null = null;
+      try {
+        git(scratch, ['reset', '--hard', before]);
+        base = runner(scratch, ids);
+      } catch {
+        base = null;
+      }
+
+      // A gate that did not run at the base cannot be attributed at all. We do
+      // not land on an unknown, so that blocks.
+      const attributable = base !== null && base.failing.length + base.pass >= ids.size;
+      const baseFindings = new Map((base?.failing ?? []).map((f) => [f.id, new Set(f.findings)]));
+
+      const introduced: { id: string; findings: string[] }[] = [];
+      const inherited: { id: string; findings: string[] }[] = [];
+      for (const f of res.failing) {
+        const seen = attributable ? baseFindings.get(f.id) ?? new Set<string>() : null;
+        // Per finding: a gate already red at the base does not excuse the new
+        // violations of it that this branch brought.
+        const fresh = seen ? f.findings.filter((x) => !seen.has(x)) : f.findings;
+        if (fresh.length) introduced.push({ id: f.id, findings: fresh });
+        else inherited.push(f);
+      }
+
+      for (const f of inherited) {
+        lines.push(`  inherited  ${f.id}${f.findings[0] ? ` — ${f.findings[0]}` : ''}`);
+      }
+      for (const f of introduced) {
+        lines.push(`  INTRODUCED ${f.id}${f.findings[0] ? ` — ${f.findings[0]}` : ''}`);
+        for (const extra of f.findings.slice(1, 4)) lines.push(`             ${extra}`);
+      }
+      if (base === null) {
+        lines.push('  The merge base could not be gated, so nothing here is attributable and all of it blocks.');
+      } else if (!attributable) {
+        lines.push('  Some gates could not be attributed against the merge base, so they block. We do not land on an unknown.');
+      }
+
+      if (introduced.length) {
+        // Rule 2: park it, do not discard it. The merge is the expensive part
+        // and throwing it away means doing it again to see the same failure.
+        git(root, ['update-ref', `refs/heads/${parked}`, merged]);
+        lines.push(
+          `${introduced.length} introduced by this branch. ${integration} is unchanged, and the merged tree is parked on '${parked}' — fix it there and land again.`,
+        );
+        return { ok: false, lines };
+      }
+
+      lines.push(
+        `${inherited.length} failure(s), all already red on ${integration} before this branch. Landing anyway — they are not this branch's to fix, and blocking on them is how a gate gets bypassed.`,
+      );
+      // The scratch worktree is back at the base, so re-point it at the merged
+      // commit before the advance reads it.
+      git(scratch, ['reset', '--hard', merged]);
     }
 
     // Rule 1: compare-and-swap. If someone else advanced the branch while we
