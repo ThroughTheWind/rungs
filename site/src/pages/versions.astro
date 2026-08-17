@@ -50,6 +50,22 @@ const status = (v: string) =>
 
 const releases = [
   {
+    version: "0.3.0",
+    date: "2026-08-17",
+    kind: "minor",
+    entries: [
+      ["added", "The concurrency loop: session start, preflight, land and worktrees — four commands the module had documented for weeks without any of them existing."],
+      ["added", "land attributes each failure against the merge base — inherited never blocks, INTRODUCED does, and anything unattributable blocks too."],
+      ["added", "rungs runs its own gates in CI across ubuntu, macos and windows on node 22.18 and 22. It had none."],
+      ["added", "module-commands-exist: every command a module tells a repo to run must be one the CLI dispatches, both sides derived from the dispatch itself."],
+      ["fixed", "The ci module shipped a workflow that failed on every run in three of five profiles, blaming the repo for it."],
+      ["fixed", "backlog archive could never archive an epic whose children had landed, and skipped any item named like the template."],
+      ["fixed", "setup wrote git config into the current directory while reporting success about the repo you named."],
+      ["fixed", "--set confirmed overrides it had not applied, so a mistyped parameter installed the default and said otherwise."],
+      ["changed", "release-version-consistent takes an exclude list, and this repo's site is versioned in lockstep rather than excluded."],
+    ],
+  },
+  {
     version: "0.2.0",
     date: "2026-08-17",
     kind: "minor",

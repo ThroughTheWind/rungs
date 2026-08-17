@@ -220,10 +220,14 @@ Four promises that shape everything else:
 
 ## Status
 
-**Current release: v0.2.0**, tagged and on npm. That number is checked against
-[`package.json`](package.json) by the `docs-version-claims` gate, so this sentence cannot drift
-from what ships — and the gate fails if the sentence is reworded out of existence, because a claim
-nothing checks any more should not look the same as a claim that passes.
+**Current release: v0.3.0** — that number is checked against [`package.json`](package.json) by the
+`docs-version-claims` gate, so this sentence cannot drift from what ships — and the gate fails if
+the sentence is reworded out of existence, because a claim nothing checks any more should not look
+the same as a claim that passes.
+
+It deliberately does **not** say "and it is on npm". Whether this version is tagged and published
+is a fact about the registry, not about the manifest, and it was wrong here for two days once
+already.
 
 Whether a release is **pending**, and what npm currently serves, live on
 [the versions page](https://docs.rungscli.com/versions/) — the one place that tracks them. This
