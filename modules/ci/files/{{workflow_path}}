@@ -29,8 +29,16 @@ jobs:
 
       # Runs every gate in .ai/gates.toml — the same set, in the same order, as
       # `rungs check` locally. A CI-only gate is one nobody can reproduce.
+      #
+      # Plain `check`, no flags. This said `check --tier full --reporter github`:
+      # `--tier` is not a flag the CLI accepts and `--reporter` does not exist at
+      # all, so the two values were parsed as a *path* and a *tier* — every run
+      # checked a directory named `full` and exited 1 with "no gates registered —
+      # is this a rungs repo?". Shipped in three of five profiles, so every repo
+      # that installed `ci` had a job that failed on every push and blamed the
+      # repo for it (F-030).
       - name: Run gates
-        run: npx @rungs/cli check --tier full --reporter github
+        run: npx @rungs/cli check
 
   # Add a matrix job per package here rather than a workflow per package.
   # A checklist step that creates a file creates N files:

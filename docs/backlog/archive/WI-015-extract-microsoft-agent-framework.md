@@ -60,7 +60,7 @@ WI-014 is complete and this is the next planned child.
 ### Requirements
 
 - `docs/research/frameworks/microsoft-agent-framework.md` on the
-  [WI-010](../items/WI-010-framework-extraction-template.md) template, eight sections answered.
+  [WI-010](WI-010-framework-extraction-template.md) template, eight sections answered.
 - Snapshot pins a commit SHA, license, read date, per-count commands, and the language split.
 - The audit-trail and approval questions each answered with file-level evidence.
 - **Anything the project explicitly retired or superseded from an earlier framework is recorded with

@@ -26,7 +26,7 @@ silently using an obsolete URL.
 ## Decision
 
 `accepted` — 2026-08-15. Accepted as the local extensibility child of
-[WI-018](../items/WI-018-follow-on-public-agent-research.md), after WI-019.
+[WI-018](WI-018-follow-on-public-agent-research.md), after WI-019.
 
 ## Plan
 

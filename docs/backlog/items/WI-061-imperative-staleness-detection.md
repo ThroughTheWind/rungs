@@ -17,7 +17,7 @@ children: []
 
 The landing page asserted the capability in a console block labelled `REAL OUTPUT` whose text
 nobody had ever run — `this rule says MANDATORY and has no gate` — live for weeks, deleted by
-[WI-046](WI-046-console-provenance.md) and now refused by the `site-transcripts-real` gate.
+[WI-046](../archive/WI-046-console-provenance.md) and now refused by the `site-transcripts-real` gate.
 External reviewer #2 read that block as shipped behaviour. Then a third review, on 2026-08-17,
 built an entire distribution plan on four finding categories: unenforced MUST/SHOULD, stale
 command references, duplicated path-scoped rules, and conflicting authority. rungs produces none
@@ -74,7 +74,7 @@ refused here with reasons under *Out of scope*.
 - **R5. Applicability is declared per gate**, per [ADR-0007](../../decisions/ADR-0007-detector-applicability.md).
   There is no default, and a gate that has not declared does not read a foreign repo.
 - **R6. The false-positive rate is measured before the detector is believed**, on the corpus and by
-  the method [WI-053](WI-053-false-positive-census.md) established: every repository not a sample,
+  the method [WI-053](../archive/WI-053-false-positive-census.md) established: every repository not a sample,
   a classifier proven able to return every verdict *before* its results are read, per-repo rates,
   never pooled.
 - **R7. An ADR** for R2, because *what a detector may assert about a repository whose enforcement

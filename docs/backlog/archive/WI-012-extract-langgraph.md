@@ -52,7 +52,7 @@ WI-011 is complete and this is the next planned child.
 
 ### Requirements
 
-- `docs/research/frameworks/langgraph.md` on the [WI-010](../items/WI-010-framework-extraction-template.md)
+- `docs/research/frameworks/langgraph.md` on the [WI-010](WI-010-framework-extraction-template.md)
   template, eight sections answered.
 - Snapshot pins a commit SHA, license, read date, and per-count commands.
 - Section 3 (state and persistence) is the load-bearing one and answers all four questions above

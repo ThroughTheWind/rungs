@@ -20,9 +20,9 @@ Acts on **claim 13** of the [second external review](../../design/external-revie
 does not mention it.** Verified 2026-08-16: `doctor` against `hexguard` prints no occurrence of the
 string `explain`, anywhere in its output. It is discoverable only from `--help`.
 
-[WI-038](../archive/WI-038-doctor-explain-detectors.md) put the findings behind a flag deliberately,
+[WI-038](WI-038-doctor-explain-detectors.md) put the findings behind a flag deliberately,
 and that decision was right — 114 findings on `hexguard` would bury the `Next` line that
-[WI-005](../archive/WI-005-doctor-next-step.md) exists to protect. **The flag is not the problem;
+[WI-005](WI-005-doctor-next-step.md) exists to protect. **The flag is not the problem;
 the silence is.** A user who never reads `--help` never learns the analysis exists.
 
 ## Decision

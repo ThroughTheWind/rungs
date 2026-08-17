@@ -61,7 +61,7 @@
     },
     {
       "name": "ci",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 1,
       "summary": "One workflow that runs the gate registry, a matrix instead of a file per item, and a check that keeps it that way.",
       "requires": [

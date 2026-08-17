@@ -3,7 +3,7 @@
 > **Authoritative for:** what an outside reviewer said about rungs on 2026-08-16, and which of
 > those claims survived checking against this checkout. **Not authoritative for:** what rungs is
 > (that is [`product-brief.md`](product-brief.md)), any decision it recommends (those are ADRs),
-> or the work that acts on it ([WI-037](../backlog/items/WI-037-act-on-external-review.md)).
+> or the work that acts on it ([WI-037](../backlog/archive/WI-037-act-on-external-review.md)).
 
 An unsolicited review of the public repo and the docs site arrived on 2026-08-16. It is recorded
 here rather than summarized into a backlog item, because **the parts that were wrong are as useful
@@ -196,7 +196,7 @@ conditional."*
 This is the review's headline strategic recommendation colliding with an accepted decision. It is
 not resolvable by an implementation item, and it should not be quietly declined either — the review
 is describing the one thing here that would be hard to copy. **Disposition: open it as a decision,
-not as work.** [WI-041](../backlog/items/WI-041-decide-cross-repo-evidence.md) puts the question,
+not as work.** [WI-041](../backlog/archive/WI-041-decide-cross-repo-evidence.md) puts the question,
 its cost, and the ADR's stated reason in front of a person; the honest outcomes are an ADR
 amendment with a new trust posture, or a written refusal that stops the idea returning every
 quarter.
@@ -226,7 +226,7 @@ Recorded so the next reader does not mistake this document for a full assessment
 
 ## 6. What this produced
 
-[WI-037](../backlog/items/WI-037-act-on-external-review.md), an epic with four children, targeted
+[WI-037](../backlog/archive/WI-037-act-on-external-review.md), an epic with four children, targeted
 at the next release. The epic's own constraint is the review's ninth claim: **it adds no module and
 no pattern.** Everything in it either makes an existing capability reachable, corrects a surface
 that contradicts another surface, or puts a decision in front of a person.

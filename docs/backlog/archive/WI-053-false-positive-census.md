@@ -24,7 +24,7 @@ Acts on **claims 15 and 16** of the
 **The argument for this is ours, not theirs.** `--explain` shipped claiming a 0% mis-framed rate
 measured on three repos. Running it against the fourth produced **46.6% false positives**, and the
 triage that missed it shared the engine's own assumption
-([WI-042](../archive/WI-042-link-line-references.md)). One repo moved the headline number by 46
+([WI-042](WI-042-link-line-references.md)). One repo moved the headline number by 46
 points. There is no reason to believe nine repos is enough either — and right now nine is what we
 have.
 
@@ -109,7 +109,7 @@ Branch `spike/WI-053-false-positive-census`, cut from `main` at `c81f2a1`. Resul
    chosen sample" — this is the one deviation from that, and it is the opposite of cherry-picking.
 
 2. **A count against a live repo needs a commit, not a date.** `rift-forge` reported 2,057 findings
-   during [WI-042](../archive/WI-042-link-line-references.md) and 1,994 here, hours apart the same
+   during [WI-042](WI-042-link-line-references.md) and 1,994 here, hours apart the same
    day — it took a docs merge at 19:00 in between. Every row is now pinned to a SHA plus the number
    of uncommitted files. This is the rule [`roadmap.md`](../../roadmap.md) already applies to the
    public-framework research, arriving from the other direction.

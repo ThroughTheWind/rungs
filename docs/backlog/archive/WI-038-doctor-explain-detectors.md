@@ -46,7 +46,7 @@ This continues [WI-005](WI-005-doctor-next-step.md), which fixed `doctor` ending
 
 ## Decision
 
-`accepted` — 2026-08-16, as a child of [WI-037](../items/WI-037-act-on-external-review.md).
+`accepted` — 2026-08-16, as a child of [WI-037](WI-037-act-on-external-review.md).
 
 ## Plan
 
@@ -124,13 +124,13 @@ here proves nothing about a foreign repo. The four source repos are the test set
 ### Out of scope
 
 - **A separate `lint agents` command.** Capability first, surface later — see
-  [WI-037](../items/WI-037-act-on-external-review.md)'s Out of scope. No follow-up item opened, deliberately.
+  [WI-037](WI-037-act-on-external-review.md)'s Out of scope. No follow-up item opened, deliberately.
 - **New detectors.** Existing engines only. A wanted-but-missing check becomes a finding.
 - **Any maturity score, health grade, or repository rating.** Refused permanently by ADR-0005
   Tier C; not deferred, not a future flag.
 - **Writing or fixing anything.** This pass is read-only; remediation stays `add` / `upgrade`.
 - **Cross-repo or aggregate reporting.** ADR-0005 Tier C; the question of changing that is
-  [WI-041](../items/WI-041-decide-cross-repo-evidence.md), not this item.
+  [WI-041](WI-041-decide-cross-repo-evidence.md), not this item.
 
 ## Execution
 

@@ -2,7 +2,7 @@
 id: WI-018
 title: Extend public-agent research across memory, evaluation, products, and protocols
 type: epic
-status: planned
+status: done
 branch:
 created: 2026-08-15
 updated: 2026-08-15
@@ -13,7 +13,7 @@ children: [WI-019, WI-020, WI-021, WI-022, WI-023, WI-024, WI-025, WI-026, WI-02
 
 ## Proposal (rationale)
 
-[WI-009](../archive/WI-009-public-agent-framework-corpus.md) deliberately fixes six subjects around runtime
+[WI-009](WI-009-public-agent-framework-corpus.md) deliberately fixes six subjects around runtime
 architecture: the core loop, checkpointed graphs, small primitives, typed/testable agents,
 enterprise workflows, and a sandboxed product. Its synthesis can therefore answer the question it
 was designed to answer, but it should not silently be treated as evidence about four materially
@@ -42,7 +42,7 @@ the proposed question does not match the source.
 ## Decision
 
 `accepted` — 2026-08-15. The user directed the follow-on research to start after the recommendations
-were captured. [WI-017](../archive/WI-017-framework-synthesis.md) and its parent corpus are done, so the method
+were captured. [WI-017](WI-017-framework-synthesis.md) and its parent corpus are done, so the method
 prerequisite is now unblocked; the epic remains sequenced method → extractions → synthesis.
 
 ## Plan
@@ -101,4 +101,16 @@ Not started.
 
 ## Review
 
-Not started.
+**Closed 2026-08-17, on evidence, after sitting at `planned` while every child finished.** That gap
+is the finding this section is worth writing for: the epic is the document that says what remains,
+and it went on saying "planned" through all ten completions. Nothing checks an epic against its own
+children's statuses — `backlog-merged-status` checks branches, not membership.
+
+| Criterion | Verified |
+| --- | --- |
+| 1–4 | Discharged by the children, each `done` and archived: WI-019 (method), WI-020–WI-027 (eight extractions), WI-028 (synthesis and adjudication) |
+| 5 | All ten children `status: done` in `archive/`, checked file by file 2026-08-17. `rungs check` 29 pass / 0 fail; site link check 132 routes, 2,130 links, 0 broken |
+
+The archive command could not have told anyone: it held this epic as *"unfinished children:
+WI-038…"* — a different epic — because its child lookup searched only `items/`, so an archived child
+read as unfinished. Fixed in the same change that closed this.

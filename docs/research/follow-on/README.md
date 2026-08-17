@@ -1,7 +1,7 @@
 # Follow-on public-agent research
 
 The follow-on corpus approved in
-[WI-018](../../backlog/items/WI-018-follow-on-public-agent-research.md) tests boundaries that the
+[WI-018](../../backlog/archive/WI-018-follow-on-public-agent-research.md) tests boundaries that the
 fixed six-framework corpus did not centre: durable agent-managed memory, repeatable evaluation and
 optimization, git-native/local product operation, and interoperability across process or ownership
 boundaries.

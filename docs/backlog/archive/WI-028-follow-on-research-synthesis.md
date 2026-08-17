@@ -25,7 +25,7 @@ tracks. It is the only child authorized to reconcile the follow-on evidence with
 ## Decision
 
 `accepted` — 2026-08-15. Last child of
-[WI-018](../items/WI-018-follow-on-public-agent-research.md); execution follows all eight extractions.
+[WI-018](WI-018-follow-on-public-agent-research.md); execution follows all eight extractions.
 
 ## Plan
 

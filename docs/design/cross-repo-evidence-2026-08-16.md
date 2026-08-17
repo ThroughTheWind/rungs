@@ -5,7 +5,7 @@
 > **Not authoritative for:** the rest of [ADR-0005](../decisions/ADR-0005-self-instrumentation.md)
 > Tier C — rework rate, attribution and composite scores are untouched here.
 >
-> Produced by [WI-041](../backlog/items/WI-041-decide-cross-repo-evidence.md). Its outcome is
+> Produced by [WI-041](../backlog/archive/WI-041-decide-cross-repo-evidence.md). Its outcome is
 > recorded in ADR-0005 itself.
 
 ## The proposal
@@ -72,7 +72,7 @@ is more trustworthy than the one below.
 Nothing prevents reading public repositories and counting what is found there. **This project has
 already done it twice**: fourteen public frameworks extracted under
 [WI-009](../backlog/archive/WI-009-public-agent-framework-corpus.md) and
-[WI-018](../backlog/items/WI-018-follow-on-public-agent-research.md), each pinned to a commit SHA
+[WI-018](../backlog/archive/WI-018-follow-on-public-agent-research.md), each pinned to a commit SHA
 with its licence recorded, precisely because a date alone does not make a count reproducible when
 other people are pushing.
 
@@ -101,7 +101,7 @@ Recorded so a future proposer meets a test rather than a wall:
    tool — a command whose output they read first. That is a different product and it is not refused
    here, because nothing is transmitted by us.
 2. **The pattern catalogue is shown to be wrong in a way only breadth could have caught**, on
-   evidence rather than intuition. [WI-053](../backlog/items/WI-053-false-positive-census.md)'s
+   evidence rather than intuition. [WI-053](../backlog/archive/WI-053-false-positive-census.md)'s
    census is the honest version of that experiment and it produced 0% — measured across eleven
    project shapes built by **one operator**, which is exactly the limit at issue.
 3. **Someone other than this project's author wants it**, which no review has yet established: both

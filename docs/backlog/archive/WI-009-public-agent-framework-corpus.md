@@ -44,7 +44,7 @@ incidental; their agent design is the subject. Reading them into the same direct
 template would quietly redefine what `docs/research/` means, and the next reader would find
 architecture claims filed as workflow evidence. So the corpus gets its own home and its own
 template, and the research index gains one line saying there are now two axes. That is
-[WI-010](../items/WI-010-framework-extraction-template.md), and it is a prerequisite, not overhead —
+[WI-010](WI-010-framework-extraction-template.md), and it is a prerequisite, not overhead —
 Phase 1's own lesson was that four repos on *one* template could be compared column by column
 "rather than read as four essays" ([roadmap](../../roadmap.md)).
 
@@ -93,7 +93,7 @@ branch.
 
 ### Impacts
 
-- New directory `docs/research/frameworks/` (created by [WI-010](../items/WI-010-framework-extraction-template.md)).
+- New directory `docs/research/frameworks/` (created by [WI-010](WI-010-framework-extraction-template.md)).
 - [`research/README.md`](../../research/README.md) gains the two-axis distinction.
 - [`pattern-catalog.md`](../../research/pattern-catalog.md) gains sources and possibly rung changes —
   written by [WI-017](WI-017-framework-synthesis.md), not by the per-repo children.

@@ -50,14 +50,14 @@ WI-010 is complete and this is the next planned child.
 ### Requirements
 
 - `docs/research/frameworks/swe-agent.md`, on the template from
-  [WI-010](../items/WI-010-framework-extraction-template.md), all eight sections answered.
+  [WI-010](WI-010-framework-extraction-template.md), all eight sections answered.
 - Snapshot pins a commit SHA, records the license, and names the command behind every count.
 - Sections 2 and 4 (core loop, tools) trace to specific files and functions, not to the README.
 - Section 8 cites pattern ids from [`pattern-catalog.md`](../../research/pattern-catalog.md); a
   practice with no matching id is named as a *candidate* pattern for
   [WI-017](WI-017-framework-synthesis.md) to adjudicate, not added to the catalogue here.
 - **Template corrections found while writing are made in this item**, in
-  [WI-010](../items/WI-010-framework-extraction-template.md)'s files, and listed in `## Execution`.
+  [WI-010](WI-010-framework-extraction-template.md)'s files, and listed in `## Execution`.
 
 ### Impacts
 

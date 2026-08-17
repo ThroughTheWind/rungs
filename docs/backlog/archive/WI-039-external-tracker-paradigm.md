@@ -34,7 +34,7 @@ in [§3.1](../../design/external-review-2026-08-16.md) of the adjudication.
 
 ## Decision
 
-`accepted` — 2026-08-16, as a child of [WI-037](../items/WI-037-act-on-external-review.md).
+`accepted` — 2026-08-16, as a child of [WI-037](WI-037-act-on-external-review.md).
 
 ## Plan
 

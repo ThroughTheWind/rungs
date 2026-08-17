@@ -25,10 +25,10 @@ mismatch is usually a fragment somebody skipped, not a versioning disagreement.
 rungs check
 ```
 
-Run **every** registered gate. This said `rungs check --tier full`, which selects only gates
-labelled `full` — on a repo whose gates are all `fast`, that is zero of them, and the run reports
-no gates rather than a pass. A release step that gates on nothing while looking green is worse than
-one that is skipped, because nobody goes back to check it.
+Run **every** registered gate. This step used to name a "--tier full" flag that the CLI does not
+accept, so both words were parsed as positionals and the run checked a directory that does not
+exist — reporting no gates rather than a pass. A release step that gates on nothing while looking
+green is worse than one that is skipped, because nobody goes back to check it.
 
 Narrow to a tier (`rungs check --fast`) only when you know the tier holds what you meant to run.
 

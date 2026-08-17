@@ -55,7 +55,7 @@ WI-013 is complete and this is the next planned child.
 ### Requirements
 
 - `docs/research/frameworks/pydantic-ai.md` on the
-  [WI-010](../items/WI-010-framework-extraction-template.md) template, eight sections answered.
+  [WI-010](WI-010-framework-extraction-template.md) template, eight sections answered.
 - Snapshot pins a commit SHA, license, read date, and per-count commands.
 - The testing question is answered from the repo's **own test suite**, with at least one named test
   file, and states what such a test can and cannot prove.

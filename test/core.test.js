@@ -455,6 +455,56 @@ test('backlog archive holds an epic whose children have not all finished', () =>
   rmSync(root, { recursive: true, force: true });
 });
 
+// An epic got *more* stuck the more of it landed: the hold searched only `items/`, so every child
+// that had already been archived read as unfinished. Measured on this repo — WI-037 was held for
+// "unfinished children: WI-038, WI-039, WI-040, WI-042, WI-043", all five of them `done` and
+// sitting in `archive/`. A completed epic could never be archived, and the message said the
+// opposite of the truth.
+test('backlog archive counts an already-archived child as finished, but still holds on an unknown one', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-arch3-'));
+  const w = (rel, body) => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), body);
+  };
+  w('docs/backlog/items/WI-010-epic.md', '---\nid: WI-010\nstatus: done\ntype: epic\nchildren: [WI-011, WI-012]\n---\n\nbody\n');
+  w('docs/backlog/archive/WI-011-a.md', '---\nid: WI-011\nstatus: done\ntype: feature\n---\n\nbody\n');
+  w('docs/backlog/archive/WI-012-b.md', '---\nid: WI-012\nstatus: done\ntype: feature\n---\n\nbody\n');
+
+  const plan = planArchive(root);
+  assert.deepEqual(plan.held, [], 'children already in archive/ are finished by definition');
+  assert.deepEqual(plan.moves.map((m) => m.id), ['WI-010'], 'so the epic can finally be archived');
+
+  // A child nobody can find is still an unknown, and an unknown holds.
+  w('docs/backlog/items/WI-020-epic.md', '---\nid: WI-020\nstatus: done\ntype: epic\nchildren: [WI-021]\n---\n\nbody\n');
+  const second = planArchive(root);
+  assert.equal(second.held.length, 1);
+  assert.match(second.held[0].reason, /WI-021/, 'a missing child is not evidence that it finished');
+
+  rmSync(root, { recursive: true, force: true });
+});
+
+// The skip for the backlog's own README/TEMPLATE was `/TEMPLATE\.md$/i` against the whole path, so
+// it also matched any item whose *filename* ends in `-template.md`. Measured on this repo:
+// WI-010-framework-extraction-template.md was `done` and skipped on every run since the command
+// shipped, while the command reported "nothing to archive". A regex anchored to the wrong end
+// reads as careful and is not.
+test('backlog archive skips only the real README and TEMPLATE, not items named like them', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-arch4-'));
+  const w = (rel, body) => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), body);
+  };
+  w('docs/backlog/items/README.md', '# Items\n');
+  w('docs/backlog/TEMPLATE.md', '---\nid: WI-000\nstatus: done\n---\n');
+  w('docs/backlog/items/WI-010-extraction-template.md', '---\nid: WI-010\nstatus: done\ntype: docs\n---\n\nbody\n');
+  w('docs/backlog/items/WI-011-project-readme.md', '---\nid: WI-011\nstatus: done\ntype: docs\n---\n\nbody\n');
+
+  const ids = planArchive(root).moves.map((m) => m.id).sort();
+  assert.deepEqual(ids, ['WI-010', 'WI-011'], 'both items archive despite their filenames');
+
+  rmSync(root, { recursive: true, force: true });
+});
+
 /**
  * F-007. `backticked_paths` sat in the table's `check` list, implemented
  * nowhere, so `gates-paths-exist` ran the markdown-link scan instead and

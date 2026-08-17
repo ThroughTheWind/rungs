@@ -5,7 +5,7 @@
 > **Not authoritative for:** whether the findings are *useful* — see §5 — or how the detectors
 > behave on repositories nobody here built, which this cannot measure and §4 says so.
 >
-> Produced by [WI-053](../backlog/items/WI-053-false-positive-census.md).
+> Produced by [WI-053](../backlog/archive/WI-053-false-positive-census.md).
 
 ## Why this exists at all
 

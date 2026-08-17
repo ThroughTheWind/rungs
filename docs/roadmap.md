@@ -116,7 +116,7 @@ reading. That is not a phase either: it gates nothing and nothing gates it.
 The evidence for it arrived by accident, from three parties in a row. The landing page
 asserted the capability in a fabricated console block for weeks — `this rule says
 MANDATORY and has no gate` — deleted by
-[WI-046](backlog/items/WI-046-console-provenance.md) and now refused by the
+[WI-046](backlog/archive/WI-046-console-provenance.md) and now refused by the
 `site-transcripts-real` gate. External reviewer #2 read that block as shipped behaviour.
 Then a third review, on 2026-08-17, built an entire distribution plan on four finding
 categories — unenforced MUST/SHOULD, stale command references, duplicated path-scoped

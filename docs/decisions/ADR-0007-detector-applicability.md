@@ -9,7 +9,7 @@ date: 2026-08-16
 
 - **Status:** accepted
 - **Date:** 2026-08-16
-- **Phase:** post-6, from [WI-052](../backlog/items/WI-052-detector-applicability.md)
+- **Phase:** post-6, from [WI-052](../backlog/archive/WI-052-detector-applicability.md)
 - Extends [ADR-0003](ADR-0003-module-definition-format.md) (module format) and
   [ADR-0004](ADR-0004-adoption-detection.md) (detection bias).
 
@@ -110,7 +110,7 @@ whatever CLI version it runs.
    would confirm the per-gate decision; the classification is currently by engine because that is
    what makes the move from the old lists provably behaviour-preserving.
 2. **A fourth case appears twice**, from different modules, with evidence.
-3. **The census ([WI-053](../backlog/items/WI-053-false-positive-census.md)) shows `repo-content` is
+3. **The census ([WI-053](../backlog/archive/WI-053-false-positive-census.md)) shows `repo-content` is
    itself too broad** on repos nobody here built — in which case the values, not the mechanism, are
    what change.
 

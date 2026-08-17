@@ -3,13 +3,13 @@
 > **Authoritative for:** what the same outside reviewer said after the WI-037 work shipped, and
 > which of those claims survived checking. **Not authoritative for:** what rungs is (that is
 > [`product-brief.md`](product-brief.md)), any decision it recommends (those are ADRs), or the work
-> that acts on it ([WI-048](../backlog/items/WI-048-act-on-second-external-review.md)).
+> that acts on it ([WI-048](../backlog/archive/WI-048-act-on-second-external-review.md)).
 >
 > The first review and its adjudication are
 > [`external-review-2026-08-16.md`](external-review-2026-08-16.md). Read that first: this one is a
 > re-assessment of the same product by the same reader, and most of its value is in the delta.
 
-A second review arrived on 2026-08-16, after [WI-037](../backlog/items/WI-037-act-on-external-review.md)
+A second review arrived on 2026-08-16, after [WI-037](../backlog/archive/WI-037-act-on-external-review.md)
 closed. It is recorded on the same terms as the first: **a claim about this repo, not evidence about
 it**, re-derived against the working tree and against the live site before anything was retained.
 
@@ -62,7 +62,7 @@ repo, including ours.
 | 15 | Stop broadening; concentrate on doctor quality, brutal false-positive measurement, reproducible public claims, and outside users | **retained**, as the epic's shape | The `rift-forge` incident is the argument, and it is ours rather than theirs |
 | 16 | The remaining risk is **generalisation** — the detectors must survive repos nobody involved built | **retained** | Correct, and currently unmeasured beyond four source repos plus five incidental ones. This is the gap that most limits any claim rungs makes |
 | 17 | The wiki exposes 108 documents | **noted**, close enough | 112 routes on the 2026-08-16 build. The number moves with every commit, which is why nothing should quote it |
-| 18 | An eventual fleet product — "which of our 300 repos have unenforced policies" — is plausible but premature to build | **noted** | Agreed, and it is the same cross-repo boundary [ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses. [WI-041](../backlog/items/WI-041-decide-cross-repo-evidence.md) still holds that question, still deliberately unopened |
+| 18 | An eventual fleet product — "which of our 300 repos have unenforced policies" — is plausible but premature to build | **noted** | Agreed, and it is the same cross-repo boundary [ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C refuses. [WI-041](../backlog/archive/WI-041-decide-cross-repo-evidence.md) still holds that question, still deliberately unopened |
 
 ---
 
@@ -122,6 +122,6 @@ That is the ADRs doing the job ADRs are for, against an outside proposal, and su
 
 ## 5. What this produced
 
-[WI-048](../backlog/items/WI-048-act-on-second-external-review.md), an epic with five children. Same
+[WI-048](../backlog/archive/WI-048-act-on-second-external-review.md), an epic with five children. Same
 constraint as its predecessor: **no new module, no new pattern.** Four of the five are corrections or
 formalisations of things that already exist; the fifth is a measurement.

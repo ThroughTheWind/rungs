@@ -174,7 +174,7 @@ Explicitly out of scope, permanently, not "not yet":
   opt-in. It is a different product with a different trust posture, and offering it would make every
   other guarantee here conditional.
 
-  > **Amended 2026-08-16 by [WI-041](../backlog/items/WI-041-decide-cross-repo-evidence.md).** This
+  > **Amended 2026-08-16 by [WI-041](../backlog/archive/WI-041-decide-cross-repo-evidence.md).** This
   > bullet said *"cross-repo aggregation"*, which read plainly also forbade counting things across
   > **public repositories the operator reads** — research this project had already done twice, in
   > the fourteen pinned framework extractions. One sentence forbade the method and another required

@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-018](items/WI-018-follow-on-public-agent-research.md) | Extend public-agent research across memory, evaluation, products, and protocols | epic |
 
 ## Accepted
 
@@ -41,7 +40,7 @@ The board. One row per live work item, grouped by status. Items live in
 capability here opened because outsiders assumed it already existed.** A third external review, a
 distribution plan, built four of its headline finding categories on detectors rungs does not have;
 reviewer #2 had earlier read the same capability off a landing-page console block that was
-fabricated, deleted by [WI-046](items/WI-046-console-provenance.md) and now refused by
+fabricated, deleted by [WI-046](archive/WI-046-console-provenance.md) and now refused by
 `site-transcripts-real`. Nine gates declare `applicability = "repo-content"` and what they produce
 on a foreign repo is broken links, stale paths, population counts and a line budget — none of it
 the thing being assumed. Two of the four categories have local measured provenance and are in
@@ -51,7 +50,7 @@ shipped to every consumer, and unimplemented). The other two are deferred until 
 a measured false-positive rate, because an imperative detector is a regex over prose and a regex
 over prose is the shape that produced 46.6% in [WI-042](archive/WI-042-link-line-references.md).
 
-[WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
+[WI-037](archive/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
 the first assessment of this project by someone who did not build it, recorded and adjudicated in
 [`docs/design/external-review-2026-08-16.md`](../design/external-review-2026-08-16.md). Eighteen
 claims were checked against the working tree; four became work. Its own first requirement is that
@@ -101,8 +100,8 @@ validation its own plan forbade. The negative evidence carries it; the gap is wr
 than closed.
 
 [WI-044](archive/WI-044-resolve-open-findings.md), 2026-08-16 — the findings register went from seven
-open rows to one. Five fixed, two promoted ([WI-045](items/WI-045-run-gate-self-tests.md),
-[WI-046](items/WI-046-console-provenance.md)), and one new: [F-015](FINDINGS.md), because
+open rows to one. Five fixed, two promoted ([WI-045](archive/WI-045-run-gate-self-tests.md),
+[WI-046](archive/WI-046-console-provenance.md)), and one new: [F-015](FINDINGS.md), because
 `rungs backlog archive` — which [README §8](README.md) tells contributors to use — **does not
 exist**, so the 39 `done` items in `items/` were left where they are rather than moved by hand.
 
@@ -113,7 +112,7 @@ implementing the check instead produced ten findings that were all false, and na
 than falling back to the collapse — kept a distinct measured incident the collapse would have
 deleted. Gate count 20 → 21; tests 12 → 14.
 
-[WI-047](items/WI-047-backlog-archive-command.md), 2026-08-16 — `rungs backlog archive` now exists.
+[WI-047](archive/WI-047-backlog-archive-command.md), 2026-08-16 — `rungs backlog archive` now exists.
 It was named in three files shipped into **every consumer repo**, two of them saying *"never by
 hand"*, and `rungs backlog` answered *"unknown command"* — so the instruction was unfollowable
 everywhere rungs had ever been installed. Implemented rather than documented away: rewriting §8
@@ -125,7 +124,7 @@ Both of its bugs were caught by trialling on a throwaway clone rather than here:
 destination path, and a version that wanted to rewrite **334** links across 58 files including
 module templates — a repo-wide link reflow disguised as an archive.
 
-[WI-048](items/WI-048-act-on-second-external-review.md) is the third fixed epic — opened 2026-08-16
+[WI-048](archive/WI-048-act-on-second-external-review.md) is the third fixed epic — opened 2026-08-16
 from a **second** review by the same outside reader, after WI-037 shipped. Recorded and adjudicated
 in [`external-review-2026-08-16b.md`](../design/external-review-2026-08-16b.md). Most of it agrees
 with decisions already made, including one the reviewer had argued against first time: they withdrew
@@ -133,7 +132,7 @@ their own recommendation for tracker adapters after reading why it was refused. 
 no work; five things did.
 
 **The board was lying when that review arrived, and correcting it is why the epic contains
-[WI-050](items/WI-050-board-reconciled-gate.md).** Fourteen rows named items whose files read
+[WI-050](archive/WI-050-board-reconciled-gate.md).** Fourteen rows named items whose files read
 `status: done` — nine under *Proposed*, five under *Planned* — and nine of them linked into
 `archive/`, so the board filed work as proposed while pointing at the directory for work that can no
 longer change. The reviewer asserted the framework research was done; checking them is what found
@@ -142,7 +141,7 @@ this. They were right and this file would have told them otherwise.
 *board* — the same failure one layer up, in the file every session opens first. The rows are
 corrected above; the gate is WI-050's.
 
-**Done under WI-048:** [WI-050](items/WI-050-board-reconciled-gate.md), 2026-08-16 — the board is
+**Done under WI-048:** [WI-050](archive/WI-050-board-reconciled-gate.md), 2026-08-16 — the board is
 now gated against the item files it names. It fires on exactly the shape that was live here when the
 review arrived: *"`archive/WI-001-done.md` is under 'Proposed' but its status is 'done'"*. Gate count
 21 → 22.
@@ -153,7 +152,7 @@ narrative sections tabulate finished work under prose headings. The typo case th
 aimed at is caught precisely instead — every *declared* group must appear, so a misspelled `Propsed`
 reports `Proposed` as missing rather than flagging an unfamiliar string.
 
-[WI-049](items/WI-049-doctor-advertises-analysis.md), 2026-08-16 — plain `doctor` now names
+[WI-049](archive/WI-049-doctor-advertises-analysis.md), 2026-08-16 — plain `doctor` now names
 `--explain`, which it never did: the capability both reviews called the strongest thing here was
 reachable only from `--help`. **Measuring changed the feature.** Built as specified, with a finding
 count, it took plain `doctor` on `rift-forge` from **1.6s to 16.8s** — a 10× tax on the entry point
@@ -162,7 +161,7 @@ advance, so it reports the number detection already computed and runs no engine.
 criterion is recorded **unmet**: a repo where the analysis would find nothing is still told it
 exists, which is incompatible with not paying the 15 seconds.
 
-[WI-051](items/WI-051-derive-site-claims.md), 2026-08-16 — the site's structural counts are derived
+[WI-051](archive/WI-051-derive-site-claims.md), 2026-08-16 — the site's structural counts are derived
 and gated instead of typed. It closes the `generate-derivable` TODO that sat directly beneath a
 comment calling typed numbers *"the thing this repo has the most scar tissue about"*, in the file
 that had gone stale at 20 while the registry reached 22.
@@ -175,7 +174,7 @@ says *"23 gates register, plus 1 hook"* rather than merging them. And the run re
 generated too: left typed as the plan allowed, it read `23 gates register` beside `22 pass` on the
 same page within minutes. The new gate caught **its own registration** as drift on its first run.
 
-[WI-054](items/WI-054-upgrade-registers-gates.md), 2026-08-16 — promoted from
+[WI-054](archive/WI-054-upgrade-registers-gates.md), 2026-08-16 — promoted from
 [F-016](FINDINGS.md) and fixed the same day, because WI-050's new gate could not reach a single
 existing install: `upgrade --apply` rewrote a module's files and never its gates. Reproduced end to
 end on a scratch consumer first, which found a **second** defect the finding had not — the apply step
@@ -185,7 +184,7 @@ rather than assumed. The record half — `.ai/rungs.toml` still names the old ve
 [F-017](FINDINGS.md), left open deliberately: the obvious fix rewrites the whole record and would
 stamp our hash onto a user-diverged file, ending its protection silently.
 
-[WI-052](items/WI-052-detector-applicability.md), 2026-08-16 — the review's strongest technical
+[WI-052](archive/WI-052-detector-applicability.md), 2026-08-16 — the review's strongest technical
 recommendation, and the last substantial one. *Can this detector legitimately interpret this
 repository* is now a **required field on every gate**, next to its engine, with no default: an
 undeclared gate does not read a foreign repo and is named. It had been two hard-coded sets of engine
@@ -199,7 +198,7 @@ Three values, each with real members — `repo-content` 8, `our-artifacts` 7, `o
 boolean was rejected because it merges the two "no" cases, which is precisely the distinction that
 explains a false positive to whoever reads it.
 
-[WI-053](items/WI-053-false-positive-census.md), 2026-08-16 — closes the epic with
+[WI-053](archive/WI-053-false-positive-census.md), 2026-08-16 — closes the epic with
 [the census](../design/explain-census-2026-08-16.md): **2,291 findings across 6 repos, 0 wrong, 0
 unclassified**, every one re-derived from the repository rather than from the engine that produced
 it. The classifier was proven able to return every verdict *before* its results were believed —
@@ -216,13 +215,13 @@ The result is deliberately undersold in its own §4. Every repo here was built b
 so it measures survival across eleven project *shapes*, not across other people — which is the test
 the review actually asked for and the one thing this machine cannot run.
 
-**[WI-048](items/WI-048-act-on-second-external-review.md) is closed.** Four of its five children were
+**[WI-048](archive/WI-048-act-on-second-external-review.md) is closed.** Four of its five children were
 changed by measurement rather than by their plans, which is the epic's most useful output: a finding
 count that cost `doctor` 10× its run time, a board requirement that flagged seven correct documents,
 a "dated measurement" exemption that reintroduced the incoherence it existed to remove, and a corpus
 four times smaller than its directory listing.
 
-[WI-055](items/WI-055-upgrade-updates-record.md), 2026-08-16 — the other half of the upgrade defect:
+[WI-055](archive/WI-055-upgrade-updates-record.md), 2026-08-16 — the other half of the upgrade defect:
 `.ai/rungs.toml` kept naming the old version, so a repo on 1.2.0 described itself as 1.1.0 and the
 same upgrade was offered forever. Fixed **surgically** rather than by the obvious route, because
 `writeInstallRecord` re-derives the whole record and hashes every emitted file that exists — it
@@ -232,7 +231,7 @@ stale version number is cosmetic; discarding a user's edit is not. Verified with
 place: the hash survived **and** the file was still reported as diverged, because either alone
 proves nothing.
 
-[WI-045](items/WI-045-run-gate-self-tests.md) sits at **review, not done**, 2026-08-16. The fixture
+[WI-045](archive/WI-045-run-gate-self-tests.md) sits at **review, not done**, 2026-08-16. The fixture
 runner exists and is unit-tested, and it is **deliberately not wired into the gate**. Wired, it
 reported 17 failures and every one inspected was its own harness: fixtures assume sibling files the
 temp repo does not have, tokens were substituted with a placeholder that broke scan/file
@@ -245,7 +244,7 @@ also corrected this item's own premise: **114 self-tests, 29 text and 85 structu
 shapes**, not the ~8 it estimated. The durable fix is probably a fixture format that carries its
 context — a `setup` block — which is an ADR-0003 question rather than more harness.
 
-[WI-056](items/WI-056-triage-selftest-mismatches.md), 2026-08-16 — triaged the self-test mismatches
+[WI-056](archive/WI-056-triage-selftest-mismatches.md), 2026-08-16 — triaged the self-test mismatches
 from 17 to 7, and **all four causes fixed were real defects in the gate set, not the harness**: the
 `adr` module declared no gate for its own fully-specified `[sections]` table (F-007's shape, third
 time), two fixtures were labelled for a gate that checks frontmatter while describing sections,
@@ -260,7 +259,7 @@ worth having — but every round also moves which fixtures fail, and a gate whos
 it cannot block a merge. The cause is structural: a fixture describes a *fragment* and an engine
 needs a *scenario*. The format needs a `setup` block, which is an ADR-0003 change.
 
-[WI-041](items/WI-041-decide-cross-repo-evidence.md), 2026-08-16 — the one review claim that
+[WI-041](archive/WI-041-decide-cross-repo-evidence.md), 2026-08-16 — the one review claim that
 collided with an accepted ADR, and **the expected outcome was wrong**. Separating the three things
 "cross-repo evidence" means showed that
 [ADR-0005](../decisions/ADR-0005-self-instrumentation.md) Tier C's wording forbade research this
@@ -274,7 +273,7 @@ three-condition test in the ADR's revisit triggers rather than a wall, because t
 reasonable and has already arrived twice. The argument, with the case *for* stated at its strongest,
 is [`cross-repo-evidence-2026-08-16.md`](../design/cross-repo-evidence-2026-08-16.md).
 
-[WI-057](items/WI-057-selftest-setup.md), 2026-08-16 — **its own premise was wrong, and that is the
+[WI-057](archive/WI-057-selftest-setup.md), 2026-08-16 — **its own premise was wrong, and that is the
 result.** F-018 had recommended giving the fixture format a `setup` block, because a fixture
 describes a fragment while an engine needs a scenario. Reading all seven remaining fixtures showed
 **not one of them needed a sibling file**: the recommendation had been generalised from a single
@@ -290,7 +289,7 @@ same inputs, different answer. So the runner is sound and the wiring is not, and
 had been attributing wiring artifacts to fixtures. 7 → 3, and F-018 is now a bounded debugging task
 with an oracle rather than an open format question.
 
-[WI-058](items/WI-058-skill-extensions.md), 2026-08-16 — closes [F-019](FINDINGS.md), the most
+[WI-058](archive/WI-058-skill-extensions.md), 2026-08-16 — closes [F-019](FINDINGS.md), the most
 complete instance of a rule configured and unread: `[skills.work-item] extensions = { disable-model-invocation = true }`
 was declared in a manifest, documented in [`modules/README.md`](../../modules/README.md), and
 implemented at **four** layers' worth of nowhere — not parsed into `Manifest`, not emitted into the
@@ -304,7 +303,7 @@ module that took the portability cost. **Two code paths emit skills** — `emitt
 an upgrade would have produced different content for the same skill; found by installing into a
 scratch repo and seeing the key still absent. Tests 22 → 24.
 
-[WI-059](items/WI-059-selftest-wiring.md), 2026-08-16 — **self-test fixtures now execute on every
+[WI-059](archive/WI-059-selftest-wiring.md), 2026-08-16 — **self-test fixtures now execute on every
 `rungs check`**, closing [F-018](FINDINGS.md) and, with it, F-006 which started the chain four items
 ago. ok 17 · mismatch 0 · unrun 45, and a fixture that disagrees with its engine fails the gate.
 
@@ -324,7 +323,7 @@ match the Open schema. And the runner did not bridge `opted_in`.
 45 fixtures still have no builder and are named on every run rather than skipped — the honest
 position is that 17 of 62 executable fixtures assert something and the rest visibly do not.
 
-[WI-046](items/WI-046-console-provenance.md), 2026-08-16 — the site's `real output` label is now
+[WI-046](archive/WI-046-console-provenance.md), 2026-08-16 — the site's `real output` label is now
 **earned rather than asserted**, closing [F-011](FINDINGS.md). Transcripts are captured by running
 each command against a fixture the capture script builds itself, committed, and checked by the
 `site-transcripts-real` gate: every displayed line must appear in the capture, in order. Gate count
@@ -353,9 +352,10 @@ order → OpenHands → synthesis.
 [`research/README.md`](../research/README.md) names as the existing corpus's explicit non-goal — so
 this is a second research axis with its own directory and template, not more of the first.
 
-[WI-018](items/WI-018-follow-on-public-agent-research.md) is an accepted follow-on, not an expansion
-of WI-009. It begins after WI-017 and gives durable memory, evaluation/optimization, local products,
-and interoperability protocols separate evidence tracks before reconciling them once.
+[WI-018](archive/WI-018-follow-on-public-agent-research.md) was a follow-on, not an expansion of
+WI-009. It gave durable memory, evaluation/optimization, local products, and interoperability
+protocols separate evidence tracks before reconciling them once. **Closed 2026-08-17** — all ten
+children had been `done` for some time while the epic still read `planned`, which nothing checks.
 
 **Done since:** [WI-008](archive/WI-008-link-gate-checks-every-file.md) — promoted from F-005.
 Link checking covered 72 of 89 files; a single `{{token}}` anywhere in a document exempted every

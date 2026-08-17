@@ -56,7 +56,14 @@ export function planArchive(repoRoot: string, backlogRoot = 'docs/backlog'): Arc
   const items = files.filter((f) => posix(f).startsWith(posix(relative(repoRoot, itemsDir)) + '/') && f.endsWith('.md'));
 
   for (const rel of items) {
-    if (/README\.md$/i.test(rel) || /TEMPLATE\.md$/i.test(rel)) continue;
+    // The **basename**, exactly — not a suffix of the path. `/TEMPLATE\.md$/i`
+    // also matches any item whose filename ends in `-template.md`, and it did:
+    // `WI-010-framework-extraction-template.md` was skipped on every run since
+    // this command shipped, so a `done` item stayed in `items/` while the
+    // command reported "nothing to archive". An anchored regex that is anchored
+    // to the wrong end reads as careful and is not.
+    const base = posix(rel).split('/').pop()!;
+    if (/^(README|TEMPLATE)\.md$/i.test(base)) continue;
     const text = readFileSync(join(repoRoot, rel), 'utf8');
     const status = field(text, 'status');
     const id = field(text, 'id');
@@ -70,8 +77,16 @@ export function planArchive(repoRoot: string, backlogRoot = 'docs/backlog'): Arc
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+      // A child that is **already archived** is finished — that is what being in
+      // `archive/` means. Searching only `items/` made every archived child read
+      // as unfinished, so an epic whose children had all landed could never be
+      // archived and the hold message named five done items as outstanding. The
+      // more finished an epic got, the more stuck it became.
+      const archived = files.filter((f) => posix(f).startsWith(posix(relative(repoRoot, archiveDir)) + '/') && f.endsWith('.md'));
       const unfinished = children.filter((c) => {
-        const f = items.find((i) => i.includes(`${c}-`));
+        const f = items.find((i) => i.includes(`${c}-`)) ?? archived.find((i) => i.includes(`${c}-`));
+        // Still `!f` → genuinely unknown, and an unknown holds. A child nobody
+        // can find is not evidence that it finished.
         return !f || !FINISHED.has(field(readFileSync(join(repoRoot, f), 'utf8'), 'status'));
       });
       if (unfinished.length) {
