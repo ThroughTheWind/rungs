@@ -187,6 +187,23 @@ would be worse than no gate at all.
 
 Everything above is reversible. **These steps are not.** Do them deliberately, one at a time.
 
+### First: the CI run for the commit you are about to tag must be green
+
+```bash
+gh run list --limit 3
+```
+
+**This is the one check that cannot be done on your machine, which is why it has to be named here.**
+Step 2's `rungs check` is local, and a local run is green on exactly one platform. v0.3.0 was tagged
+and published on 2026-08-17 while **all four** CI runs were red, including the run for the release
+commit itself — it had already failed ten minutes before `npm publish`. The failures were real: a
+gate in four of five profiles that had never worked off Windows ([F-033](../backlog/FINDINGS.md)),
+a CRLF assumption, and an ordering bug in the workflow itself. None of them were visible to a local
+`rungs check`, and none of them ever will be.
+
+A red run is not automatically a stop — a known-red cell you have decided to ship past is a choice
+someone can make. Not looking is not.
+
 ```bash
 git tag -a v<version> -m "rungs v<version> — <one line>"
 git push origin main --follow-tags

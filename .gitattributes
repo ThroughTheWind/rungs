@@ -1,0 +1,23 @@
+# Line endings are normalised to LF in the working tree, on every platform.
+#
+# Not a style preference. `modules/` is **source content that gets emitted into
+# other repositories**, and several engines match it with `^…$` multiline
+# regexes. On a checkout with `core.autocrlf=true` — the default on GitHub's
+# Windows runners, and on many Windows installs — every one of those lines gains
+# a `\r`, the anchors stop matching, and a gate reports a rule as missing when it
+# is present.
+#
+# Found by the CI matrix on its first run: `the shipped work-item skill carries
+# the extension its module opted into` failed on windows-latest and passed on
+# this machine, whose `core.autocrlf` happens to be `false`. The difference was
+# never in the code (F-034).
+* text=auto eol=lf
+
+# Binary-ish assets keep their bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

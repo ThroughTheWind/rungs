@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { matchAny } from './glob.ts';
 import type { Engine, Finding } from './engines.ts';
@@ -344,12 +344,28 @@ export const crossReference: Engine = (t, root, files) => {
  * this repo does not use — it deletes branches on merge — and it is the
  * direction to be wrong in, because the alternative is the daily false positive.
  */
+/**
+ * `git` as an argv array, never a shell string.
+ *
+ * `--format=%(refname:short)` is a **bash syntax error** — unquoted parentheses —
+ * so `backlog-merged-status` threw on every Linux and macOS repo, hit its catch,
+ * and reported "cannot read git branches; status not reconciled" as a finding.
+ * The gate ships in four of five profiles and had never once worked off Windows,
+ * where `execSync` goes through cmd.exe and parentheses are ordinary characters.
+ * Found by the CI matrix on its first run (F-033).
+ *
+ * Branch names come out of work-item frontmatter, so this is also the difference
+ * between reading a field and passing it to a shell.
+ */
+const gitArgs = (root: string, args: string[]) =>
+  execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString().trim();
+
 function landedWork(root: string, branch: string, base: string): boolean {
-  const git = (cmd: string) => execSync(`git ${cmd}`, { cwd: root, stdio: 'pipe' }).toString().trim();
+  const git = (...args: string[]) => gitArgs(root, args);
   try {
-    const tip = git(`rev-parse ${branch}`);
-    if (tip === git(`rev-parse ${base}`)) return false;
-    return git(`log ${base} --merges --format=%P`)
+    const tip = git('rev-parse', branch);
+    if (tip === git('rev-parse', base)) return false;
+    return git('log', base, '--merges', '--format=%P')
       .split('\n')
       .some((line) => line.trim().split(/\s+/).slice(1).includes(tip));
   } catch {
@@ -364,11 +380,7 @@ export const gitStatusReconcile: Engine = (t, root, files) => {
   let merged: Set<string>;
   try {
     merged = new Set(
-      execSync(`git branch --merged ${t.integration_branch ?? 'main'} --format=%(refname:short)`, {
-        cwd: root,
-        stdio: 'pipe',
-      })
-        .toString()
+      gitArgs(root, ['branch', '--merged', t.integration_branch ?? 'main', '--format=%(refname:short)'])
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean),

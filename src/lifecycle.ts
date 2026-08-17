@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { parse } from 'smol-toml';
 import type { Manifest } from './types.ts';
 import { contentHash, emittedFiles, registerGates } from './add.ts';
@@ -334,8 +334,13 @@ export function setupGit(repoRoot: string, dryRun = false) {
         : 'git merge-file -L ours -L base -L theirs %A %O %B';
     if (!dryRun) {
       try {
-        execSync(`git config merge.${d}.name "rungs ${d.replace('rungs-', '')} driver"`, { cwd: repoRoot, stdio: 'pipe' });
-        execSync(`git config merge.${d}.driver ${JSON.stringify(cmd)}`, { cwd: repoRoot, stdio: 'pipe' });
+        // argv, not a shell string. The `rungs-generated` driver command carries
+        // single quotes, a literal `\n` and `%A %O %B`, and it was being handed
+        // to a shell through `JSON.stringify` — quoting that happens to survive
+        // cmd.exe and does not survive bash the same way. The same class of bug
+        // as F-033, found in the same sweep.
+        execFileSync('git', ['config', `merge.${d}.name`, `rungs ${d.replace('rungs-', '')} driver`], { cwd: repoRoot, stdio: 'pipe' });
+        execFileSync('git', ['config', `merge.${d}.driver`, cmd], { cwd: repoRoot, stdio: 'pipe' });
       } catch {
         continue;
       }
@@ -345,7 +350,7 @@ export function setupGit(repoRoot: string, dryRun = false) {
   let rerere = false;
   if (!dryRun) {
     try {
-      execSync('git config rerere.enabled true', { cwd: repoRoot, stdio: 'pipe' });
+      execFileSync('git', ['config', 'rerere.enabled', 'true'], { cwd: repoRoot, stdio: 'pipe' });
       rerere = true;
     } catch {
       /* not a git repo */

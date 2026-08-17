@@ -233,7 +233,12 @@ test('the shipped work-item skill carries the extension its module opted into', 
 
   const emitted = emittedFiles(backlog, resolveParams(modules, {}, '.'));
   const skill = emitted.get('.claude/skills/work-item/SKILL.md');
-  assert.match(skill, /^disable-model-invocation: true$/m, 'and it reaches the emitted skill');
+  // `\r?$`, because the assertion is about the *key being emitted*, not about
+  // which line ending the checkout used. `.gitattributes` now normalises to LF
+  // so this should not vary — but a test that fails on a CRLF checkout is
+  // testing the checkout, and this one failed on windows-latest while passing
+  // on a machine whose `core.autocrlf` happened to be false (F-034).
+  assert.match(skill, /^disable-model-invocation: true\r?$/m, 'and it reaches the emitted skill');
   assert.doesNotMatch(
     emitted.get('.claude/skills/backlog-summary/SKILL.md'),
     /disable-model-invocation/,

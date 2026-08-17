@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { matchAny } from './glob.ts';
 import type { Engine, Finding } from './engines.ts';
@@ -213,7 +213,7 @@ export const rulePropagation: Engine = (t, root, files) => {
 export const gitState: Engine = (t, root) => {
   let out: string;
   try {
-    out = execSync('git worktree list --porcelain', { cwd: root, stdio: 'pipe' }).toString();
+    out = execFileSync('git', ['worktree', 'list', '--porcelain'], { cwd: root, stdio: 'pipe' }).toString();
   } catch {
     // Not a git repo, or git unavailable. An unattributable result blocks:
     // we do not land on an unknown.
@@ -248,7 +248,8 @@ export const mergeDriverCheck: Engine = (t, root) => {
   for (const driver of required) {
     let configured = '';
     try {
-      configured = execSync(`git config --get merge.${driver}.driver`, { cwd: root, stdio: 'pipe' }).toString().trim();
+      // Driver names come from `.gitattributes`, so they reach this as data.
+      configured = execFileSync('git', ['config', '--get', `merge.${driver}.driver`], { cwd: root, stdio: 'pipe' }).toString().trim();
     } catch {
       /* absent config exits non-zero, which is the finding */
     }

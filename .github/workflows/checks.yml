@@ -76,7 +76,12 @@ jobs:
           node-version: '22'
       - run: npm ci
       - run: npm ci --prefix site
-      # Type check, link check and build. The link check is what catches a doc
+      # **Build first.** `check:links` walks `dist/` and exits 1 with "no dist/ —
+      # run `npm run build` first" without it. Running check before build passed
+      # locally for exactly one reason: a previous build had left `dist/` lying
+      # around. A green that depends on leftover state is the class of bug this
+      # whole file exists to catch, and it shipped inside it.
+      - run: npm run build --prefix site
+      # Type check, then the link check. The link check is what catches a doc
       # citing a file that moved — which archiving does in bulk.
       - run: npm run check --prefix site
-      - run: npm run build --prefix site
