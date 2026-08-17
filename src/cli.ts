@@ -6,7 +6,7 @@ import { detect, scanRepo } from './detect.ts';
 import { addModule, adoptableGates, blockedByParadigm, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
-import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
+import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, UnknownTierError } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive } from './backlog.ts';
@@ -468,7 +468,17 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
 }
 
 function cmdCheck(root: string, tier: string | undefined, stamp: string) {
-  const runs = runGates(root, tier);
+  let runs: GateRun[];
+  try {
+    runs = runGates(root, tier);
+  } catch (e) {
+    // ADR-0008. A tier nobody declared used to select nothing and exit as though
+    // the gates had passed — the one failure mode a release step cannot have.
+    if (!(e instanceof UnknownTierError)) throw e;
+    console.log(c.yellow(`\n  unknown tier "${e.requested}"`) + c.dim(` — this repo declares ${e.declared.join(', ')}.`));
+    console.log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
+    return 1;
+  }
   if (!runs.length) {
     // Two situations printed the same sentence, and it was the wrong one for the case that
     // actually happens: a registry full of `fast` gates filtered by `--full` asked "is this a

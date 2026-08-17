@@ -1,6 +1,6 @@
 [module]
 name    = "release"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 3
 summary = "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file."
 
@@ -53,6 +53,19 @@ why    = """
 A change with no changelog fragment is a change the release notes will not mention, discovered at
 cut time when nobody remembers what it did. Cheaper to require the fragment on the branch that made
 the change.
+"""
+
+[[gates]]
+id     = "release-fragment-current"
+kind   = "declared"
+engine = "changelog-freshness"
+applicability = "repo-content"
+table  = "gates/release.toml"
+tier   = "fast"
+why    = """
+Fragments are consumed at release time, not archived — one left behind appears in the next release
+too, where it reads as unreleased work. `cut-release` §3 has said so in prose since it was written,
+and prose did not hold it: this repo's own `0.1.1` fragment survived two releases (F-022).
 """
 
 [[gates]]

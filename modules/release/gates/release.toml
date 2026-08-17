@@ -47,6 +47,25 @@ uncovered = [
 ]
 note = "A green check means these files agree, not that the version is correct everywhere."
 
+# ── release-fragment-current ──────────────────────────────────────────────────
+#
+# The other half of the fragment discipline. `release-changelog-fragment` catches a release-worthy
+# change that added no fragment; this catches a fragment that was consumed and never deleted.
+#
+# Only filenames that parse as a version are judged. A repo whose fragments are named per-change
+# (`42.feature.md`) states no version, so there is nothing to compare and nothing is claimed — a
+# gate that refused a naming convention it was not asked about is one people turn off.
+
+[[changelog_freshness]]
+id        = "release-fragment-current"
+fragments = ["{{changelog_dir}}/*.md"]
+version   = { file = "package.json", path = "version" }
+message = """
+This fragment names a version below the one being prepared, so it belongs to a release that already
+shipped. Delete it — fragments are consumed, not archived, and one left behind is republished as
+though it were new work.
+"""
+
 # ── self-tests ────────────────────────────────────────────────────────────────
 
 [[self_test]]
@@ -73,6 +92,30 @@ fixture = { changed = ["src/a.ts"], fragments = [], exempt = "changelog-ok: inte
 gate    = "release-changelog-fragment"
 expect  = "fail"
 fixture = { changed = ["src/a.ts"], fragments = [], exempt = "changelog-ok:" }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["0.1.1.md"] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["0.2.0.md"] }
+
+# A fragment for a version *above* the one being prepared is not stale — it is a branch that
+# already decided it is a minor while the package has not been bumped yet.
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["0.3.0.md"] }
+
+# Per-change fragment naming states no version, so there is nothing to compare and nothing is
+# claimed. The gate must stay silent rather than refuse a convention it was not asked about.
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["42.feature.md"] }
 
 [[self_test]]
 gate    = "release-version-consistent"

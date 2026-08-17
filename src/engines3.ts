@@ -15,6 +15,72 @@ const expand = (files: string[], p: string[] | undefined, f: string[] = []) =>
   [...new Set((p ?? f).flatMap((x) => matchAny(files, x)))];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** `1.2.3` → [1,2,3]; anything else → null. Deliberately not a semver parser. */
+export function versionParts(s: string): number[] | null {
+  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(s.trim());
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+export function versionCmp(a: number[], b: number[]): number {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+}
+
+/**
+ * `changelog-freshness` — a consumed fragment that was never deleted.
+ *
+ * Fragments are consumed at release time, not archived: one left behind appears
+ * in the next release too, where it reads as unreleased work. `cut-release` §3
+ * has said so in prose since it was written, and prose did not hold it —
+ * `changelog.d/0.1.1.md` survived two releases and was still there at 0.2.0
+ * preparation (F-022). So the rule becomes mechanical.
+ *
+ * A fragment is stale when its filename names a version **below** the version
+ * being prepared. Files whose names are not versions are ignored rather than
+ * reported: the module's own fixtures use `42.feature.md`, and a gate that
+ * refuses a naming convention it was not asked about is a gate people disable.
+ */
+export const changelogFreshness: Engine = (t, root, files) => {
+  const specs = Array.isArray(t) ? t : [t];
+  const findings: Finding[] = [];
+  let examined = 0;
+
+  for (const spec of specs) {
+    const src = spec.version ?? {};
+    let current: number[] | null = null;
+    for (const rel of matchAny(files, src.file ?? 'package.json')) {
+      try {
+        const raw = (src.path ?? 'version')
+          .split('.')
+          .reduce((o: any, k: string) => o?.[k], JSON.parse(read(root, rel)));
+        current = versionParts(String(raw ?? ''));
+      } catch {
+        /* unparseable is not a stale fragment */
+      }
+      if (current) break;
+    }
+    // Without a version to compare against there is no claim to make. Saying
+    // nothing is right; passing loudly would not be.
+    if (!current) continue;
+
+    for (const rel of expand(files, spec.fragments, [])) {
+      const name = rel.split('/').pop()!.replace(/\.md$/, '');
+      const v = versionParts(name);
+      if (!v) continue;
+      examined++;
+      if (versionCmp(v, current) < 0) {
+        findings.push({
+          file: rel,
+          message:
+            spec.message?.trim() ||
+            `fragment names ${name}, below the ${current.join('.')} being prepared — it was consumed by an earlier release and should have been deleted`,
+        });
+      }
+    }
+  }
+
+  return { findings, examined };
+};
+
 /** An exemption marker is ignored unless it states a reason. */
 const exempted = (text: string, marker?: string) =>
   !!marker && new RegExp(`${escapeRe(marker)}\\s*\\S`).test(text);
@@ -272,3 +338,4 @@ export const boardReconcile: Engine = (t, root, _files) => {
 
   return { findings, examined };
 };
+

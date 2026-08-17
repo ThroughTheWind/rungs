@@ -68,6 +68,21 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
   if (typeof input === 'string') return [write(targetPath(table), `${input}\n`)];
   if (!fx || typeof fx !== 'object') return null;
 
+  // Named files in a parameterised directory, plus the version they are judged
+  // against — the changelog shapes. `dir` is stated by the fixture rather than
+  // assumed here, because the self-test sees the module's *raw* table and a
+  // `{{changelog_dir}}` glob cannot match anything on disk; see `deparam`.
+  if (Array.isArray(fx.fragments) && typeof fx.version === 'string') {
+    const dir = fx.dir ?? 'changelog.d';
+    // Forward slashes, not `join`: the returned paths are matched against the
+    // spec's globs, and on Windows `join` yields `changelog.d\0.1.1.md`, which
+    // `changelog.d/*.md` does not match. The gate then reports "did not fire"
+    // about the harness rather than the fixture.
+    const written = fx.fragments.map((n: string) => write(`${dir}/${n}`, `# ${n}\n`));
+    written.push(write('package.json', JSON.stringify({ version: fx.version })));
+    return written;
+  }
+
   // N files matching the table's scan — the population shapes.
   if (typeof fx.matching_files === 'number') {
     const base = fx.location ?? dirname(targetPath(table));
@@ -128,7 +143,28 @@ const CONTEXT_FREE: ReadonlySet<string> = new Set([
   'file-budget',
   'register-schema',
   'file-population',
+  'changelog-freshness',
 ]);
+
+/**
+ * Replace `{{param}}` segments in a spec's globs with the literal the fixture
+ * stands in for.
+ *
+ * The runner reads the **module's** gate table, where paths are still written as
+ * parameters — `{{changelog_dir}}/*.md`. Nothing substitutes them here, because
+ * there is no installed repo to take values from. So a fixture that exercises a
+ * parameterised path has to say what it is standing in for, and the spec has to
+ * be told the same thing, or the glob matches a file the builder just wrote and
+ * the gate reports "did not fire" about its own harness.
+ */
+function deparam<T>(spec: T, dir: string): T {
+  const walk = (v: any): any =>
+    typeof v === 'string' ? v.replace(/\{\{[^}]+\}\}/g, dir)
+      : Array.isArray(v) ? v.map(walk)
+      : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]))
+      : v;
+  return walk(spec);
+}
 
 export function runSelfTests(
   gateId: string,
@@ -154,9 +190,12 @@ export function runSelfTests(
       // spec as `extensions_opted_in`. Without the bridge, the `pass` fixture for
       // an opted-in extension fired `non-spec key` — the harness asserting the
       // opposite of what the fixture said (F-018).
-      const spec = b.fixture?.opted_in
+      let spec = b.fixture?.opted_in
         ? (Array.isArray(table) ? table.map((s: any) => ({ ...s, extensions_opted_in: b.fixture.opted_in })) : { ...table, extensions_opted_in: b.fixture.opted_in })
         : table;
+      // Same bridge, for paths: a fixture that names a parameterised directory
+      // has to hand the spec the same literal it wrote the files into.
+      if (Array.isArray(b.fixture?.fragments)) spec = deparam(spec, b.fixture.dir ?? 'changelog.d');
       if (!files) {
         out.push({ gate: gateId, expect, outcome: 'unrun', detail: `no builder for fixture ${JSON.stringify(b.fixture).slice(0, 60)}` });
         continue;

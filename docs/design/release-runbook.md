@@ -42,11 +42,15 @@ not a promise, and renaming a branch is free. Republishing a version number is i
 ## 2. Gate
 
 ```bash
-npm test && node --experimental-strip-types src/cli.ts check
+npm test && node --experimental-strip-types src/cli.ts check && node scripts/check-doc-claims.mjs
 ```
 
-**Use plain `check`. Not `--full`, not `--tier full`** — see [T1](#t1). Expected at v0.2.0 prep:
-24 tests pass, 25 gates pass, 0 fail.
+Plain `check` runs every registered gate, which is what a release wants; since
+[ADR-0008](../decisions/ADR-0008-gate-tiers-are-levels.md) a named tier is an ordered level rather
+than a tag that could silently select nothing ([T1](#t1--closed)). `check-doc-claims` also runs as
+a gate — it is listed separately only because its output names the values it derived.
+
+Expected at v0.2.0 preparation, 2026-08-17: **25 tests pass, 27 gates pass, 0 fail.**
 
 Do not proceed on a red gate, and do not weaken one to get through. If a gate is red for reasons
 that predate the release, say so explicitly and get a decision from a person.
@@ -70,11 +74,14 @@ npm version <version> --no-git-tag-version
 That covers `package.json` and `package-lock.json`. Then, by hand, because no gate checks them
 ([T4](#t4)):
 
-| Surface | What to update |
-| --- | --- |
-| [`site/src/pages/versions.astro`](../../site/src/pages/versions.astro) | `publishedVersion` — the version **already on npm**, not the one being cut. Verify it ([T3](#t3)). |
-| [`README.md`](../../README.md) § Status | Published version + date, next version, gate count with its date |
-| [`docs/roadmap.md`](../roadmap.md) | Phase 7 row and the "What is left" Phase 7 paragraph |
+| Surface | What to update | Held by |
+| --- | --- | --- |
+| [`site/src/pages/versions.astro`](../../site/src/pages/versions.astro) | `publishedVersion` — the version **already on npm**, not the one being cut. Verify it against the registry ([T3](#t3)) | nothing — check by hand |
+| [`README.md`](../../README.md) § Status | The next-release sentence | `docs-version-claims` |
+| [`docs/roadmap.md`](../roadmap.md) | Phase 7 row and the "What is left" Phase 7 paragraph | `docs-version-claims` |
+
+The gated rows will fail `rungs check` if you forget them, which is the point. The first row will
+not, which is why it is first.
 
 Then regenerate the derived site claims and build ([T6](#t6)):
 
@@ -84,25 +91,27 @@ cd site && npm run claims && npm run build
 
 ## 5. Traps, each one measured
 
-### T1
-**A tier can select zero gates, and that used to look like the repo was the problem.** Every gate in
-[`.ai/gates.toml`](../../.ai/gates.toml) is `tier = "fast"` (25 of 25, 2026-08-17), and
-[`src/check.ts`](../../src/check.ts) matches the tier label exactly, so `full` selects nothing.
-The shipped skill's step 2 used to prescribe `rungs check --tier full` — and `--tier` is not a
-recognised flag at all ([`src/cli.ts:796`](../../src/cli.ts:796) accepts a positional tier or
-`--fast` / `--full`), so following it produced a confident `no gates registered — is this a rungs
-repo?` about a repo holding 25 of them.
+### T1 — closed
+**A tier used to be able to select zero gates and exit as though the release had been gated.** The
+shipped skill's step 2 prescribed `rungs check --tier full`; `--tier` is not a recognised flag
+([`src/cli.ts`](../../src/cli.ts) accepts a positional tier or `--fast` / `--full`), and `full`
+matched no gate on a registry where all of them are `fast`. The result was a confident
+`no gates registered — is this a rungs repo?` about a repo holding 25 of them.
 
-Fixed 2026-08-17 in both places: the skill now says `rungs check`, and the zero-gate case names the
-tier and the count it declined to run. **What remains open (F-020 part 1)** is the semantics —
-`full` is a disjoint label, not a superset of `fast`, and an unknown tier is accepted rather than
-rejected. So `rungs check <anything>` still runs nothing, now honestly. **Use plain `check`.**
+Closed 2026-08-17 by [ADR-0008](../decisions/ADR-0008-gate-tiers-are-levels.md): a tier is an
+**ordered level**, so `full` is a superset of `fast`, an untiered gate runs in every tier, and a
+tier the registry does not declare is refused with a non-zero exit. Plain `rungs check` is still
+what step 2 says, because running every gate is what a release wants.
 
-### T2
+### T2 — closed
 **A consumed fragment that is not deleted reappears in the next release.**
 `changelog.d/0.1.1.md` was written for v0.1.1, folded into the versions page, and never removed. It
 was still sitting there at v0.2.0 preparation — through two releases — where it read as unreleased
-work. The v0.1.3 fragment *was* deleted, so the discipline exists and was simply skipped once.
+work. The v0.1.3 fragment *was* deleted, so the discipline existed and was simply skipped once,
+which is the argument for a gate rather than a louder sentence.
+
+Closed 2026-08-17 by `release-fragment-current`: a fragment naming a version below the one being
+prepared now fails `rungs check`.
 
 ### T3
 **`publishedVersion` in `versions.astro` is hand-typed and drifts.** It read `0.1.2` while npm
@@ -114,11 +123,20 @@ registry, never memory:
 npm view @rungs/cli dist-tags
 ```
 
-### T4
-**The prose version claims are ungated.** `README.md` and `docs/roadmap.md` each stated the public
+### T4 — mostly closed
+**The prose version claims were ungated.** `README.md` and `docs/roadmap.md` each stated the public
 latest as v0.1.2 two days after v0.1.3 shipped, and the README's gate count sat at "20 pass" when
-the answer was 25. The structural site counts are derived and gated (WI-051); these sentences are
-not. Until a gate covers them, they are on this checklist.
+the answer was 25.
+
+Closed 2026-08-17 for everything derivable: `docs-version-claims` holds the prepared version, the
+CLI size and the command count against the manifest and the source. **One claim is still on this
+checklist and always will be** — the *published* version is only knowable from the registry, and
+the runner does no network. It is now stated in exactly one place, the versions page, rather than
+copied into three. Verify it before publishing:
+
+```bash
+npm view @rungs/cli dist-tags
+```
 
 ### T5
 **The candidate branch drifts from `main`.** At v0.2.0 preparation `candidate/0.1.4` was **46

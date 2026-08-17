@@ -37,6 +37,8 @@ const releases = [
       ["added", "Detection treats an external issue tracker as a different paradigm, and add stops rather than installing over it."],
       ["added", "rungs backlog archive, and a self-test runner that executes each gate's fixtures on every check."],
       ["added", "The skill-extension opt-in, so a repo can extend a module's skill and keep it through upgrade."],
+      ["added", "release-fragment-current: a changelog fragment below the version being prepared was consumed by an earlier release and should have been deleted."],
+      ["changed", "A gate tier is an ordered level, not a tag (ADR-0008): full is a superset of fast, and an undeclared tier is refused instead of passing empty. Breaking for a consumer using tiers as disjoint sets."],
       ["changed", "Detector applicability is declared per gate with no default (ADR-0007)."],
       ["changed", "The site derives its structural counts from the registry and refuses to build when they drift."],
       ["fixed", "upgrade re-registers a module's gates and updates the install record without touching diverged files."],
@@ -171,12 +173,19 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
         <div class="card">
           <div class="card-title">Entries land with the change</div>
           <p>Each release-worthy change adds one fragment to <code>changelog.d/</code> on the same branch. The next version is decided from those fragments, not reconstructed at tag time.</p>
-          <div class="tag-line"><EnforcementTag state="review-only" /> <span>release-changelog-fragment · declared, engine pending</span></div>
+          {/*
+            Was "declared, engine pending" under a review-only tag. Both engines have been
+            implemented for some time — installing the module into a scratch repo on 2026-08-17
+            ran both gates green — so the page was understating its own tool on the page that
+            argues undeclared enforcement is the failure mode (F-021's neighbourhood).
+          */}
+          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-changelog-fragment · file-population</span></div>
+          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-fragment-current · changelog-freshness, new in 0.2.0</span></div>
         </div>
         <div class="card">
           <div class="card-title">The version agrees with itself</div>
           <p><code>release-version-consistent</code> computes the package version across manifests rather than trusting the releaser. A disagreement is discovered before a user installs it.</p>
-          <div class="tag-line"><EnforcementTag state="review-only" /> <span>release-version-consistent · declared, engine pending</span></div>
+          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-version-consistent · computed-claim</span></div>
         </div>
       </div>
     </section>
