@@ -7,25 +7,46 @@ import Base from "../layouts/Base.astro";
 import { Callout, Claim, EnforcementTag, Measurement, TitleBlock } from "../design-system/components/index.js";
 import { SITE } from "../site.config";
 
-const nextVersion = packageJson.version as string;
+// Published-ness is an ordering against `latest`, not equality with it. The page used to ask
+// `version === publishedVersion ? "npm latest" : "npm publication pending"`, which is correct for
+// exactly one row and wrong for every release below it: v0.1.1 and v0.1.2 had been installable
+// since 2026-08-15 and both rendered "npm publication pending". A changelog whose older entries
+// claim to be unpublished is worse than no status column at all.
+//
+// A function declaration, not a `const` arrow: it is used above its definition below, and a
+// `const` in module scope is not hoisted.
+function cmpVersions(a: string, b: string): number {
+  const [x, y] = [a.split(".").map(Number), b.split(".").map(Number)];
+  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+}
+
+const packageVersion = packageJson.version as string;
 // The registry is the authority, not this file. Verified 2026-08-17 with
-// `npm view @rungs/cli dist-tags` → { latest: "0.1.3" }, published 2026-08-15T18:06:25Z.
+// `npm view @rungs/cli dist-tags` → { latest: "0.2.0" }, published 2026-08-17T01:00:16Z,
+// and a clean consumer installed it from the public registry and ran the binary.
 // This constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
 // "0.1.3 · npm publication pending" above a version anyone could already install.
-const publishedVersion = "0.1.3";
+const publishedVersion = "0.2.0";
+const publishedDate = "2026-08-17";
+
+// Whether a release is pending is derived, not asserted. The page used to state
+// "<version> is tagged and ready for npm publication" from the package version alone — which is
+// true only between the bump and the publish, and silently false for the rest of a version's life.
+// After 0.2.0 shipped, the package version *is* the published version, and a page that kept
+// calling it pending would have been wrong in the opposite direction to the bug above it.
+const pending = cmpVersions(packageVersion, publishedVersion) > 0;
 
 // Published-ness is an ordering against `latest`, not equality with it. The page used to ask
 // `version === publishedVersion ? "npm latest" : "npm publication pending"`, which is correct for
 // exactly one row and wrong for every release below it: v0.1.1 and v0.1.2 have been installable
 // since 2026-08-15 and both rendered "npm publication pending". A changelog whose older entries
 // claim to be unpublished is worse than no status column at all.
-const order = (v: string) => v.split(".").map(Number);
-const cmp = (a: string, b: string) => {
-  const [x, y] = [order(a), order(b)];
-  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
-};
 const status = (v: string) =>
-  cmp(v, publishedVersion) === 0 ? "npm latest" : cmp(v, publishedVersion) < 0 ? "published" : "npm publication pending";
+  cmpVersions(v, publishedVersion) === 0
+    ? "npm latest"
+    : cmpVersions(v, publishedVersion) < 0
+      ? "published"
+      : "npm publication pending";
 
 const releases = [
   {
@@ -91,8 +112,8 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
       kicker="Versions"
       title="Versions & changelog"
       fields={[
-        { label: "Latest", value: `${publishedVersion} · published 2026-08-15` },
-        { label: "Next", value: `${nextVersion} · prepared, not yet tagged` },
+        { label: "Latest", value: `${publishedVersion} · published ${publishedDate}` },
+        { label: "Next", value: pending ? `${packageVersion} · prepared, not yet published` : "candidate/0.3.0 open · nothing pending" },
         { label: "Updated", value: SITE.asOf },
       ]}
     />
@@ -117,15 +138,28 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
           </article>
         ))}
       </div>
-      <div class="next-card">
-        <span class="next-label">Release prepared · not yet tagged</span>
-        <p>
-          <code>v{nextVersion}</code> is assembled from its changelog fragment and the package
-          metadata agrees with it. Tagging, the deploy branch and npm publication are the remaining
-          steps — each one deliberate, because the tag and the registry are the two things this
-          procedure cannot undo. The runbook is <code>docs/design/release-runbook.md</code>.
-        </p>
-      </div>
+      {pending ? (
+        <div class="next-card">
+          <span class="next-label">Release prepared · not yet published</span>
+          <p>
+            <code>v{packageVersion}</code> is assembled from its changelog fragment and the package
+            metadata agrees with it. The tag, the deploy branch and npm publication are the
+            remaining steps — each one deliberate, because the tag and the registry are the two
+            things this procedure cannot undo. The runbook is
+            <code>docs/design/release-runbook.md</code>.
+          </p>
+        </div>
+      ) : (
+        <div class="next-card is-shipped">
+          <span class="next-label">Nothing pending</span>
+          <p>
+            <code>v{publishedVersion}</code> is tagged, deployable from <code>release/{publishedVersion}</code>, and on npm as <code>latest</code>. Work for the
+            next release lands on <code>candidate/0.3.0</code>, and the version it becomes is
+            decided from the fragments in <code>changelog.d/</code> at cut time — not from this
+            sentence, and not from the branch name.
+          </p>
+        </div>
+      )}
     </section>
 
     <section class="sec">
@@ -241,6 +275,10 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
   .entry-kind { color: var(--text-muted); flex: none; width: 58px; font: 600 9.5px var(--font-label); letter-spacing: .1em; text-transform: uppercase; }
   .entry-kind.is-fixed { color: var(--redline); }
   .next-card { margin-top: 14px; border: 2px dashed var(--redline); background: var(--redline-tint); padding: 14px 16px; max-width: 72ch; }
+  /* Nothing outstanding is not a warning. The dashed redline says "act on this"; a shipped
+     release has nothing to act on, so it drops back to the ordinary card treatment. */
+  .next-card.is-shipped { border: 1px solid var(--line); background: var(--surface-card); }
+  .next-card.is-shipped .next-label { color: var(--text-muted); }
   .next-label { color: var(--redline); display: block; margin-bottom: 6px; font: 600 10px var(--font-label); letter-spacing: .1em; text-transform: uppercase; }
   .next-card p, .body { font: 400 14.5px/1.6 var(--font-serif); color: var(--ink-2); margin: 0; max-width: 72ch; }
   .status { display: flex; gap: 24px; align-items: baseline; flex-wrap: wrap; }

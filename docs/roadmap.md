@@ -16,7 +16,7 @@ depended on was measured.
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
 | **5** | CLI | ✅ Ten commands, ~4,700 lines (`wc -l src/*.ts`, 2026-08-17); gate count on [the versions page](https://docs.rungscli.com/versions/), derived rather than typed |
 | **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; WI-034 verified a clean packed-consumer journey; **a source-repo/public-registry install remains** |
-| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; current published version on [the versions page](https://docs.rungscli.com/versions/); v0.2.0 prepared in [`package.json`](../package.json), untagged) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
+| **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; current published version on [the versions page](https://docs.rungscli.com/versions/); v0.2.0 released from [`package.json`](../package.json), tagged and deployable from `release/0.2.0`) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 
 ## What each phase produced that the next one needed
 

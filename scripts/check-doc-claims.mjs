@@ -60,8 +60,11 @@ const TOLERANCE = 0.1;
 
 /** [file, human name, pattern capturing the claim, expected, 'exact' | 'approx'] */
 const CLAIMS = [
-  ['README.md', 'next release version', /\*\*Next release: v(\d+\.\d+\.\d+)\*\*/, pkg.version, 'exact'],
-  ['docs/roadmap.md', 'prepared version', /v(\d+\.\d+\.\d+) prepared in/, pkg.version, 'exact'],
+  // These two patterns were rewritten when v0.2.0 shipped and "next release, untagged" stopped
+  // being true. Both claims failed the "no longer matches" branch first, which is the branch
+  // earning its keep: the prose and the check move together or the gate goes red.
+  ['README.md', 'current release version', /\*\*Current release: v(\d+\.\d+\.\d+)\*\*/, pkg.version, 'exact'],
+  ['docs/roadmap.md', 'released version', /v(\d+\.\d+\.\d+) released from/, pkg.version, 'exact'],
   ['README.md', 'CLI size', /The CLI, ~([\d,]+) lines/, String(srcLines), 'approx'],
   ['docs/roadmap.md', 'CLI size', /Ten commands, ~([\d,]+) lines/, String(srcLines), 'approx'],
 ];
