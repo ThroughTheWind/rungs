@@ -22,11 +22,11 @@ function cmpVersions(a: string, b: string): number {
 
 const packageVersion = packageJson.version as string;
 // The registry is the authority, not this file. Verified 2026-08-17 with
-// `npm view @rungs/cli dist-tags` → { latest: "0.3.0" }, published 2026-08-17T12:55:35Z,
+// `npm view @rungs/cli dist-tags` → { latest: "0.3.1" }, published 2026-08-17T13:23:00Z,
 // and a clean consumer installed it from the public registry and ran the binary.
 // This constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
 // "0.1.3 · npm publication pending" above a version anyone could already install.
-const publishedVersion = "0.3.0";
+const publishedVersion = "0.3.1";
 const publishedDate = "2026-08-17";
 
 // Whether a release is pending is derived, not asserted. The page used to state
