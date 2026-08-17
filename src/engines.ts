@@ -15,7 +15,7 @@ import {
   renderFreshness,
   selfDeclaredClosure,
 } from './engines2.ts';
-import { boardReconcile, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
+import { boardReconcile, changelogFreshness, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
 
 export interface Finding {
   file?: string;
@@ -477,6 +477,7 @@ const tableKeyFor = (engine: string) =>
     'git-state': 'git_state',
     'merge-driver-check': 'merge_driver_check',
     'board-reconcile': 'board_reconcile',
+    'changelog-freshness': 'changelog_freshness',
   })[engine] ?? engine;
 
 export const ENGINES: Record<string, Engine> = {
@@ -499,6 +500,7 @@ export const ENGINES: Record<string, Engine> = {
   'git-state': gitState,
   'merge-driver-check': mergeDriverCheck,
   'board-reconcile': boardReconcile,
+  'changelog-freshness': changelogFreshness,
 };
 
 /**

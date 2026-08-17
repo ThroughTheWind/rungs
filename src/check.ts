@@ -44,8 +44,50 @@ export function loadRegistry(repoRoot: string): { runner: any; gates: RegistryGa
   return { runner: raw.runner ?? {}, gates: raw.gates ?? [] };
 }
 
+/**
+ * ADR-0008: a tier is an ordered **level**, not a tag. `[runner] tiers` declares
+ * the order, and asking for one runs every gate at that level or below it.
+ *
+ * This was string equality, so `full` selected only gates labelled `full` — zero
+ * of them on a registry where everything is `fast`, which is this repo. The run
+ * then reported no gates and exited as though the release had been gated, and
+ * `cut-release` told every consumer to gate on exactly that command (F-020).
+ */
+export function tierSelects(runnerTiers: string[], requested: string, gateTier?: string): boolean {
+  if (!gateTier) return true; // untiered gates run in every tier
+  const at = runnerTiers.indexOf(requested);
+  const of = runnerTiers.indexOf(gateTier);
+  // An undeclared tier on either side cannot be ordered. Fall back to equality
+  // rather than guessing a position — silently including it would be worse.
+  if (at < 0 || of < 0) return gateTier === requested;
+  return of <= at;
+}
+
+/**
+ * No parameter properties: Node's strip-only TypeScript mode rejects them, and
+ * `dist/` is built from these sources for a runtime that has no compiler. The
+ * same constraint is what v0.1.1 shipped broken (ERR_UNSUPPORTED_NODE_MODULES_
+ * TYPE_STRIPPING), so it is worth the four extra lines.
+ */
+export class UnknownTierError extends Error {
+  requested: string;
+  declared: string[];
+  constructor(requested: string, declared: string[]) {
+    super(`unknown tier "${requested}"`);
+    this.requested = requested;
+    this.declared = declared;
+  }
+}
+
 export function runGates(repoRoot: string, tier?: string, now = () => Date.now()): GateRun[] {
-  const { gates } = loadRegistry(repoRoot);
+  const { runner, gates } = loadRegistry(repoRoot);
+  const runnerTiers: string[] = Array.isArray(runner?.tiers) ? runner.tiers : [];
+  // A tier nobody declared selects nothing, and "selected nothing" is
+  // indistinguishable from "everything passed" at the exit code. Refuse it here
+  // rather than let a typo read as a green release gate.
+  if (tier && runnerTiers.length && !runnerTiers.includes(tier)) {
+    throw new UnknownTierError(tier, runnerTiers);
+  }
   const files = walk(repoRoot);
   const runs: GateRun[] = [];
 
@@ -53,7 +95,7 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
     // A hook fires on a tool call, not in the runner. Skipping it here is
     // correct; counting it as a pass would not be.
     if (g.trigger) continue;
-    if (tier && g.tier && g.tier !== tier) continue;
+    if (tier && !tierSelects(runnerTiers, tier, g.tier)) continue;
 
     const started = now();
     let status: Status = 'pass';

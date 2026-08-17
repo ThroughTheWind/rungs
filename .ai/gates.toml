@@ -29,6 +29,42 @@ fast_budget_ms = 30000
 # command = "pwsh ./scripts/validate-doc-links.ps1"
 # why     = "Adopted 2026-01-01; predates rungs and is owned by this repo."
 
+# Registered by hand rather than by `rungs add release`, and outside a module block on purpose.
+# This repo authors the `release` module but does not install it: `add release` pulls `ci` and
+# writes the `cut-release` skill into `.claude/skills/`, and `release-version-consistent` compares
+# `package.json` with `*/package.json` — which here means `site/package.json`, a genuinely separate
+# package at its own version. That gate would fail on a layout it was not written for (F-023).
+#
+# The fragment gate has no such problem and is the one that closes F-022, so it runs here. rungs
+# gating its own release with its own gate is the whole point; taking the other two on the same
+# trip would have meant weakening one to get green, at exactly the moment not to.
+# This repo's own, not a module's: the prose lives here, and `release-version-consistent` pins
+# documentation prose as uncovered on purpose. What makes it checkable is that each source states
+# *which sentence* is the claim — a scan for version-shaped strings would fire on "first published
+# 2026-08-14 at v0.1.0", which is history and correct. A pattern that stops matching fails too:
+# a claim reworded out of existence must not silently become unverified (F-021).
+[[gates]]
+id      = "docs-version-claims"
+kind    = "command"
+module  = "adopted"
+tier    = "fast"
+command = "node scripts/check-doc-claims.mjs"
+why    = """The README and roadmap each stated a release version by hand and both drifted — they named v0.1.2
+as public latest for two days after v0.1.3 was on npm, while the README's gate count said 20 against
+an actual 25. WI-051 derived the site's structural counts and stopped there; these sentences were
+left hand-kept on a tool whose claim is that stated facts stay true."""
+
+[[gates]]
+id     = "release-fragment-current"
+kind   = "declared"
+module = "release"
+engine = "changelog-freshness"
+table  = "release/release.toml"
+tier   = "fast"
+why    = """A fragment consumed by an earlier release and never deleted reads as unreleased work in the next
+one. `cut-release` §3 said so in prose and prose did not hold it — this repo's own 0.1.1 fragment
+survived two releases and was still present at 0.2.0 preparation (F-022)."""
+
 # ── module gates ──────────────────────────────────────────────────────────────
 # Generated. Edit the owning module's parameters, not these entries.
 

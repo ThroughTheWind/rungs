@@ -6,7 +6,7 @@ import { detect, scanRepo } from './detect.ts';
 import { addModule, adoptableGates, blockedByParadigm, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
-import { appendLedger, ledgerQuestions, loadRegistry, runGates } from './check.ts';
+import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, UnknownTierError } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive } from './backlog.ts';
@@ -468,9 +468,35 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
 }
 
 function cmdCheck(root: string, tier: string | undefined, stamp: string) {
-  const runs = runGates(root, tier);
+  let runs: GateRun[];
+  try {
+    runs = runGates(root, tier);
+  } catch (e) {
+    // ADR-0008. A tier nobody declared used to select nothing and exit as though
+    // the gates had passed — the one failure mode a release step cannot have.
+    if (!(e instanceof UnknownTierError)) throw e;
+    console.log(c.yellow(`\n  unknown tier "${e.requested}"`) + c.dim(` — this repo declares ${e.declared.join(', ')}.`));
+    console.log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
+    return 1;
+  }
   if (!runs.length) {
-    console.log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
+    // Two situations printed the same sentence, and it was the wrong one for the case that
+    // actually happens: a registry full of `fast` gates filtered by `--full` asked "is this a
+    // rungs repo?" about a repo holding 25 of them, and `cut-release` told every consumer to
+    // gate a release on exactly that command (F-020). Blame the filter when there is one.
+    //
+    // Hooks are excluded because a hook fires on a tool call rather than in the runner: it is
+    // registered, and no tier value could ever have selected it. Counting it here would offer
+    // the reader a gate that changing the tier cannot reach.
+    const runnable = loadRegistry(root).gates.filter((g) => !g.trigger);
+    if (runnable.length && tier) {
+      const tiers = [...new Set(runnable.map((g) => g.tier).filter(Boolean))];
+      console.log(c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
+        c.dim(` (${tiers.length ? tiers.join(', ') : 'none tiered'}).`));
+      console.log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
+    } else {
+      console.log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
+    }
     return 1;
   }
   appendLedger(root, runs, stamp);
