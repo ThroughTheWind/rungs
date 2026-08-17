@@ -1,5 +1,5 @@
 {
-  "gateCount": 27,
+  "gateCount": 28,
   "gateIds": [
     "adr-index-current",
     "adr-required-fields",
@@ -20,6 +20,7 @@
     "instructions-render-current",
     "instructions-repo-map-current",
     "release-fragment-current",
+    "release-version-consistent",
     "session-archive-named",
     "session-sections-present",
     "site-claims-current",
@@ -137,7 +138,7 @@
     },
     {
       "name": "release",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 3,
       "summary": "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file.",
       "requires": [
@@ -240,7 +241,7 @@
     }
   ],
   "run": {
-    "pass": 27,
+    "pass": 28,
     "fail": 0,
     "unimplemented": 0,
     "error": 0,

@@ -68,6 +68,14 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
   if (typeof input === 'string') return [write(targetPath(table), `${input}\n`)];
   if (!fx || typeof fx !== 'object') return null;
 
+  // A set of manifests and the version each states — the computed-claim shapes.
+  // `{ "package.json": "1.2.0", "site/package.json": "1.1.0" }`.
+  if (fx.packages && typeof fx.packages === 'object') {
+    return Object.entries(fx.packages).map(([rel, version]) =>
+      write(rel, JSON.stringify({ name: rel.replace(/\W/g, '-'), version })),
+    );
+  }
+
   // Named files in a parameterised directory, plus the version they are judged
   // against — the changelog shapes. `dir` is stated by the fixture rather than
   // assumed here, because the self-test sees the module's *raw* table and a
@@ -144,6 +152,7 @@ const CONTEXT_FREE: ReadonlySet<string> = new Set([
   'register-schema',
   'file-population',
   'changelog-freshness',
+  'computed-claim',
 ]);
 
 /**
@@ -196,6 +205,13 @@ export function runSelfTests(
       // Same bridge, for paths: a fixture that names a parameterised directory
       // has to hand the spec the same literal it wrote the files into.
       if (Array.isArray(b.fixture?.fragments)) spec = deparam(spec, b.fixture.dir ?? 'changelog.d');
+      // And for `exclude`, which is the thing under test in half these fixtures:
+      // the table ships it empty by default, so a fixture proving exclusion works
+      // has to set it, exactly as a repo would.
+      if (Array.isArray(b.fixture?.exclude)) {
+        const ex = b.fixture.exclude;
+        spec = Array.isArray(spec) ? spec.map((s: any) => ({ ...s, exclude: ex })) : { ...spec, exclude: ex };
+      }
       if (!files) {
         out.push({ gate: gateId, expect, outcome: 'unrun', detail: `no builder for fixture ${JSON.stringify(b.fixture).slice(0, 60)}` });
         continue;

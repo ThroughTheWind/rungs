@@ -29,15 +29,27 @@ fast_budget_ms = 30000
 # command = "pwsh ./scripts/validate-doc-links.ps1"
 # why     = "Adopted 2026-01-01; predates rungs and is owned by this repo."
 
-# Registered by hand rather than by `rungs add release`, and outside a module block on purpose.
-# This repo authors the `release` module but does not install it: `add release` pulls `ci` and
-# writes the `cut-release` skill into `.claude/skills/`, and `release-version-consistent` compares
-# `package.json` with `*/package.json` — which here means `site/package.json`, a genuinely separate
-# package at its own version. That gate would fail on a layout it was not written for (F-023).
+# Registered by hand rather than by `rungs add release`, and outside a module block on purpose:
+# this repo authors the `release` module but does not install it, because `add release` also pulls
+# `ci` and writes the `cut-release` skill into `.claude/skills/`. The gates are what it wants.
 #
-# The fragment gate has no such problem and is the one that closes F-022, so it runs here. rungs
-# gating its own release with its own gate is the whole point; taking the other two on the same
-# trip would have meant weakening one to get green, at exactly the moment not to.
+# `release-version-consistent` was held back at 0.2.0 because it compares `package.json` with
+# `*/package.json` and `site/package.json` sat at 0.0.1 — a red gate on a healthy layout (F-023).
+# Fixed two ways rather than one: the engine now takes an `exclude` list so a repo can state what
+# is versioned independently, and this repo took the *other* branch — the site version is now
+# aligned to the package, so the gate genuinely checks it instead of being told to look away.
+# The cost is a second bump every release, and the gate is what makes that impossible to forget.
+[[gates]]
+id     = "release-version-consistent"
+kind   = "declared"
+module = "release"
+engine = "computed-claim"
+table  = "release/release.toml"
+tier   = "fast"
+why    = """A version appears in several files and drifts in exactly one of them. It is derivable, so it is
+computed rather than typed — and the site package is checked rather than excluded, because a version
+nobody verifies is the one that goes stale."""
+
 # This repo's own, not a module's: the prose lives here, and `release-version-consistent` pins
 # documentation prose as uncovered on purpose. What makes it checkable is that each source states
 # *which sentence* is the claim — a scan for version-shaped strings would fire on "first published

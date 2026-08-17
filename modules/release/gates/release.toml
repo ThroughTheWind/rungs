@@ -32,10 +32,19 @@ sources = [
   { file = "pyproject.toml", path = "project.version" },
 ]
 rule    = "all-agree"
-autofix = "rungs release sync-version"
+
+# Files that are deliberately versioned on their own. Empty by default: which packages share a
+# version is a judgement about *your* repo, and the engine guessing it is how a healthy layout gets
+# a red gate. rungs' own docs site is the case that found this — a private, never-published package
+# sitting at its own version beside the CLI (F-023).
+exclude = []
+
+# No `autofix` key. It said `rungs release sync-version`, and that command does not exist and never
+# has, so the message told whoever hit this gate to run something that would fail. The engine now
+# names each file beside the version it states, which is what you need to fix it by hand.
 message = """
 Version disagrees across {count} locations: {values}. One of them was bumped and the others were
-not, which is discovered by a user rather than by us. Do not hand-edit — run the autofix.
+not, which is discovered by a user rather than by us.
 """
 
 # What this does not cover is pinned, so green never reads as "verified":
@@ -120,9 +129,23 @@ fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["42.feature.md"
 [[self_test]]
 gate    = "release-version-consistent"
 expect  = "fail"
-fixture = { values = ["1.2.0", "1.1.0"] }
+fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "1.1.0" } }
 
 [[self_test]]
 gate    = "release-version-consistent"
 expect  = "pass"
-fixture = { values = ["1.2.0", "1.2.0"] }
+fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "1.2.0" } }
+
+# The F-023 case: a sibling deliberately versioned on its own is excluded and the gate stays green,
+# rather than reporting a healthy layout as a disagreement.
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "pass"
+fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "0.0.1" }, exclude = ["web/package.json"] }
+
+# …and excluding one sibling must not blind the gate to a different one. An `exclude` that
+# silently widened would be worse than no gate, because it would still report green.
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "0.0.1", "api/package.json" = "9.9.9" }, exclude = ["web/package.json"] }

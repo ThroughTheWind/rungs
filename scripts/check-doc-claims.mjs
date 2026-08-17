@@ -26,6 +26,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import { derive } from '../site/scripts/claims.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(root, rel), 'utf8');
@@ -67,6 +68,18 @@ const CLAIMS = [
   ['docs/roadmap.md', 'released version', /v(\d+\.\d+\.\d+) released from/, pkg.version, 'exact'],
   ['README.md', 'CLI size', /The CLI, ~([\d,]+) lines/, String(srcLines), 'approx'],
   ['docs/roadmap.md', 'CLI size', /Ten commands, ~([\d,]+) lines/, String(srcLines), 'approx'],
+  // Added 2026-08-17. This gate's own header names the gate count as one of the numbers
+  // that had drifted — README said 20 against an actual 25 — and then did not check it,
+  // so it drifted again to 25-against-27 **inside the release that added the gate**. A
+  // docstring naming a failure is not a check for it.
+  //
+  // The count is `derive()`'s, the same one the site publishes, rather than a second
+  // `[[gates]]` scan: two derivations of one number is how they disagree. It proves the
+  // sentence matches the **registry**, not that those gates pass — nothing here runs
+  // `rungs check`, which is the runner executing this. The pass count beside it is a
+  // dated measurement and stays one; it sits in the same sentence so that a gate added
+  // tomorrow reddens the line the reader must retype anyway.
+  ['README.md', 'gate count', /its (\d+) gates run on every change/, String(derive().gateCount), 'exact'],
 ];
 
 const problems = [];

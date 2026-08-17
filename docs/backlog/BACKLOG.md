@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-061 -->
+<!-- NEXT-ID: WI-062 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -29,13 +29,27 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| — | | |
+| [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature |
 
 ## Proposed
 
 | Id | Title | Type |
 | --- | --- | --- |
 | — | | |
+
+[WI-061](items/WI-061-imperative-staleness-detection.md), accepted 2026-08-17 — **the first
+capability here opened because outsiders assumed it already existed.** A third external review, a
+distribution plan, built four of its headline finding categories on detectors rungs does not have;
+reviewer #2 had earlier read the same capability off a landing-page console block that was
+fabricated, deleted by [WI-046](items/WI-046-console-provenance.md) and now refused by
+`site-transcripts-real`. Nine gates declare `applicability = "repo-content"` and what they produce
+on a foreign repo is broken links, stale paths, population counts and a line budget — none of it
+the thing being assumed. Two of the four categories have local measured provenance and are in
+scope: imperatives (the shell-editing rule `rift-forge` broke nine times before it became a hook)
+and stale command references ([F-015](FINDINGS.md) — `rungs backlog archive` named in three files
+shipped to every consumer, and unimplemented). The other two are deferred until the first two have
+a measured false-positive rate, because an imperative detector is a regex over prose and a regex
+over prose is the shape that produced 46.6% in [WI-042](archive/WI-042-link-line-references.md).
 
 [WI-037](items/WI-037-act-on-external-review.md) is the second fixed epic — opened 2026-08-16 from
 the first assessment of this project by someone who did not build it, recorded and adjudicated in

@@ -222,11 +222,13 @@ Whether a release is **pending**, and what npm currently serves, live on
 file and the roadmap both carried their own copy and both said `v0.1.2` for two days after v0.1.3
 went to npm. Cutting the next one follows the [release runbook](docs/design/release-runbook.md).
 
-rungs is installed in its own repo and its gates run on every change — 25 pass,
-0 fail (`rungs check`, 2026-08-17). A clean consumer has also installed the packed
-artifact and completed the doctor → init → add → check → render → upgrade/eject
-journey locally. Detection is [verified against all four source repos](docs/design/detection-verification.md).
-Not yet done: an install from the public registry and a cross-platform release matrix.
+rungs is installed in its own repo and its 28 gates run on every change — 28 pass,
+0 fail (`rungs check`, 2026-08-17). A clean consumer has installed from the **public
+registry** and run the binary, and another completed the doctor → init → add → check →
+render → upgrade/eject journey from a packed artifact. Detection is
+[verified against all four source repos](docs/design/detection-verification.md).
+Not yet done: a cross-platform release matrix — only Windows is verified — and writing
+to a repo rungs did not scaffold.
 
 Expect module *contents* to move. The command surface is settled.
 

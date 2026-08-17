@@ -69,15 +69,21 @@ that predate the release, say so explicitly and get a decision from a person.
 
 ```bash
 npm version <version> --no-git-tag-version
+cd site && npm version <version> --no-git-tag-version && cd ..
 ```
 
-That covers `package.json` and `package-lock.json`. Then, by hand, because no gate checks them
-([T4](#t4)):
+**Both packages.** The docs site is versioned in lockstep with the CLI rather than excluded from
+the check: `release-version-consistent` compares them and fails if you bump only one. It sat at
+`0.0.1` beside a `0.2.0` package until 2026-08-17 — exactly the drift that gate exists to catch —
+so the answer was to align it rather than teach the gate to look away ([T7](#t7--closed)).
+
+Then the surfaces:
 
 | Surface | What to update | Held by |
 | --- | --- | --- |
-| [`site/src/pages/versions.astro`](../../site/src/pages/versions.astro) | `publishedVersion` — the version **already on npm**, not the one being cut. Verify it against the registry ([T3](#t3)) | nothing — check by hand |
-| [`README.md`](../../README.md) § Status | The next-release sentence | `docs-version-claims` |
+| [`site/src/pages/versions.astro`](../../site/src/pages/versions.astro) | `publishedVersion` and `publishedDate` — the version **already on npm**, not the one being cut. Verify against the registry ([T3](#t3)) | nothing — check by hand |
+| [`site/src/pages/versions.astro`](../../site/src/pages/versions.astro) | A `releases` entry for the new version, from the fragment | nothing — check by hand |
+| [`README.md`](../../README.md) § Status | The current-release sentence and the gate count | `docs-version-claims` |
 | [`docs/roadmap.md`](../roadmap.md) | Phase 7 row and the "What is left" Phase 7 paragraph | `docs-version-claims` |
 
 The gated rows will fail `rungs check` if you forget them, which is the point. The first row will
@@ -164,6 +170,18 @@ Two things about it that have already caused confusion:
 - **`at` is UTC** ([`generate-claims.mjs:38`](../../site/scripts/generate-claims.mjs:38)), while
   every hand-written date in this repo is local. Near midnight the site and the README will name
   different days for the same run. Neither is wrong; only the disagreement is.
+
+### T7 — closed
+**A sibling package drifts, or the gate that would catch it is turned off.** `site/package.json`
+sat at `0.0.1` while the CLI reached `0.2.0`. `release-version-consistent` would have caught it,
+but the gate globs `*/package.json` under `all-agree` and was therefore held back at the 0.2.0 cut
+rather than weakened to fit (F-023).
+
+Closed 2026-08-17, both halves. The engine takes an `exclude` list so a repo can state what is
+genuinely versioned on its own; **this repo aligned instead of excluding**, so the gate now checks
+two manifests and the second bump in step 4 is not optional. Excluding one sibling does not blind
+the gate to another — there is a fixture asserting it, because an `exclude` that silently widened
+would be worse than no gate at all.
 
 ## 6. Tag, branch, publish — the irreversible part
 

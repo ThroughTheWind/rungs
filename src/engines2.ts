@@ -403,8 +403,17 @@ export const computedClaim: Engine = (t, root, files) => {
   let examined = 0;
   for (const spec of specs) {
     const values = new Map<string, string>();
+    // Which files share a version is the repo's judgement, not something to infer
+    // (F-023). The default sources glob `*/package.json`, which is right for a
+    // monorepo released in lockstep and wrong for a sibling that is deliberately
+    // versioned on its own — this repo's docs site sat at 0.0.1 beside a 0.2.0
+    // package, correctly, and installing the gate would have failed a healthy
+    // layout. So a repo states the exceptions rather than the engine guessing
+    // them, and `all-agree` keeps needing no opinion about which file is right.
+    const excluded = (rel: string) => (spec.exclude ?? []).some((p: string) => matchAny([rel], p).length > 0);
     for (const src of spec.sources ?? []) {
       for (const rel of matchAny(files, src.file)) {
+        if (excluded(rel)) continue;
         const text = read(root, rel);
         let v: string | undefined;
         if (src.path && rel.endsWith('.json')) {
@@ -424,8 +433,18 @@ export const computedClaim: Engine = (t, root, files) => {
     }
     const distinct = new Set(values.values());
     if (spec.rule === 'all-agree' && distinct.size > 1) {
+      // Name the file beside its value. The message used to list the distinct
+      // values and then say "run `{autofix}`" — which pointed at
+      // `rungs release sync-version`, a command that does not exist and never
+      // has. Telling someone to run a missing command is worse than telling
+      // them nothing, so the finding now carries what they actually need: which
+      // file says what. The hint is appended only if a real one is declared.
+      const where = [...values.entries()].map(([rel, v]) => `${rel}=${v}`).join(', ');
       findings.push({
-        message: `${spec.id} disagrees across ${values.size} locations: ${[...distinct].join(', ')} — run \`${spec.autofix}\``,
+        message:
+          `${spec.id} disagrees across ${values.size} locations: ${where}` +
+          (spec.autofix ? ` — run \`${spec.autofix}\`` : '') +
+          (spec.exclude?.length ? '' : '. If one of these is versioned independently, list it in `exclude`.'),
       });
     }
   }
