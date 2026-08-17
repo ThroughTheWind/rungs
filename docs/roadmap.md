@@ -14,7 +14,7 @@ depended on was measured.
 | **2** | Synthesize | ✅ Convergences, divergences, [eight failure modes](research/synthesis.md), the maturity ladder, [~80 patterns](research/pattern-catalog.md) |
 | **3** | Product definition | ✅ [Product brief](design/product-brief.md) + [ADRs 0001–0005](decisions/README.md) |
 | **4** | Module catalogue | ✅ [Fifteen modules specified](design/module-catalog.md), then [authored](../modules/README.md) |
-| **5** | CLI | ✅ Ten commands, ~4,700 lines (`wc -l src/*.ts`, 2026-08-17); gate count on [the versions page](https://docs.rungscli.com/versions/), derived rather than typed |
+| **5** | CLI | ✅ Fourteen commands, ~5,100 lines (`wc -l src/*.ts`, 2026-08-17); gate count on [the versions page](https://docs.rungscli.com/versions/), derived rather than typed |
 | **6** | Dogfood | 🟡 Detection [verified on all four](design/detection-verification.md); rungs runs on itself; WI-031 added the portable findings-closure gate; WI-034 verified a clean packed-consumer journey; a clean consumer installed from the **public registry** on 2026-08-17; **writing to a repo rungs did not scaffold, and a platform matrix, remain** |
 | **7** | Distribution | 🟡 Published as `@rungs/cli` (first published 2026-08-14 at v0.1.0; current published version on [the versions page](https://docs.rungscli.com/versions/); v0.2.0 released from [`package.json`](../package.json), tagged `release/0.2.0` and live on npm) · docs site builds and deploys ([`site/`](../site/README.md)) · **module registry outstanding** |
 

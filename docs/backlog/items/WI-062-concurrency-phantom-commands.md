@@ -2,8 +2,8 @@
 id: WI-062
 title: Decide what the concurrency module is — four commands, or the manual protocol it actually documents
 type: chore
-status: proposed
-branch:
+status: review
+branch: feature/WI-062-concurrency-loop
 created: 2026-08-17
 updated: 2026-08-17
 related: [F-026, ADR-0005]
@@ -49,13 +49,15 @@ evidence propagates into every repo that trusted it.
 
 ## Decision
 
-`proposed` — 2026-08-17. **This item exists to get a decision, not to carry one.** The fix is a
-judgement about what the module is for, and it is deliberately not being made inside the audit
-that found it.
+`accepted` — 2026-08-17, **option A: build the four commands.** Taken by the requester, against
+the recommendation below, and the reasoning is the module's own: rung 5 is justified by the loop
+being *mechanised*, and option B would have left a rung-5 cost attached to a document. B remains
+the cheaper answer and would have been right if there were no intent to build; there was.
+
+The recommendation is left standing above rather than rewritten to agree with the outcome. An item
+whose advice is edited to match what happened records nothing.
 
 ## Plan
-
-> Filled once `accepted`.
 
 ### Requirements
 
@@ -115,8 +117,45 @@ honest rather than catching one up to it.
 
 ## Execution
 
-Not started.
+Branch `feature/WI-062-concurrency-loop`. [ADR-0009](../../decisions/ADR-0009-rungs-drives-git.md)
+first, because the decision it records — rungs may drive git — had to be made before the code that
+assumes it. `src/concurrency.ts` implements the four; `src/cli.ts` dispatches them; the module
+became 1.1.0.
+
+**Deviations from the documented design, each with its reason:**
+
+- **`land` no longer leaves your worktree detached.** The module said it would, and it was a
+  consequence of the old shape rather than a feature: it did its merge where you were standing.
+  It now uses a throwaway worktree of its own, so a refusal costs the operator nothing to recover
+  from and nothing else has to be explained to them. The doc's "three things to know" bullet is
+  corrected, not quietly left.
+- **Attribution is not built.** `land` blocks on any red gate in the merged tree. That is the safe
+  half of what the module describes; the inherited/INTRODUCED split is a real feature and was not
+  smuggled in under a command-building item. The doc now marks that section **design, not
+  behaviour** — recorded as [F-029](../FINDINGS.md), and it is the same class as F-026, missed by
+  the audit because it describes behaviour of an *existing* command.
+
+**What the work found:**
+
+- The gate caught a real span on its first run — the comment in `release.toml` that explains the
+  removed `sync-version` autofix still named it in a code span. Reworded rather than exempted: an
+  escape hatch on this gate is the thing it exists to refuse.
+- `docs-version-claims` coupled its CLI-size pattern to the literal words "Ten commands", so adding
+  a command broke the *size* check for a reason unrelated to size. Decoupled.
 
 ## Review
 
-Not started.
+| Criterion | Verified |
+| --- | --- |
+| R1 | `module-commands-exist` passes: 39 command spans across `modules/` all resolve against 15 dispatched names |
+| R2 | [ADR-0009](../../decisions/ADR-0009-rungs-drives-git.md), with three binding rules, four rejected alternatives, and three revisit triggers |
+| R3 | The gate exists and both sides are **derived** from `src/cli.ts` — the command list from the `switch`, the subcommand lists from the `args[0] !== '…'` guards — so it cannot drift the way the docs it checks did |
+| Exercised end to end | In a scratch repo with the built binary: `session start` stated its fallback to an unverified tip, then cut from `green/main` once one existed; `preflight` reported no overlap; a clean `land` advanced `main` and created `green/main`; a **red** merged tree left `main` bit-for-bit unchanged and parked the merge on `integ/feature/wi-002`; a **conflict** refused and named `a.md`; a **stale lock** was taken over and said so; `worktrees` flagged merged-and-dirty in red and removed nothing. Scratch worktrees cleaned up and the lock released in every path |
+| Regression coverage | Four tests in `test/core.test.js` asserting the ADR's guarantees rather than output shape — the fallback is stated, a red tree leaves the branch untouched and parks the merge, a conflict refuses, a live lock is refused **by name**, and `worktrees` never removes |
+
+**Full run, 2026-08-17:** 31 tests pass · 29 gates pass, 0 fail · `astro check` 0 errors/warnings/
+hints · 2,130 links, 0 broken.
+
+Not done, by design: failure attribution ([F-029](../FINDINGS.md)), and `land` still does not push —
+[ADR-0009](../../decisions/ADR-0009-rungs-drives-git.md) draws that boundary deliberately and makes
+crossing it a separate decision.

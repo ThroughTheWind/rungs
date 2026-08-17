@@ -1,5 +1,5 @@
 {
-  "gateCount": 28,
+  "gateCount": 29,
   "gateIds": [
     "adr-index-current",
     "adr-required-fields",
@@ -19,6 +19,7 @@
     "instructions-core-size",
     "instructions-render-current",
     "instructions-repo-map-current",
+    "module-commands-exist",
     "release-fragment-current",
     "release-version-consistent",
     "session-archive-named",
@@ -157,7 +158,7 @@
     },
     {
       "name": "concurrency",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 5,
       "summary": "Many sessions on one integration branch: a verified base to cut from, attributed failures, a land protocol that cannot redden the branch, and merge drivers per conflict class.",
       "requires": [
@@ -241,7 +242,7 @@
     }
   ],
   "run": {
-    "pass": 28,
+    "pass": 29,
     "fail": 0,
     "unimplemented": 0,
     "error": 0,
