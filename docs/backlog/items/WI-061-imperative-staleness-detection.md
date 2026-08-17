@@ -2,7 +2,7 @@
 id: WI-061
 title: Detect imperatives and stale command references in agent instructions
 type: feature
-status: accepted
+status: in_progress
 branch:
 created: 2026-08-17
 updated: 2026-08-17
@@ -151,8 +151,27 @@ here from the other direction.
 
 ## Execution
 
-Not started.
+**Step 1 of the Approach only — the corpus.**
+[`docs/design/imperative-corpus-2026-08-17.md`](../../design/imperative-corpus-2026-08-17.md),
+2026-08-17. 102 local repositories, 110 instruction files, candidate counts per *distinct* repo
+because the file count is dominated by one project's worktrees and a pooled rate would be one
+document counted forty times.
+
+**No detector has been written, deliberately.** The Approach says corpus first, engine second, and
+an oracle built after the matcher inherits the matcher's blind spots — the documented failure in
+[WI-042](../archive/WI-042-link-line-references.md). Writing the engine in the same pass as the
+corpus would have been the thing this item exists to correct.
+
+One design-relevant finding: reading candidates by hand, almost all are genuine imperatives,
+because instruction files are rule documents by construction. The 46.6% risk the Impacts section
+flags belongs to WI-042's *all-markdown* scope; this scope is narrower and the base rate is much
+higher. That is a reason to keep the scope narrow, **not** a reason to relax R6's measurement — and
+two repos in the corpus contain zero candidates, which already falsifies any future claim that
+instruction files always carry unenforced rules.
+
+Remaining, none of it started: the hand-classified oracle, R7's ADR, the two engines, and the
+per-repo false-positive rates against WI-053's one-in-five threshold.
 
 ## Review
 
-Not started.
+Not started — the item is at step 1 of 5.
