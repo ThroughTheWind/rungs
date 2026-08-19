@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-063 -->
+<!-- NEXT-ID: WI-064 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -34,6 +34,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
+| [WI-063](items/WI-063-external-module-roots.md) | Resolve modules from roots outside the package, and record where each installed module came from | feature |
 
 [WI-061](items/WI-061-imperative-staleness-detection.md), accepted 2026-08-17 — **the first
 capability here opened because outsiders assumed it already existed.** A third external review, a
