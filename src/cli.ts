@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { auditModules, loadAllModules } from './manifest.ts';
 import { detect, scanRepo } from './detect.ts';
-import { addModule, adoptableGates, blockedByParadigm, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
+import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, UnknownTierError } from './check.ts';
@@ -40,8 +40,17 @@ function cmdModules(showParams = false) {
   console.log(c.bold(`\n${mods.length} modules\n`));
   for (const m of mods) {
     const deps = m.requires.length ? c.dim(` ← ${m.requires.join(', ')}`) : '';
-    console.log(`  ${c.bold(m.name.padEnd(14))} rung ${m.rung}${deps}`);
+    // A `designed` module is marked wherever a module is named, because a
+    // distinction the manifest declares and no surface prints is the field
+    // being unread all over again (F-038, and F-037 nearly repeated it). The
+    // extracted case is unmarked: it is what every bundled module is, and a
+    // badge on all fifteen would carry no information.
+    const designed = m.provenance.kind === 'designed' ? c.yellow('  designed') : '';
+    console.log(`  ${c.bold(m.name.padEnd(14))} rung ${m.rung}${deps}${designed}`);
     console.log(`  ${' '.repeat(14)} ${c.dim(m.summary)}`);
+    if (designed) {
+      console.log(`  ${' '.repeat(14)} ${c.dim(`not extracted — ${firstSentence(m.provenance.rationale ?? '')}`)}`);
+    }
     // Rendered from the manifest at the moment it is asked for, never written down. A committed
     // parameter table would be correct the day it was generated and silently wrong the day a
     // default moved — which is the failure this flag exists to answer (WI-006).
@@ -386,6 +395,35 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     console.log(c.dim('      You will have two systems for one job. That is a choice, not a merge.\n'));
   }
 
+  // F-038: a module's `[conflicts]` was parsed and read by nothing, so a
+  // declared incompatibility installed in silence. It refuses the same way a
+  // paradigm does — state it and stop — but it is computed separately, because
+  // a paradigm is *inferred from files* and a conflict is *declared by an
+  // author*, and a refusal should say which of the two it is.
+  //
+  // What counts as present: what the repo already has, plus everything else in
+  // this install set. Two modules that cannot coexist cannot arrive together
+  // either.
+  const present = new Set([...Object.keys(readRecord(root)?.modules ?? {}), ...order.map((m) => m.name)]);
+  const declared = blockedByConflict(order, present, mods);
+  const conflictOverride = flags.has('--confirm-conflict');
+
+  // Computed even when overridden, and printed — for the reason the paradigm
+  // override just above says: an override that prints nothing is
+  // indistinguishable from finding nothing, and the two want opposite
+  // follow-ups.
+  if (conflictOverride && declared.size) {
+    for (const [name, clash] of declared) {
+      if (clash.cause !== name) continue;
+      console.log(
+        c.yellow(`  ${name}: installing alongside ${clash.with}, which it declares a conflict with`) +
+          c.dim(' — --confirm-conflict'),
+      );
+    }
+    console.log(c.dim('      The author said these two do not coexist. You are overruling them, not merging them.\n'));
+  }
+  const conflicts = conflictOverride ? new Map<string, ConflictBlock>() : declared;
+
   // Re-resolve from what survives rather than filtering `order` in place. A
   // dependency is only ever pulled in *for* something; `add backlog` on an
   // issue-tracker repo was still writing `instructions` and `gates`, which
@@ -393,7 +431,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   // refused. Recomputing the closure drops them, and keeps anything a *surviving*
   // request still needs.
   let toInstall = order;
-  if (blocked.size) {
+  if (blocked.size || conflicts.size) {
     for (const mod of order) {
       const cause = blocked.get(mod.name);
       if (!cause) continue;
@@ -407,16 +445,44 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
         console.log(c.yellow(`  ${mod.name}: not installed — it requires ${cause}.`));
       }
     }
-    toInstall = resolveInstallOrder(names.filter((n) => !blocked.has(n)), mods).order;
-    const dropped = order.filter((m) => !toInstall.includes(m) && !blocked.has(m.name));
+    for (const mod of order) {
+      const clash = conflicts.get(mod.name);
+      // A module refused by both is reported once, under the paradigm, which
+      // carries the more specific evidence — a matched path.
+      if (!clash || blocked.has(mod.name)) continue;
+      if (clash.cause === mod.name) {
+        const declarer = mod.conflicts.includes(clash.with) ? mod.name : clash.with;
+        console.log(c.yellow(`  ${mod.name}: conflicts with ${clash.with}`));
+        console.log(
+          c.dim(`      declared by ${declarer}`) +
+            c.dim(present.has(clash.with) && !order.some((m) => m.name === clash.with) ? ', which this repo already has' : ', and both were requested'),
+        );
+      } else {
+        console.log(c.yellow(`  ${mod.name}: not installed — it requires ${clash.cause}.`));
+      }
+    }
+    const refused = new Set([...blocked.keys(), ...conflicts.keys()]);
+    toInstall = resolveInstallOrder(names.filter((n) => !refused.has(n)), mods).order;
+    const dropped = order.filter((m) => !toInstall.includes(m) && !refused.has(m.name));
     if (dropped.length) {
       console.log(c.dim(`      ${dropped.map((m) => m.name).join(', ')} not written — pulled in only for the above`));
     }
+    const escapes = [blocked.size ? '--confirm-paradigm' : '', conflicts.size ? '--confirm-conflict' : ''].filter(Boolean);
     console.log(
-      c.dim(`\n  Pass --confirm-paradigm to install anyway.`) +
+      c.dim(`\n  Pass ${escapes.join(' / ')} to install anyway.`) +
         (toInstall.length ? c.dim(' Continuing with the rest.\n') : c.dim(' Nothing was written.\n')),
     );
     if (!toInstall.length) return 1;
+  }
+
+  // A module nobody paid for is a different thing to install than one extracted
+  // from a repo that did, and the person typing `add` is who should be told
+  // (F-037). One line, at the only moment it changes a decision.
+  for (const mod of toInstall.filter((m) => m.provenance.kind === 'designed')) {
+    console.log(
+      c.yellow(`  ${mod.name}: designed, not extracted`) +
+        c.dim(` — ${firstSentence(mod.provenance.rationale ?? '')}`),
+    );
   }
 
   const installed: Manifest[] = [];
@@ -808,6 +874,7 @@ const FLAGS: [flag: string, blurb: string][] = [
   ['--dry-run', 'report what would happen, write nothing'],
   ['--explain', "doctor: also run the detectors over what this repo already has"],
   ['--confirm-paradigm', 'add: install a module this repo already solves another way'],
+  ['--confirm-conflict', 'add: install a module that declares a conflict with one already here'],
   ['--into <path>', 'add: install into this repo instead of the working directory'],
   ['--set m.param=value', 'add/init: override a module parameter. Repeatable'],
   ['--confirm-threshold', 'add: install a module whose rung is above this repo'],

@@ -6,8 +6,8 @@ import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 
-import { loadAllModules, auditModules } from '../src/manifest.ts';
-import { blockedByParadigm, emittedFiles } from '../src/add.ts';
+import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
+import { blockedByConflict, blockedByParadigm, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
@@ -602,6 +602,87 @@ test('a paradigm refusal propagates to every module that depends on it', () => {
   assert.equal(blocked.get('audit'), 'backlog', 'a transitive dependent too');
   assert.ok(!blocked.has('adr'), 'an unrelated module is untouched');
   assert.ok(!blocked.has('instructions'), 'a dependency of the blocked module is not itself blocked');
+});
+
+/**
+ * F-038. `[conflicts]` was parsed into the manifest and read by nothing, so a
+ * module declaring an incompatibility installed in silence.
+ *
+ * The asymmetric case is the one that matters and the one a symmetric-looking
+ * implementation gets wrong: only the *newer* module can name the older one. A
+ * module authored outside this package declares `conflicts = ["backlog"]`;
+ * `backlog` will never declare it back, and requiring both would make the field
+ * useless for the only case it exists for.
+ */
+test('a declared conflict blocks in both directions and propagates to dependents', () => {
+  const all = [
+    { name: 'instructions', requires: [], conflicts: [] },
+    { name: 'backlog', requires: ['instructions'], conflicts: [] },
+    { name: 'findings', requires: ['backlog'], conflicts: [] },
+    { name: 'adr', requires: ['instructions'], conflicts: [] },
+    { name: 'gh-issues', requires: ['instructions'], conflicts: ['backlog'] },
+  ];
+  const order = (...names) => all.filter((m) => names.includes(m.name));
+
+  // The declaring side: `add gh-issues` on a repo that already has `backlog`.
+  const forward = blockedByConflict(order('instructions', 'gh-issues'), new Set(['backlog', 'instructions', 'gh-issues']), all);
+  assert.deepEqual(forward.get('gh-issues'), { cause: 'gh-issues', with: 'backlog' });
+  assert.ok(!forward.has('instructions'), 'a shared dependency is not blocked');
+
+  // The declared-about side: `add backlog` on a repo that already has the
+  // module which names it. Nothing in `backlog` mentions the conflict.
+  const reverse = blockedByConflict(order('instructions', 'backlog', 'findings'), new Set(['gh-issues', 'instructions', 'backlog', 'findings']), all);
+  assert.deepEqual(reverse.get('backlog'), { cause: 'backlog', with: 'gh-issues' }, 'the undeclaring side is blocked too');
+  assert.deepEqual(reverse.get('findings'), { cause: 'backlog', with: 'gh-issues' }, 'and so is its dependent, naming the cause');
+
+  // Both requested at once: they cannot arrive together either.
+  const together = blockedByConflict(order('instructions', 'backlog', 'gh-issues'), new Set(['instructions', 'backlog', 'gh-issues']), all);
+  assert.ok(together.has('backlog') && together.has('gh-issues'), 'a conflict inside one install set is still a conflict');
+
+  // And the negative direction: no partner present, nothing blocked.
+  const clean = blockedByConflict(order('instructions', 'backlog', 'adr'), new Set(['instructions', 'backlog', 'adr']), all);
+  assert.equal(clean.size, 0, 'a repo without the conflicting module installs normally');
+});
+
+/**
+ * F-037. The provenance schema had one shape and it asserted extraction, so a
+ * module authored outside this package could only get past the validator by
+ * writing prose into `sources`, `patterns` and `incident`. Nothing then
+ * distinguished an honest "none" from an invented incident.
+ *
+ * Both directions matter here: `designed` must load, and a designed module that
+ * *also* claims an incident must not — half a claim is the failure mode.
+ */
+test('provenance declares extracted or designed, and a designed module cannot half-claim', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-prov-'));
+  const write = (toml) => {
+    writeFileSync(join(dir, 'module.toml'), toml);
+    return () => loadManifest(dir);
+  };
+  const head = '[module]\nname = "demo"\nversion = "1.0.0"\nrung = 1\n\n';
+
+  const designed = write(`${head}[provenance]\nkind = "designed"\nrationale = "I wanted it. Nobody has run this yet."\n`)();
+  assert.equal(designed.provenance.kind, 'designed');
+
+  assert.throws(write(`${head}[provenance]\nkind = "designed"\n`), /rationale is required/, 'a designed module must say why it exists');
+  assert.throws(
+    write(`${head}[provenance]\nkind = "designed"\nrationale = "mine"\nincident = "hexguard ran an audit 268 times"\n`),
+    /incident belongs to an extracted module/,
+    'a designed module may not borrow an incident',
+  );
+  assert.throws(
+    write(`${head}[provenance]\nkind = "designed"\nrationale = "mine"\nsources = ["rift-forge"]\n`),
+    /sources belongs to an extracted module/,
+    'nor name sources, which read as a repo that paid for it',
+  );
+  assert.throws(write(`${head}[provenance]\nkind = "borrowed"\nrationale = "x"\n`), /must be 'extracted' or 'designed'/);
+
+  // The default is unchanged, which is what keeps fifteen manifests untouched.
+  const extracted = write(`${head}[provenance]\nsources = ["rift-forge"]\npatterns = ["x"]\nincident = "it happened"\n`)();
+  assert.equal(extracted.provenance.kind, 'extracted', 'an absent kind is extracted');
+  assert.throws(write(`${head}[provenance]\npatterns = ["x"]\nincident = "it happened"\n`), /sources is required/);
+
+  rmSync(dir, { recursive: true, force: true });
 });
 
 /**

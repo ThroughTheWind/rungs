@@ -84,9 +84,27 @@ whether its guard has ever actually fired.
    `consumed_by = "render"` — `instructions.harnesses` decides which harnesses exist and will never
    appear in a template. A dead-parameter lint that does not know the difference reports the second
    kind as unused, and the obvious "fix" deletes it.
-3. **`[provenance]` is required and validated.** Sources, patterns, and the incident. A module with
-   no traceable source is one somebody invented, and `doctor` cannot ask its questions without the
-   incident ([ADR-0005](../docs/decisions/ADR-0005-self-instrumentation.md)).
+3. **`[provenance]` is required and validated, and it declares which kind of module this is.** A
+   module with no traceable source is one somebody invented, which is what
+   [CLAUDE.md](../CLAUDE.md)'s evidence rule exists to prevent — so say which you are writing.
+   `kind = "extracted"` is the default and the shape all fifteen bundled modules use: `sources`,
+   `patterns` and `incident`, all required. `kind = "designed"` requires a first-person `rationale`
+   and **may not carry `sources` or `incident` at all**, because half a claim reads to a later
+   reader exactly like a whole one. `patterns` stays allowed for both: the catalogue entries are
+   themselves evidenced, and citing one claims nothing about this module's own history.
+3a. **The `designed` marker is printed, not merely stored.** `rungs modules` and `rungs add` both
+   name it wherever they name the module. This matters more than it looks: `[provenance]` is
+   validated at load and **read by no other code path**, so without a surface the distinction would
+   be a field nobody sees — which is rule 3's own failure mode wearing a new hat (F-037, F-038).
+   Note what this rule used to claim, and did not check: that `doctor` cannot ask its
+   [ADR-0005](../docs/decisions/ADR-0005-self-instrumentation.md) tier B question without the
+   incident. It can. That question quotes the **gate's `why`**, which `add` copies into
+   `.ai/gates.toml` — a different field, in a different file, that has always been the one doing
+   the work.
+3b. **`[conflicts]` is enforced by `add`, and the relation is symmetric.** Declaring
+   `conflicts = ["backlog"]` refuses the install and stops, the way a paradigm does, overridable
+   with `--confirm-conflict`. Only one side ever has to declare it — a module authored outside this
+   package can name a bundled one, and the bundled one will never name it back.
 4. **Skills stay spec-pure.** Six Agent Skills fields; Claude Code extensions are opted into in
    `module.toml`, per skill, with the portability cost stated there.
 5. **Every gate declares a self-test asserting both directions.** A gate whose rules are currently

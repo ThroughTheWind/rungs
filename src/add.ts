@@ -194,6 +194,64 @@ export function blockedByParadigm(order: Manifest[], paradigms: ReadonlySet<stri
   return blocked;
 }
 
+/** Why one module could not be installed: which conflict, and whose. */
+export interface ConflictBlock {
+  /** The module in `order` whose own conflict caused this — itself, if direct. */
+  cause: string;
+  /** The module it conflicts with. */
+  with: string;
+}
+
+/**
+ * Every module in `order` that cannot be installed because it conflicts with a
+ * module the repo already has, with another module in the same install set, or
+ * because something it depends on does.
+ *
+ * `[conflicts]` was parsed into the manifest and read by nothing (F-038), so a
+ * module declaring an incompatibility got silence — the same family as the
+ * skill extensions of F-019 and the paradigm state of F-014, and the third time
+ * a manifest field was documented to contributors and enforced nowhere.
+ *
+ * **The relation is symmetric even though the declaration is not.** Only one
+ * side can realistically know: a module authored outside this package can name
+ * `backlog`, and `backlog` will never name it. Requiring both to declare would
+ * make the field useless for exactly the case it exists for.
+ *
+ * Blocking travels up the dependency edges for the reason `blockedByParadigm`
+ * does — a dependency is only ever pulled in *for* something, and installing
+ * the dependent of a refused module ships half a system.
+ */
+export function blockedByConflict(
+  order: Manifest[],
+  present: ReadonlySet<string>,
+  all: Manifest[],
+): Map<string, ConflictBlock> {
+  const byName = new Map(all.map((m) => [m.name, m]));
+  const blocked = new Map<string, ConflictBlock>();
+
+  const partner = (mod: Manifest): string | undefined => {
+    const declared = mod.conflicts.find((other) => other !== mod.name && present.has(other));
+    if (declared) return declared;
+    for (const other of present) {
+      if (other === mod.name) continue;
+      if (byName.get(other)?.conflicts.includes(mod.name)) return other;
+    }
+    return undefined;
+  };
+
+  // `order` is already dependency-first, so one forward pass settles it.
+  for (const mod of order) {
+    const against = partner(mod);
+    if (against) {
+      blocked.set(mod.name, { cause: mod.name, with: against });
+      continue;
+    }
+    const dep = mod.requires.find((d) => blocked.has(d));
+    if (dep) blocked.set(mod.name, blocked.get(dep)!);
+  }
+  return blocked;
+}
+
 export function resolveInstallOrder(requested: string[], all: Manifest[]): { order: Manifest[]; missing: string[] } {
   const byName = new Map(all.map((m) => [m.name, m]));
   const order: Manifest[] = [];

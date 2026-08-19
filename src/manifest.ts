@@ -28,12 +28,48 @@ export function loadManifest(dir: string): Manifest {
   };
 
   // `[provenance]` is required and validated (ADR-0003). A module with no
-  // traceable source is one somebody invented, and `doctor` cannot ask its
-  // questions without the incident.
+  // traceable source is one somebody invented, and that is the thing CLAUDE.md's
+  // evidence rule exists to prevent.
+  //
+  // F-037: the schema had exactly one shape, and it *asserted extraction* —
+  // `sources`, `patterns` and `incident`, all required. A module authored
+  // outside this package has none of the three, and the only way past the
+  // validator was prose in fields whose names claim a pedigree it does not
+  // have. It never blocked anyone: any non-empty string loads, which is the
+  // worse outcome, because nothing then distinguished an honest "none" from an
+  // invented incident. All fifteen bundled modules were extracted, so the case
+  // had never been exercised and the first author outside them was quietly
+  // invited to make something up.
+  //
+  // So the distinction is declared rather than written around, and a designed
+  // module may not carry the extracted module's fields. **Half a claim is the
+  // failure mode**: a `sources` line naming the repo that inspired a module
+  // reads, to every later reader, exactly like a repo that paid for it.
   const p = manifest.provenance;
-  if (!p?.sources?.length) throw new Error(`${name}: [provenance].sources is required`);
-  if (!p?.patterns?.length) throw new Error(`${name}: [provenance].patterns is required`);
-  if (!p?.incident?.trim()) throw new Error(`${name}: [provenance].incident is required`);
+  if (!p) throw new Error(`${name}: [provenance] is required`);
+  const kind = p.kind ?? 'extracted';
+  if (kind !== 'extracted' && kind !== 'designed') {
+    throw new Error(`${name}: [provenance].kind must be 'extracted' or 'designed', not '${kind}'`);
+  }
+  if (kind === 'extracted') {
+    if (!p.sources?.length) throw new Error(`${name}: [provenance].sources is required`);
+    if (!p.patterns?.length) throw new Error(`${name}: [provenance].patterns is required`);
+    if (!p.incident?.trim()) throw new Error(`${name}: [provenance].incident is required`);
+  } else {
+    if (!p.rationale?.trim()) {
+      throw new Error(`${name}: [provenance].rationale is required when kind = "designed" — say why it exists, in the first person`);
+    }
+    if (p.incident?.trim()) {
+      throw new Error(`${name}: [provenance].incident belongs to an extracted module; a designed one has no incident to name`);
+    }
+    if (p.sources?.length) {
+      throw new Error(`${name}: [provenance].sources belongs to an extracted module; cite influences in the rationale instead`);
+    }
+    // `patterns` is deliberately still allowed. A designed module may implement
+    // patterns from the catalogue, and the catalogue entries are themselves
+    // evidenced — citing one claims nothing about this module's own history.
+  }
+  manifest.provenance = { ...p, kind };
 
   return manifest;
 }

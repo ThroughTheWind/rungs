@@ -89,9 +89,22 @@ export interface DetectSpec {
 }
 
 export interface Provenance {
-  sources: string[];
-  patterns: string[];
-  incident: string;
+  /**
+   * Whether the module was **extracted** from a repo that already paid for it,
+   * or **designed** by somebody who thought it was a good idea.
+   *
+   * Absent means `extracted`: all fifteen bundled modules are, and normalising
+   * fifteen manifests to declare what they already said would be a migration
+   * rather than a distinction. `loadManifest` fills it in, so a reader may rely
+   * on it.
+   */
+  kind: 'extracted' | 'designed';
+  /** Required for `extracted`; forbidden for `designed` — see `loadManifest`. */
+  sources?: string[];
+  patterns?: string[];
+  incident?: string;
+  /** Required for `designed`: why it exists, in the first person. */
+  rationale?: string;
 }
 
 export interface Manifest {
