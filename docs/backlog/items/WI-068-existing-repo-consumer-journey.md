@@ -162,8 +162,11 @@ evidence, measured on 2026-09-05:
 4. **Met.** Extraction of every literal `@rungs/cli@<selector>` occurrence across the complete
    consumer corpus produces exactly one value, `@rungs/cli@0.3.1`. The separately tested launcher
    permits its template expression only after validating an explicit upgrade target as an exact
-   version. Its derived 12-character managed hash is recorded in `.ai/rungs.toml`, and neither a
-   tarball name nor its local path leaks into the consumer.
+   version. A second corpus scan rejects any bare `@rungs/cli` package use, with regression probes
+   for both `npx @rungs/cli check` and `npm exec --package=@rungs/cli -- rungs`, without mistaking the
+   launcher's internal literals for consumer authority. Its derived 12-character managed hash is
+   recorded in `.ai/rungs.toml`, and neither a tarball name nor its local path leaks into the
+   consumer.
 5. **Met.** Repeated init refuses with no diff. Two full checks pass on `consumer/canary` with only
    `origin/main`, including merged-status reconciliation and the adopted validator. The ignored
    ledger doubles exactly while the tracked digest and repository status stay clean.
@@ -171,8 +174,8 @@ evidence, measured on 2026-09-05:
    index mode/entry/flag, status value and tracked byte. Both same-version applies report
    `0 to update · 0 diverged`, preserve the adoption digest byte-for-byte and leave clean status.
 7. **Met.** Rollback is path-guarded to the temporary consumer and restores its complete seed Git
-   state and bytes before cleanup; producer status is unchanged. The focused packed journey passed
-   1/1 in 15.53 s and `npm test` passed 45/45 in 19.44 s.
+   state and bytes before cleanup; producer status is unchanged. The focused selector-and-packed
+   journey run passed 2/2 in 16.71 s and `npm test` passed 46/46 in 19.97 s.
 
 Repository audit also passed: 52 module command spans resolve across 15 dispatched commands,
 `npm run rungs -- check` passes 29/29 gates, and `git diff --check` reports no whitespace errors.

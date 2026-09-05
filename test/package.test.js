@@ -82,6 +82,15 @@ function parsePackResult(stdout) {
   return parsed[0];
 }
 
+function scanRungsPackageUses(text) {
+  return {
+    explicitSelectors: [...text.matchAll(/@rungs\/cli@(?!\$\{)[^\s"'`<>{}\[\](),;]+/g)].map(
+      ([selector]) => selector,
+    ),
+    barePackageUses: [...text.matchAll(/@rungs\/cli(?!@)/g)].map(([packageName]) => packageName),
+  };
+}
+
 test('the published bin points at a built executable and answers help', () => {
   const bin = resolve(root, manifest.bin.rungs);
   assert.equal(manifest.bin.rungs, 'dist/cli.js');
@@ -198,6 +207,25 @@ test('a consumer gets one exact launcher shared by local instructions and CI', (
     assert.equal(lock.packages['node_modules/smol-toml'].version, '1.8.0');
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the package authority scan rejects bare Rungs CLI invocations without mistaking launcher literals', () => {
+  const launcherLiterals = [
+    "const pinnedPackageSpec = '@rungs/cli@0.3.1';",
+    "const pinnedVersion = pinnedPackageSpec.slice('@rungs/cli@'.length);",
+    'const packageSpec = `@rungs/cli@${selectedVersion}`;',
+  ].join('\n');
+  assert.deepEqual(scanRungsPackageUses(launcherLiterals), {
+    explicitSelectors: ['@rungs/cli@0.3.1'],
+    barePackageUses: [],
+  });
+
+  for (const mutableInvocation of ['npx @rungs/cli check', 'npm exec --package=@rungs/cli -- rungs']) {
+    assert.deepEqual(scanRungsPackageUses(mutableInvocation), {
+      explicitSelectors: [],
+      barePackageUses: ['@rungs/cli'],
+    });
   }
 });
 
@@ -431,13 +459,16 @@ test('a packed candidate retrofits an existing repository without taking over it
     const launcherHash = createHash('sha256').update(launcher.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
     assert.ok(record.includes(`".ai/rungs.mjs" = "${launcherHash}"`), 'the launcher hash must be recorded');
     const consumerCorpus = installedFiles.map((file) => readFileSync(join(consumer, file), 'utf8')).join('\n');
-    const rungsSelectors = [...consumerCorpus.matchAll(/@rungs\/cli@(?!\$\{)[^\s"'`<>{}\[\](),;]+/g)].map(
-      ([selector]) => selector,
-    );
+    const rungsPackageUses = scanRungsPackageUses(consumerCorpus);
     assert.deepEqual(
-      rungsSelectors,
+      rungsPackageUses.explicitSelectors,
       [exactPackage],
       'the complete consumer corpus must contain only the one expected exact literal Rungs selector',
+    );
+    assert.deepEqual(
+      rungsPackageUses.barePackageUses,
+      [],
+      'the consumer must not contain a bare mutable Rungs package invocation',
     );
     assert.equal(consumerCorpus.includes(candidateTarball), false, 'the local candidate path must not leak into the repo');
     assert.equal(consumerCorpus.includes(packedCandidate.filename), false, 'the tarball name must not become an authority');
