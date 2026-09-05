@@ -62,8 +62,9 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
   declared gate dispatch path.
 - `src/selftest.ts` for a Git-backed `{ changed, fragments, exempt }` fixture builder.
 - `modules/release/module.toml` and `modules/release/gates/release.toml`; the module advances from
-  1.3.0 to 1.3.1 because this repairs an existing declared contract without adding a new module
-  capability.
+  1.3.0 to 1.4.0. Every prior consumer-visible release-module change advanced the minor version,
+  including its earlier gate-behavior repair; no bundled module has established a non-zero patch
+  convention.
 - `.ai/gates.toml`, `changelog.d/0.4.0.md`, focused tests, module/site claim sources and generated
   site claims affected by the 29-to-30 repository gate count.
 
@@ -113,7 +114,8 @@ and fragment make the real repository pass.
   declared patterns.
 - Repairing unrelated ejection packaging or engines; any independently observed gap is a finding,
   not an unplanned addition here.
-- Cutting or publishing v0.4.0; WI-071 owns that irreversible boundary.
+- Cutting or publishing v0.4.0; a later release item owns that irreversible boundary after F-025's
+  already-declared pre-cut condition is resolved or explicitly dispositioned.
 
 ## Execution
 
