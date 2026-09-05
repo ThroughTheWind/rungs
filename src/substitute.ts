@@ -116,8 +116,17 @@ export function markers(targetPath: string, module: string, version: string) {
  * mechanical and divergence a decision rather than an error.
  */
 export function mergeBlock(existing: string, fragment: string, module: string): string {
-  const beginRe = new RegExp(`^[ \\t]*(?:<!--|#)\\s*rungs:begin ${module}(?:@[\\w.\\-]+)?\\s*(?:-->)?[ \\t]*$`, 'm');
-  const endRe = new RegExp(`^[ \\t]*(?:<!--|#)\\s*rungs:end ${module}\\s*(?:-->)?[ \\t]*$`, 'm');
+  // Marker whitespace belongs to the marker line. `\\s*` also consumes newlines,
+  // which made the end match swallow inter-block separators and the file's final
+  // newline whenever an unchanged gate block was registered again (F-040).
+  const beginRe = new RegExp(
+    `^[ \\t]*(?:<!--|#)[ \\t]*rungs:begin ${module}(?:@[\\w.\\-]+)?[ \\t]*(?:-->)?[ \\t]*\\r?$`,
+    'm',
+  );
+  const endRe = new RegExp(
+    `^[ \\t]*(?:<!--|#)[ \\t]*rungs:end ${module}[ \\t]*(?:-->)?[ \\t]*\\r?$`,
+    'm',
+  );
   const b = existing.match(beginRe);
   const e = existing.match(endRe);
   if (b && e && b.index !== undefined && e.index !== undefined && e.index > b.index) {

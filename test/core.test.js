@@ -116,6 +116,23 @@ test('mergeBlock replaces only the managed block and preserves surrounding text'
   assert.equal(updated.includes('old'), false);
 });
 
+test('mergeBlock preserves gate-block separators and the terminal newline', () => {
+  const first = '# rungs:begin first@1.0.0\nfirst body\n# rungs:end first';
+  const second = '# rungs:begin second@1.0.0\nsecond body\n# rungs:end second';
+  const registry = ['[runner]', '', first, '', second, ''].join('\n');
+
+  assert.equal(mergeBlock(registry, first, 'first'), registry, 'an unchanged middle block is byte-stable');
+  assert.equal(mergeBlock(registry, second, 'second'), registry, 'an unchanged final block keeps the final newline');
+
+  const replacement = '# rungs:begin first@1.1.0\nnew first body\n# rungs:end first';
+  const expected = ['[runner]', '', replacement, '', second, ''].join('\n');
+  assert.equal(
+    mergeBlock(registry, replacement, 'first'),
+    expected,
+    'a real replacement changes only the selected managed block',
+  );
+});
+
 test('module manifests are complete and parameter-auditable', () => {
   const modules = loadAllModules(resolve('modules'));
   assert.equal(modules.length, 15);

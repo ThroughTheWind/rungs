@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-069 -->
+<!-- NEXT-ID: WI-070 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -12,6 +12,7 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 | [WI-068](items/WI-068-existing-repo-consumer-journey.md) | Gate the packaged existing-repository consumer journey | feature | `feature/WI-068-existing-repo-consumer-journey` |
+| [WI-069](items/WI-069-idempotent-gate-registration.md) | Preserve gate-registry bytes on a no-op upgrade | feature | `feature/WI-069-idempotent-gate-registration` |
 
 ## Review
 
