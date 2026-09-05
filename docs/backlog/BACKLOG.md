@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-069 -->
+<!-- NEXT-ID: WI-070 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -24,6 +24,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
+| [WI-069](items/WI-069-idempotent-gate-registration.md) | Preserve gate-registry bytes on a no-op upgrade | feature |
 
 ## Accepted
 
