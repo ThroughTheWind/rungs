@@ -2,8 +2,8 @@
 id: WI-071
 title: Canonicalize packed-consumer containment checks
 type: chore
-status: planned
-branch:
+status: in_progress
+branch: chore/WI-071-canonical-consumer-paths
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-064, WI-068, WI-070, F-044]
