@@ -93,6 +93,7 @@ function canonicalPath(path) {
   try {
     return resolve(realpathSync(existing), ...missing);
   } catch {
+    // PATH entries can be inaccessible; containment stays non-throwing and conservative.
     return absolute;
   }
 }
@@ -124,14 +125,19 @@ test('path containment canonicalizes aliased ancestors and missing descendants',
   const realParent = join(fixtureRoot, 'real');
   const aliasParent = join(fixtureRoot, 'alias');
   const realChild = join(realParent, 'child');
+  const outsideParent = join(fixtureRoot, 'outside');
+  const escapeAlias = join(realParent, 'escape');
 
   try {
     mkdirSync(realChild, { recursive: true });
+    mkdirSync(outsideParent);
     symlinkSync(realParent, aliasParent, process.platform === 'win32' ? 'junction' : 'dir');
+    symlinkSync(outsideParent, escapeAlias, process.platform === 'win32' ? 'junction' : 'dir');
 
     assert.equal(isWithin(aliasParent, realChild), true);
     assert.equal(isWithin(aliasParent, join(aliasParent, 'child', 'missing', 'leaf')), true);
     assert.equal(isWithin(aliasParent, join(fixtureRoot, 'sibling')), false);
+    assert.equal(isWithin(aliasParent, join(aliasParent, 'escape', 'missing')), false);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
