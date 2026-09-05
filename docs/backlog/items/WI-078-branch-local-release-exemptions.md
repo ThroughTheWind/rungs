@@ -44,7 +44,10 @@ in the merge-base tree supplies no evidence for new shipping work; rewording is 
 - Reject reason wording inherited anywhere from the integration branch, including duplicates and
   text carried through a pure rename, copy or line move while unrelated shipping content changes.
 - Read candidate evidence only from canonically contained regular UTF-8 text that Git attributes do
-  not declare binary; aliases, symlinks, invalid text and binary files cannot waive a fragment.
+  not declare binary; aliases, symlinks (including mode `120000` entries materialized as ordinary
+  files by Git), invalid text and binary files cannot waive a fragment.
+- Carry block-comment, HTML-comment and quoted-string state across document lines so a marker in a
+  multiline wrapper ends at its actual close token and cannot absorb adjacent implementation text.
 - Preserve NUL-safe path handling, deterministic local/origin/sole-remote integration resolution,
   no-renames changed-path semantics and explicit failure when Git cannot establish provenance.
 
@@ -59,9 +62,12 @@ in the merge-base tree supplies no evidence for new shipping work; rewording is 
 
 Collect the complete changed-path view against the resolved merge base with argv-based Git calls and
 NUL-delimited path discovery; never interpolate a path or ref into a shell command. Extract the
-reason text inside common comment/string wrappers so adjacent code or formatting is not mistaken for
-a reason edit. Build one conservative set of all substantive reason strings present in the
-merge-base tree, then accept only contained regular UTF-8 text whose reason is absent from that set.
+reason text with a document-aware scanner for common comment/string wrappers so adjacent code or
+formatting is not mistaken for a reason edit. Read the full matching merge-base blobs rather than
+context-free grep lines. Build one conservative set of all substantive reason strings present in
+the merge-base tree, then accept only contained regular UTF-8 text whose reason is absent from that
+set. Inspect both index and `HEAD` object modes and accept only ordinary blob modes, even when a
+platform configured with `core.symlinks=false` exposes a mode `120000` entry as a regular file.
 This deliberately resolves an unknowable copied-versus-coincidentally-identical sentence the same
 way before and after staging: historical wording must be reworded for the current branch.
 
@@ -80,13 +86,16 @@ means no exemption, not a guessed pass.
 3. A duplicate, pure rename/copy or line move carrying inherited wording fails; changing the reason
    during the move passes. Deleted files/markers, aliases, symlinks and binary or unreadable text
    cannot exempt.
-4. Bare, next-line, quoted and comment-wrapper-only reasons retain their current failures, and a
-   valid branch-local reason still satisfies only a branch that also changes a configured shipping
-   path.
-5. Local, exact `origin` and sole-other-remote bases produce identical provenance decisions;
+4. Bare, next-line, quoted and comment-wrapper-only reasons retain their current failures. Wrapper
+   state spanning lines isolates the reason from adjacent code in block comments, HTML comments and
+   quoted strings, while a genuinely new multiline-wrapped reason passes. A valid branch-local
+   reason still satisfies only a branch that also changes a configured shipping path.
+5. Git mode `120000` evidence fails in staged/index and committed/tree states even when Git checks it
+   out as an ordinary file; ordinary untracked, staged and committed blob evidence remains valid.
+6. Local, exact `origin` and sole-other-remote bases produce identical provenance decisions;
    ambiguous or absent refs fail closed with the existing actionable result.
-6. Every release self-test still executes in both directions with zero newly unrun fixtures.
-7. Focused tests, full `npm test`, package dry-run, `git diff --check` and all registered Rungs gates
+7. Every release self-test still executes in both directions with zero newly unrun fixtures.
+8. Focused tests, full `npm test`, package dry-run, `git diff --check` and all registered Rungs gates
    pass. The exact pushed SHA passes all six OS/Node matrix cells and the site job.
 
 ### Out of scope
@@ -101,6 +110,20 @@ means no exemption, not a guessed pass.
 Started from verified `green/main` at `0833172a780da6377da081e7423c46d7bc370186` after WI-076
 landed.
 
+The final review hardening replaces line-local wrapper inference with full-document state and reads
+the original matching blobs from the merge-base tree. It also verifies ordinary Git object modes in
+both the index and `HEAD`, closing the `core.symlinks=false` representation gap without selecting a
+different content source when work is staged or committed. Regression fixtures exercise all three
+multiline wrapper families and create a mode `120000` index entry through Git plumbing, so the
+Windows path requires no symlink privilege.
+
+Local verification after that hardening: 11 focused `change-requires-file`/exemption groups passed;
+the full suite passed 93 of 96 tests with the three expected platform skips; all 30 registered gates
+passed; and `npm pack --dry-run --json` produced 110 entries (360,011-byte archive, 1,226,610 bytes
+unpacked). `git diff --check` was clean.
+
 ## Review
 
-Not started.
+Independent final review of `fb81f76` found the line-local multiline-wrapper bypass and the missing
+Git-object-mode check described above. Both are addressed in the current hardening; exact-tip CI and
+independent re-review remain pending.

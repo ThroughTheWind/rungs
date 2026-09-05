@@ -433,54 +433,6 @@ const patternList = (value: unknown, allowEmpty = false): value is string[] =>
 
 type ExemptionWrapper = { kind: 'plain' | 'line' | 'block' | 'html' | 'quote'; close?: string };
 
-function exemptionWrapperAt(line: string, markerAt: number): ExemptionWrapper {
-  let wrapper: ExemptionWrapper = { kind: 'plain' };
-  for (let index = 0; index < markerAt; index++) {
-    if (wrapper.kind === 'line') break;
-    if (wrapper.kind === 'block') {
-      if (line.startsWith('*/', index)) {
-        wrapper = { kind: 'plain' };
-        index++;
-      }
-      continue;
-    }
-    if (wrapper.kind === 'html') {
-      if (line.startsWith('-->', index)) {
-        wrapper = { kind: 'plain' };
-        index += 2;
-      }
-      continue;
-    }
-    if (wrapper.kind === 'quote') {
-      if (line[index] === '\\') {
-        index++;
-      } else if (line[index] === wrapper.close) {
-        wrapper = { kind: 'plain' };
-      }
-      continue;
-    }
-
-    if (line.startsWith('//', index)) {
-      wrapper = { kind: 'line' };
-      break;
-    }
-    if (line.startsWith('/*', index)) {
-      wrapper = { kind: 'block', close: '*/' };
-      index++;
-      continue;
-    }
-    if (line.startsWith('<!--', index)) {
-      wrapper = { kind: 'html', close: '-->' };
-      index += 3;
-      continue;
-    }
-    if (line[index] === '"' || line[index] === "'" || line[index] === '`') {
-      wrapper = { kind: 'quote', close: line[index] };
-    }
-  }
-  return wrapper;
-}
-
 function wrapperCloseAt(reason: string, wrapper: ExemptionWrapper): number {
   if (!wrapper.close) return -1;
   if (wrapper.kind !== 'quote') return reason.indexOf(wrapper.close);
@@ -494,33 +446,111 @@ function wrapperCloseAt(reason: string, wrapper: ExemptionWrapper): number {
   return -1;
 }
 
-function lineExemptionEvidence(line: string, marker: string): string[] {
+/**
+ * Extract substantive same-line reasons while retaining wrapper state across
+ * the whole document. A marker on the second line of a block, HTML comment or
+ * quoted string must still stop at that wrapper's close token; otherwise an
+ * adjacent code-only edit would be mistaken for a new reason.
+ */
+function exemptionEvidence(text: string, marker: string): string[] {
   const evidence: string[] = [];
-  let cursor = 0;
+  let wrapper: ExemptionWrapper = { kind: 'plain' };
 
-  for (;;) {
-    const markerAt = line.indexOf(marker, cursor);
-    if (markerAt < 0) break;
-    cursor = markerAt + marker.length;
+  for (let index = 0; index < text.length; index++) {
+    if (text.startsWith(marker, index)) {
+      const reasonAt = index + marker.length;
+      const cr = text.indexOf('\r', reasonAt);
+      const lf = text.indexOf('\n', reasonAt);
+      const lineEnd = cr < 0 ? (lf < 0 ? text.length : lf) :
+        (lf < 0 ? cr : Math.min(cr, lf));
+      const rawTail = text.slice(reasonAt, lineEnd);
+      const leading = rawTail.match(/^[ \t]*/)?.[0].length ?? 0;
+      if (/[\p{L}\p{N}]/u.test(rawTail[leading] ?? '')) {
+        let reason = rawTail.slice(leading);
+        const closeAt = wrapperCloseAt(reason, wrapper);
+        if (closeAt >= 0) reason = reason.slice(0, closeAt);
+        reason = reason.trimEnd();
+        if (reason) evidence.push(reason);
+      }
+    }
 
-    const rawTail = line.slice(cursor);
-    const leading = rawTail.match(/^[ \t]*/)?.[0].length ?? 0;
-    if (!/[\p{L}\p{N}]/u.test(rawTail[leading] ?? '')) continue;
+    if (wrapper.kind === 'line') {
+      if (text[index] === '\r' || text[index] === '\n') wrapper = { kind: 'plain' };
+      continue;
+    }
+    if (wrapper.kind === 'block') {
+      if (text.startsWith('*/', index)) {
+        wrapper = { kind: 'plain' };
+        index++;
+      }
+      continue;
+    }
+    if (wrapper.kind === 'html') {
+      if (text.startsWith('-->', index)) {
+        wrapper = { kind: 'plain' };
+        index += 2;
+      }
+      continue;
+    }
+    if (wrapper.kind === 'quote') {
+      if (text[index] === '\\') {
+        index++;
+      } else if (text[index] === wrapper.close) {
+        wrapper = { kind: 'plain' };
+      }
+      continue;
+    }
 
-    let reason = rawTail.slice(leading);
-    const closeAt = wrapperCloseAt(reason, exemptionWrapperAt(line, markerAt));
-    if (closeAt >= 0) reason = reason.slice(0, closeAt);
-
-    reason = reason.trimEnd();
-    if (reason) evidence.push(reason);
+    if (text.startsWith('//', index)) {
+      wrapper = { kind: 'line' };
+      index++;
+    } else if (text.startsWith('/*', index)) {
+      wrapper = { kind: 'block', close: '*/' };
+      index++;
+    } else if (text.startsWith('<!--', index)) {
+      wrapper = { kind: 'html', close: '-->' };
+      index += 3;
+    } else if (text[index] === '"' || text[index] === "'" || text[index] === '`') {
+      wrapper = { kind: 'quote', close: text[index] };
+    }
   }
   return evidence;
 }
 
-const sameLineExemption = (text: string, marker?: string) =>
-  !!marker && text.split(/\r?\n/).some((line) => lineExemptionEvidence(line, marker).length > 0);
-
 const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+type GitTreeEntry = { mode: string; type: string; oid: string };
+
+function gitTreeEntry(root: string, treeish: string, rel: string): GitTreeEntry | undefined {
+  const output = execFileSync(
+    'git',
+    ['--literal-pathspecs', 'ls-tree', '-z', treeish, '--', rel],
+    { cwd: root, stdio: 'pipe' },
+  );
+  if (!output.length) return undefined;
+  const records = output.toString('utf8').split('\0').filter(Boolean);
+  if (records.length !== 1) throw new Error(`unexpected tree entry count for ${rel}`);
+  const match = records[0].match(/^([0-7]{6}) ([a-z]+) ([0-9a-f]+)\t/);
+  if (!match) throw new Error(`cannot parse tree entry for ${rel}`);
+  return { mode: match[1], type: match[2], oid: match[3] };
+}
+
+function candidateGitModesAreRegular(root: string, rel: string): boolean {
+  const output = execFileSync(
+    'git',
+    ['--literal-pathspecs', 'ls-files', '--stage', '-z', '--', rel],
+    { cwd: root, stdio: 'pipe' },
+  );
+  for (const record of output.toString('utf8').split('\0').filter(Boolean)) {
+    const match = record.match(/^([0-7]{6}) [0-9a-f]+ ([0-3])\t/);
+    if (!match) throw new Error(`cannot parse index entry for ${rel}`);
+    if (match[2] !== '0' || !['100644', '100755'].includes(match[1])) return false;
+  }
+
+  const committed = gitTreeEntry(root, 'HEAD', rel);
+  return !committed ||
+    (committed.type === 'blob' && ['100644', '100755'].includes(committed.mode));
+}
 
 function candidateExemptionText(root: string, rel: string): string | undefined {
   let resolved;
@@ -530,6 +560,7 @@ function candidateExemptionText(root: string, rel: string): string | undefined {
   } catch {
     return undefined;
   }
+  if (!candidateGitModesAreRegular(root, rel)) return undefined;
 
   const attributes = execFileSync(
     'git',
@@ -553,6 +584,33 @@ function candidateExemptionText(root: string, rel: string): string | undefined {
   }
 }
 
+function inheritedExemptionEvidence(root: string, mergeBase: string, marker: string): Set<string> {
+  let paths = Buffer.alloc(0);
+  try {
+    paths = execFileSync(
+      'git',
+      ['grep', '-I', '-l', '-z', '-F', '-e', marker, mergeBase, '--'],
+      { cwd: root, stdio: 'pipe' },
+    );
+  } catch (error: any) {
+    if (error?.status !== 1) throw error;
+    paths = Buffer.isBuffer(error?.stdout) ? error.stdout : Buffer.from(error?.stdout ?? '');
+  }
+
+  const prefix = `${mergeBase}:`;
+  const inherited = new Set<string>();
+  for (const named of utf8.decode(paths).split('\0').filter(Boolean)) {
+    if (!named.startsWith(prefix)) throw new Error('cannot parse historical exemption path');
+    const rel = named.slice(prefix.length);
+    const entry = gitTreeEntry(root, mergeBase, rel);
+    if (!entry || entry.type !== 'blob') throw new Error(`cannot resolve historical exemption blob for ${rel}`);
+    const bytes = execFileSync('git', ['cat-file', 'blob', entry.oid], { cwd: root, stdio: 'pipe' });
+    if (bytes.includes(0)) throw new Error(`historical exemption blob is not text: ${rel}`);
+    for (const reason of exemptionEvidence(utf8.decode(bytes), marker)) inherited.add(reason);
+  }
+  return inherited;
+}
+
 /**
  * Return only exemption evidence introduced by the complete current delta.
  *
@@ -572,25 +630,11 @@ function hasBranchLocalExemption(
   changed: string[],
   marker: string,
 ): boolean {
-  let historical = Buffer.alloc(0);
-  try {
-    historical = execFileSync(
-      'git',
-      ['grep', '-I', '-h', '-F', '-e', marker, mergeBase, '--'],
-      { cwd: root, stdio: 'pipe' },
-    );
-  } catch (error: any) {
-    if (error?.status !== 1) throw error;
-    historical = Buffer.isBuffer(error?.stdout) ? error.stdout : Buffer.from(error?.stdout ?? '');
-  }
-  const inherited = new Set(utf8.decode(historical)
-    .split(/\r?\n/)
-    .flatMap((line) => lineExemptionEvidence(line, marker)));
+  const inherited = inheritedExemptionEvidence(root, mergeBase, marker);
 
   return changed.some((rel) => {
     const text = candidateExemptionText(root, rel);
-    return text !== undefined && text.split(/\r?\n/)
-      .flatMap((line) => lineExemptionEvidence(line, marker))
+    return text !== undefined && exemptionEvidence(text, marker)
       .some((reason) => !inherited.has(reason));
   });
 }
