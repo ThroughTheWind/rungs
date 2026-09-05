@@ -21,15 +21,18 @@ function cmpVersions(a: string, b: string): number {
 }
 
 const packageVersion = packageJson.version as string;
-// The registry is the authority, not this file. Verified 2026-08-17 with
-// `npm view @rungs/cli dist-tags` → { latest: "0.3.1" }, published 2026-08-17T13:23:00Z,
+// The registry is the authority, not this file. Verified 2026-09-05 with
+// `npm view @rungs/cli dist-tags` → { latest: "0.4.0" }, published 2026-09-05T19:27:19Z,
 // and a clean consumer installed it from the public registry and ran the binary.
-// Re-verified 2026-09-05 during the 0.4.0 cut, same command, still `{ latest: '0.3.1' }` —
-// which is what makes 0.4.0 render as pending below rather than as the published latest.
-// This constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
+// The registry's shasum for 0.4.0 is 15412278a2d7778b53d2f499385395543206e1a2, identical to
+// the tarball `npm pack` produces from the tagged commit f7b6aa0 — so what is public is what
+// was gated, not whatever happened to be on a disk at publish time. That is a stronger claim
+// than "the version numbers agree" and it is the one worth making here.
+// Written in the same session as the publish, which is runbook §6's last step for a measured
+// reason: this constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
 // "0.1.3 · npm publication pending" above a version anyone could already install.
-const publishedVersion = "0.3.1";
-const publishedDate = "2026-08-17";
+const publishedVersion = "0.4.0";
+const publishedDate = "2026-09-05";
 
 // Whether a release is pending is derived, not asserted. The page used to state
 // "<version> is tagged and ready for npm publication" from the package version alone — which is
