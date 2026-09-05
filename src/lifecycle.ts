@@ -8,6 +8,7 @@ import { contentHash, emittedFiles, moduleEmissionCandidates, preflightModuleEmi
 import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadRegistry } from './check.ts';
 import { preflightEmittedPaths, resolveEmittedPath, UnsafeEmittedPathError } from './emitted-path.ts';
+import { semanticText } from './text.ts';
 
 const SRC = dirname(fileURLToPath(import.meta.url));
 
@@ -210,7 +211,9 @@ export function updateRecordAfterUpgrade(
   ])[0].absolute;
   if (!existsSync(path) || !updates.length) return 0;
 
-  const lines = readFileSync(path, 'utf8').split('\n');
+  const original = readFileSync(path, 'utf8');
+  const newline = original.match(/\r\n|\r|\n/)?.[0] ?? '\n';
+  const lines = semanticText(original).split('\n');
   const byModule = new Map(updates.map((u) => [u.module, u]));
   let changed = 0;
   let current: { module: string; hashes: boolean } | null = null;
@@ -235,8 +238,9 @@ export function updateRecordAfterUpgrade(
       const entry = /^"([^"]+)"\s*=/.exec(line);
       const replacement = entry && byModule.get(current.module)!.hashes.get(entry[1]);
       if (replacement) {
-        out.push(`"${entry[1]}" = "${replacement}"`);
-        changed++;
+        const next = `"${entry[1]}" = "${replacement}"`;
+        if (next !== line) changed++;
+        out.push(next);
         continue;
       }
     }
@@ -244,7 +248,8 @@ export function updateRecordAfterUpgrade(
     out.push(line);
   }
 
-  writeFileSync(path, out.join('\n'));
+  const updated = out.join(newline);
+  if (changed > 0 && updated !== original) writeFileSync(path, updated);
   return changed;
 }
 
@@ -270,7 +275,7 @@ export function eject(repoRoot: string, mods: Manifest[], dryRun = false) {
   // The first version copied `check.ts` and `manifest.ts` too, which pull in the
   // TOML parser — so an ejected repo crashed on a module it could not resolve.
   // An exit that does not work is not an exit.
-  const engines = ['glob.ts', 'engine-table.ts', 'engines.ts', 'engines2.ts'];
+  const engines = ['glob.ts', 'text.ts', 'engine-table.ts', 'engines.ts', 'engines2.ts'];
   const { gates } = loadRegistry(repoRoot);
   const declared = gates.filter((g) => g.kind === 'declared' && g.table);
   const tables = [...new Set(declared.map((g) => g.table!))];

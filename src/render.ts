@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { walk } from './glob.ts';
 import { preflightEmittedPaths, resolveEmittedPath, type EmittedPathCandidate } from './emitted-path.ts';
+import { semanticText } from './text.ts';
 
 export type Harness = 'claude' | 'copilot' | 'cursor' | 'agents-md';
 
@@ -41,7 +42,7 @@ export function readRules(repoRoot: string): Rule[] {
     return rules;
   }
   for (const rel of files) {
-    const raw = readFileSync(join(dir, rel), 'utf8');
+    const raw = semanticText(readFileSync(join(dir, rel), 'utf8'));
     const rule = parseRule(rel, raw);
     if (rule) rules.push(rule);
   }

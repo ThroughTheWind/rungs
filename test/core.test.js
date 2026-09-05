@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -19,6 +31,7 @@ import { runSelfTests } from '../src/selftest.ts';
 import { loadTable, runGates } from '../src/check.ts';
 import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
 import { readVersionSource } from '../src/version-source.ts';
+import { readRules } from '../src/render.ts';
 import { COMMANDS } from '../src/help.ts';
 
 test('substitute resolves local and cross-module values without touching passthrough expressions', () => {
@@ -468,6 +481,95 @@ test('the record update touches only the version and the files this run rewrote'
   assert.match(text, /^# Installed by `rungs`/, 'the header comment survives');
 
   rmSync(root, { recursive: true, force: true });
+});
+
+test('record updates preserve CRLF, terminal-newline state and skip a byte-identical write', () => {
+  for (const terminal of [false, true]) {
+    const root = mkdtempSync(join(tmpdir(), 'rungs-rec-crlf-'));
+    const path = join(root, '.ai', 'rungs.toml');
+    mkdirSync(dirname(path), { recursive: true });
+    const lines = [
+      '# consumer record',
+      '[modules.session]',
+      'version = "1.1.0"',
+      '[modules.session.hashes]',
+      '".ai/session.md" = "old-hash"',
+    ];
+    writeFileSync(path, lines.join('\r\n') + (terminal ? '\r\n' : ''));
+
+    const update = [{
+      module: 'session',
+      version: '1.2.0',
+      hashes: new Map([['.ai/session.md', 'new-hash']]),
+    }];
+    assert.equal(updateRecordAfterUpgrade(root, update), 2);
+    const updated = readFileSync(path, 'utf8');
+    assert.doesNotMatch(updated, /(?<!\r)\n/, 'a replacement must not introduce bare LF');
+    assert.equal(updated.endsWith('\r\n'), terminal, 'terminal-newline presence is preserved');
+
+    const oldTime = new Date('2001-01-01T00:00:00Z');
+    utimesSync(path, oldTime, oldTime);
+    const beforeNoop = readFileSync(path);
+    const beforeMtime = statSync(path).mtimeMs;
+    assert.equal(updateRecordAfterUpgrade(root, update), 0, 'identical version and hash lines are unchanged');
+    assert.deepEqual(readFileSync(path), beforeNoop, 'a no-op preserves every byte');
+    assert.equal(statSync(path).mtimeMs, beforeMtime, 'a no-op does not call writeFile');
+
+    rmSync(root, { recursive: true, force: true });
+  }
+
+  const mixedRoot = mkdtempSync(join(tmpdir(), 'rungs-rec-mixed-noop-'));
+  const mixedPath = join(mixedRoot, '.ai', 'rungs.toml');
+  mkdirSync(dirname(mixedPath), { recursive: true });
+  const mixed = '[modules.session]\r\nversion = "1.2.0"\n[modules.session.hashes]\r\n".ai/session.md" = "new-hash"\n';
+  writeFileSync(mixedPath, mixed);
+  const mixedTime = new Date('2001-01-01T00:00:00Z');
+  utimesSync(mixedPath, mixedTime, mixedTime);
+  const mixedMtime = statSync(mixedPath).mtimeMs;
+  assert.equal(updateRecordAfterUpgrade(mixedRoot, [{
+    module: 'session',
+    version: '1.2.0',
+    hashes: new Map([['.ai/session.md', 'new-hash']]),
+  }]), 0);
+  assert.equal(readFileSync(mixedPath, 'utf8'), mixed, 'a mixed-newline semantic no-op remains byte-identical');
+  assert.equal(statSync(mixedPath).mtimeMs, mixedMtime, 'a mixed-newline no-op does not write');
+  rmSync(mixedRoot, { recursive: true, force: true });
+});
+
+test('semantic engine and rule parsing gives CRLF the exact LF verdict', () => {
+  const make = (newline) => {
+    const root = mkdtempSync(join(tmpdir(), 'rungs-semantic-lines-'));
+    const write = (rel, lines) => {
+      mkdirSync(dirname(join(root, rel)), { recursive: true });
+      writeFileSync(join(root, rel), lines.join(newline) + newline);
+    };
+    write('.claude/skills/demo/SKILL.md', ['---', 'name: demo', 'description: demo skill', '---', '', '# Demo']);
+    write('docs/plan.md', ['---', 'id: PLAN-001', '---', '', '# Plan', '', '## Decision', '', 'Present.']);
+    write('.ai/rules/demo.md', [
+      '---',
+      'description: Demo rule',
+      'paths:',
+      '  - "src/**"',
+      'enforcement: required',
+      '---',
+      '',
+      '# Rule body',
+    ]);
+    return root;
+  };
+  const lf = make('\n');
+  const crlf = make('\r\n');
+  try {
+    const skillTable = { scan: ['.claude/skills/*/SKILL.md'], required: ['name', 'description'] };
+    const planTable = { scan: ['docs/*.md'], required: ['Decision'], non_empty: true };
+    const files = ['.claude/skills/demo/SKILL.md', 'docs/plan.md', '.ai/rules/demo.md'];
+    assert.deepEqual(frontmatterSchema(skillTable, crlf, files), frontmatterSchema(skillTable, lf, files));
+    assert.deepEqual(ENGINES.sections(planTable, crlf, files), ENGINES.sections(planTable, lf, files));
+    assert.deepEqual(readRules(crlf), readRules(lf));
+  } finally {
+    rmSync(lf, { recursive: true, force: true });
+    rmSync(crlf, { recursive: true, force: true });
+  }
 });
 
 test('applyUpgrade registers gates even when no file is stale', () => {

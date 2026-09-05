@@ -767,6 +767,61 @@ test('a packed candidate retrofits an existing repository without taking over it
       'post-apply upgrade preview must preserve every tracked byte',
     );
 
+    // F-034. The package sources are LF, but a consumer's checkout policy owns
+    // its working-tree bytes. Re-check the committed adoption through a fresh
+    // checkout that actually materializes CRLF; copying the existing directory
+    // would keep the producer machine's earlier LF decision and miss the bug.
+    const crlfConsumer = join(temporaryRoot, 'consumer-crlf');
+    mkdirSync(crlfConsumer, { recursive: true });
+    expectOk(runGit(crlfConsumer, ['init', '-q', '-b', 'main']), 'initialise fresh CRLF checkout');
+    expectOk(runGit(crlfConsumer, ['config', 'core.autocrlf', 'true']), 'enable CRLF checkout conversion');
+    expectOk(runGit(crlfConsumer, ['fetch', '-q', consumer, adoptedCommit]), 'fetch exact adopted commit');
+    expectOk(runGit(crlfConsumer, ['checkout', '-q', '--detach', 'FETCH_HEAD']), 'materialize exact adopted commit');
+    expectOk(
+      runGit(crlfConsumer, ['remote', 'add', 'origin', 'https://example.invalid/arena-lab.git']),
+      'add inert CRLF origin',
+    );
+    expectOk(runGit(crlfConsumer, ['update-ref', 'refs/remotes/origin/main', adoptedCommit]), 'create CRLF origin/main');
+    expectOk(runGit(crlfConsumer, ['switch', '-q', '-c', 'consumer/crlf']), 'create origin-only CRLF feature branch');
+    assert.equal(runGit(crlfConsumer, ['show-ref', '--verify', '--quiet', 'refs/heads/main']).status, 1);
+    expectOk(runGit(crlfConsumer, ['show-ref', '--verify', '--quiet', 'refs/remotes/origin/main']), 'verify CRLF origin/main');
+
+    const crlfRecord = join(crlfConsumer, '.ai', 'rungs.toml');
+    const crlfRule = join(crlfConsumer, '.ai', 'rules', 'work-items.md');
+    for (const path of [crlfRecord, crlfRule]) {
+      const text = readFileSync(path, 'utf8');
+      assert.match(text, /\r\n/, `${relative(crlfConsumer, path)} must prove this is a CRLF checkout`);
+      assert.doesNotMatch(text.replace(/\r\n/g, ''), /\n/, `${relative(crlfConsumer, path)} must contain no bare LF`);
+    }
+
+    const verifyCrlfNoop = (state) => {
+      const beforeStatus = gitText(crlfConsumer, ['status', '--porcelain=v1', '--untracked-files=all']);
+      const beforeDigest = trackedDigest(crlfConsumer);
+      const beforeRecord = readFileSync(crlfRecord);
+      const checked = expectOk(candidate('check', crlfConsumer, 'full'), `${state} CRLF full check`);
+      assert.match(withoutAnsi(checked.stdout), /0 fail/);
+      const previewed = expectOk(candidate('upgrade', crlfConsumer), `${state} CRLF upgrade preview`);
+      assert.match(previewed.stdout, /0 to update\s*·\s*0 diverged/);
+      for (let pass = 1; pass <= 2; pass++) {
+        const applied = expectOk(
+          candidate('upgrade', crlfConsumer, '--apply'),
+          `${state} CRLF same-version apply ${pass}`,
+        );
+        assert.match(applied.stdout, /0 to update\s*·\s*0 diverged/);
+        assert.deepEqual(readFileSync(crlfRecord), beforeRecord, `${state} apply ${pass} preserves record bytes`);
+        assert.equal(trackedDigest(crlfConsumer), beforeDigest, `${state} apply ${pass} preserves tracked bytes`);
+        assert.equal(
+          gitText(crlfConsumer, ['status', '--porcelain=v1', '--untracked-files=all']),
+          beforeStatus,
+          `${state} apply ${pass} preserves Git status`,
+        );
+      }
+    };
+
+    verifyCrlfNoop('origin-only feature');
+    expectOk(runGit(crlfConsumer, ['switch', '-q', '--detach', adoptedCommit]), 'detach fresh CRLF checkout');
+    verifyCrlfNoop('detached');
+
     const resolvedTemporaryRoot = realpathSync(temporaryRoot);
     const resolvedConsumer = realpathSync(consumer);
     assert.ok(

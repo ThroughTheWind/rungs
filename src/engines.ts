@@ -20,6 +20,7 @@ import {
 } from './engines2.ts';
 import { boardReconcile, changelogFreshness, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
 import { selectEngineTable } from './engine-table.ts';
+import { semanticText } from './text.ts';
 
 /**
  * Where the CLI's own `modules/` lives.
@@ -53,7 +54,7 @@ export type Engine = (table: any, repoRoot: string, files: string[]) => EngineRe
 
 const read = (root: string, rel: string) => {
   try {
-    return readFileSync(join(root, rel), 'utf8');
+    return semanticText(readFileSync(join(root, rel), 'utf8'));
   } catch {
     return '';
   }
@@ -375,7 +376,7 @@ export const gateMeta: Engine = (_t, root) => {
 
   const registry = join(root, '.ai', 'gates.toml');
   if (!existsSync(registry)) return { findings, examined: 0 };
-  const text = readFileSync(registry, 'utf8');
+  const text = semanticText(readFileSync(registry, 'utf8'));
   const entries = [...text.matchAll(/\[\[gates\]\][\s\S]*?(?=\n\[\[gates\]\]|\n# rungs:end|$)/g)].map((m) => m[0]);
   let examined = 0;
   for (const entry of entries) {
@@ -386,7 +387,7 @@ export const gateMeta: Engine = (_t, root) => {
     examined++;
     // Tables live in the CLI, not the repo, so read them from the module set.
     const tablePath = join(CLI_MODULES, dirname(table), 'gates', table.split('/').pop()!);
-    const src = existsSync(tablePath) ? readFileSync(tablePath, 'utf8') : '';
+    const src = existsSync(tablePath) ? semanticText(readFileSync(tablePath, 'utf8')) : '';
     const forGate = [...src.matchAll(/\[\[self_test\]\][\s\S]*?(?=\n\[\[|\n\[|$)/g)]
       .map((m) => m[0])
       .filter((b) => b.includes(`gate   = "${id}"`) || b.includes(`gate    = "${id}"`) || b.includes(`gate = "${id}"`));
@@ -480,7 +481,7 @@ function parseTable(path: string, module: string): any | null {
     // the same parameters or neither means anything.
     const mods = loadAllModules(CLI_MODULES);
     const params = resolveParams(mods, {}, '.');
-    return parseToml(substitute(readFileSync(path, 'utf8'), module, params));
+    return parseToml(substitute(semanticText(readFileSync(path, 'utf8')), module, params));
   } catch {
     return null;
   }
