@@ -366,6 +366,55 @@ export const crossReference: Engine = (t, root, files) => {
 const gitArgs = (root: string, args: string[]) =>
   execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString().trim();
 
+const gitRefExists = (root: string, ref: string): boolean => {
+  try {
+    gitArgs(root, ['show-ref', '--verify', '--quiet', ref]);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+type IntegrationRefResolution =
+  | { ref: string; finding?: never }
+  | { ref?: never; finding: string };
+
+/**
+ * Resolve a configured branch name without Git's short-name DWIM rules.
+ *
+ * CI checkouts commonly have `origin/main` but no local `main`. Conversely, a
+ * developer checkout can carry both, temporarily at different commits. The
+ * precedence here is deliberate and stable as more remotes appear: local,
+ * exact `origin`, then a sole matching remote. More than one non-origin match
+ * is unknown, not permission to choose whichever ref Git happens to prefer.
+ */
+function resolveIntegrationRef(root: string, branch: string): IntegrationRefResolution {
+  const local = `refs/heads/${branch}`;
+  if (gitRefExists(root, local)) return { ref: local };
+
+  const origin = `refs/remotes/origin/${branch}`;
+  if (gitRefExists(root, origin)) return { ref: origin };
+
+  const remotes = gitArgs(root, ['remote'])
+    .split('\n')
+    .map((remote) => remote.trim())
+    .filter((remote) => remote && remote !== 'origin');
+  const matches = remotes
+    .map((remote) => `refs/remotes/${remote}/${branch}`)
+    .filter((ref) => gitRefExists(root, ref))
+    .sort();
+
+  if (matches.length === 1) return { ref: matches[0] };
+  if (matches.length > 1) {
+    return {
+      finding: `integration branch '${branch}' is ambiguous across ${matches.join(', ')}; status not reconciled`,
+    };
+  }
+  return {
+    finding: `integration branch '${branch}' has no local or remote-tracking ref; status not reconciled`,
+  };
+}
+
 function landedWork(root: string, branch: string, base: string): boolean {
   const git = (...args: string[]) => gitArgs(root, args);
   try {
@@ -384,9 +433,14 @@ function landedWork(root: string, branch: string, base: string): boolean {
 export const gitStatusReconcile: Engine = (t, root, files) => {
   const findings: Finding[] = [];
   let merged: Set<string>;
+  let integrationRef: string;
   try {
+    const integration = String(t.integration_branch ?? 'main');
+    const resolved = resolveIntegrationRef(root, integration);
+    if (!resolved.ref) return { findings: [{ message: resolved.finding }], examined: 0 };
+    integrationRef = resolved.ref;
     merged = new Set(
-      gitArgs(root, ['branch', '--merged', t.integration_branch ?? 'main', '--format=%(refname:short)'])
+      gitArgs(root, ['branch', '--merged', integrationRef, '--format=%(refname:short)'])
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean),
@@ -406,7 +460,7 @@ export const gitStatusReconcile: Engine = (t, root, files) => {
     if (
       merged.has(branch) &&
       (t.pre_review_statuses ?? []).includes(status) &&
-      landedWork(root, branch, t.integration_branch ?? 'main')
+      landedWork(root, branch, integrationRef)
     ) {
       findings.push({ file: rel, message: `branch ${branch} is merged but status is '${status}'` });
     }
