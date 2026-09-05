@@ -512,7 +512,7 @@ function hasBranchLocalExemption(
       if (bytes.includes(0)) continue;
       const object = execFileSync(
         'git',
-        ['hash-object', `--path=${rel}`, resolved.absolute],
+        ['hash-object', '--no-filters', resolved.absolute],
         { cwd: root, stdio: 'pipe' },
       ).toString().trim();
       if (baseBlobIds.has(object)) continue;
