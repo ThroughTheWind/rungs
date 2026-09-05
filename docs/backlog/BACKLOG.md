@@ -10,7 +10,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-082](items/WI-082-consumer-crlf-normalization.md) | Normalize consumer text semantics without rewriting bytes | feature | `feature/WI-082-consumer-crlf-normalization` |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 
 ## Review
