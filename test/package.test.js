@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { delimiter, dirname, isAbsolute, relative, resolve, join, sep } from 'node:path';
+import {
+  readFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { basename, delimiter, dirname, isAbsolute, relative, resolve, join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
@@ -69,8 +78,27 @@ function trackedDigest(repo) {
   return hash.digest('hex');
 }
 
+function canonicalPath(path) {
+  const absolute = resolve(path);
+  let existing = absolute;
+  const missing = [];
+
+  while (!existsSync(existing)) {
+    const ancestor = dirname(existing);
+    if (ancestor === existing) return absolute;
+    missing.unshift(basename(existing));
+    existing = ancestor;
+  }
+
+  try {
+    return resolve(realpathSync(existing), ...missing);
+  } catch {
+    return absolute;
+  }
+}
+
 function isWithin(parent, child) {
-  const rel = relative(resolve(parent), resolve(child));
+  const rel = relative(canonicalPath(parent), canonicalPath(child));
   return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
 }
 
@@ -90,6 +118,24 @@ function scanRungsPackageUses(text) {
     barePackageUses: [...text.matchAll(/@rungs\/cli(?!@)/g)].map(([packageName]) => packageName),
   };
 }
+
+test('path containment canonicalizes aliased ancestors and missing descendants', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'rungs-path-alias-'));
+  const realParent = join(fixtureRoot, 'real');
+  const aliasParent = join(fixtureRoot, 'alias');
+  const realChild = join(realParent, 'child');
+
+  try {
+    mkdirSync(realChild, { recursive: true });
+    symlinkSync(realParent, aliasParent, process.platform === 'win32' ? 'junction' : 'dir');
+
+    assert.equal(isWithin(aliasParent, realChild), true);
+    assert.equal(isWithin(aliasParent, join(aliasParent, 'child', 'missing', 'leaf')), true);
+    assert.equal(isWithin(aliasParent, join(fixtureRoot, 'sibling')), false);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
 
 test('the published bin points at a built executable and answers help', () => {
   const bin = resolve(root, manifest.bin.rungs);
