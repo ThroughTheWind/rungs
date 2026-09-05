@@ -155,3 +155,31 @@ test('--set refuses a module or parameter that does not exist, and still accepts
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('a fresh tracked scaffold passes its generated empty findings register', () => {
+  const bin = resolve(root, manifest.bin.rungs);
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-tracked-empty-findings-'));
+
+  try {
+    const initialized = spawnSync('git', ['init', '-q', '-b', 'main', dir], { encoding: 'utf8' });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    writeFileSync(join(dir, 'README.md'), '# Existing repository\n');
+    assert.equal(spawnSync('git', ['-C', dir, 'add', 'README.md'], { encoding: 'utf8' }).status, 0);
+    const committed = spawnSync(
+      'git',
+      ['-C', dir, '-c', 'user.name=rungs-test', '-c', 'user.email=rungs@localhost', 'commit', '-q', '-m', 'seed'],
+      { encoding: 'utf8' },
+    );
+    assert.equal(committed.status, 0, committed.stderr);
+
+    const install = spawnSync(process.execPath, [bin, 'init', dir, 'tracked'], { encoding: 'utf8' });
+    assert.equal(install.status, 0, install.stdout || install.stderr);
+
+    const check = spawnSync(process.execPath, [bin, 'check', dir], { encoding: 'utf8' });
+    assert.equal(check.status, 0, check.stdout || check.stderr);
+    assert.doesNotMatch(check.stdout, /findings-disposition-has-reason\s+.*fail/);
+    assert.match(check.stdout, /findings-disposition-has-reason/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

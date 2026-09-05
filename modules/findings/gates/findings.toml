@@ -74,6 +74,11 @@ expect  = "pass"
 fixture = { table = "Open", row = { Id = "{{id_prefix}}-002", Sev = "high", Pri = "now", What = "x", Evidence = "none — hunch" } }
 
 [[self_test]]
+gate    = "findings-disposition-has-reason"
+expect  = "pass"
+fixture = { table = "Open", row = { Id = "—", Sev = "", Pri = "", What = "*nothing open*", Evidence = "" } }
+
+[[self_test]]
 gate    = "findings-self-declared-closure"
 expect  = "fail"
 fixture = { open = ["{{id_prefix}}-001"], detail = "### {{id_prefix}}-001 — x\\n\\n**Fixed.**" }

@@ -2,8 +2,8 @@
 id: WI-065
 title: Make a fresh tracked findings register pass its own gate
 type: feature
-status: planned
-branch:
+status: review
+branch: feature/WI-065-fresh-findings-baseline
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-064, F-018]
@@ -64,8 +64,22 @@ register. Preserve enforcement for any row that claims a real identifier.
 
 ## Execution
 
-Not started.
+Implemented on `feature/WI-065-fresh-findings-baseline` from `084802e`.
+
+- Taught the generic register-schema engine that an em dash in the identity column represents an
+  explicit no-record row, even when another cell carries explanatory placeholder text.
+- Added an engine-level regression proving the placeholder is ignored while a real finding still
+  reports missing Sev, Pri and Evidence.
+- Added the generated placeholder as a passing module self-test.
+- Added a package-level journey that initializes a clean tracked Git repository and immediately
+  runs `rungs check` successfully.
 
 ## Review
 
-Not started.
+Ready for review on 2026-09-05.
+
+- `npm test` — pass, 38/38 tests.
+- `npm run rungs -- check` — pass, 29/29 registered gates; the existing transparent warning that
+  45 fixtures have no builder remains and is out of scope.
+- The fix keys off the first/identity cell rather than Arena-specific content, and the real-row
+  assertion confirms required-field enforcement remains intact.
