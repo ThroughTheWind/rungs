@@ -118,13 +118,15 @@ export function markers(targetPath: string, module: string, version: string) {
 export function mergeBlock(existing: string, fragment: string, module: string): string {
   // Marker whitespace belongs to the marker line. `\\s*` also consumes newlines,
   // which made the end match swallow inter-block separators and the file's final
-  // newline whenever an unchanged gate block was registered again (F-040).
+  // newline whenever an unchanged gate block was registered again (F-040). The
+  // match deliberately stops before CR/LF so those surrounding bytes stay outside
+  // the managed block.
   const beginRe = new RegExp(
-    `^[ \\t]*(?:<!--|#)[ \\t]*rungs:begin ${module}(?:@[\\w.\\-]+)?[ \\t]*(?:-->)?[ \\t]*\\r?$`,
+    `^[ \\t]*(?:<!--|#)[ \\t]*rungs:begin ${module}(?:@[\\w.\\-]+)?[ \\t]*(?:-->)?[ \\t]*$`,
     'm',
   );
   const endRe = new RegExp(
-    `^[ \\t]*(?:<!--|#)[ \\t]*rungs:end ${module}[ \\t]*(?:-->)?[ \\t]*\\r?$`,
+    `^[ \\t]*(?:<!--|#)[ \\t]*rungs:end ${module}[ \\t]*(?:-->)?[ \\t]*$`,
     'm',
   );
   const b = existing.match(beginRe);
@@ -132,7 +134,17 @@ export function mergeBlock(existing: string, fragment: string, module: string): 
   if (b && e && b.index !== undefined && e.index !== undefined && e.index > b.index) {
     const before = existing.slice(0, b.index);
     const after = existing.slice(e.index + e[0].length);
-    return `${before}${fragment.trim()}${after}`;
+    const current = existing.slice(b.index, e.index + e[0].length);
+    const normalise = (value: string) => value.replace(/\r\n|\r|\n/g, '\n');
+    const replacement = fragment.trim();
+
+    // Registration builds fragments with LF on every platform. If the managed
+    // content is otherwise identical, preserve the original bytes—including a
+    // consumer checkout's CRLF convention—rather than manufacturing a diff.
+    if (normalise(current) === normalise(replacement)) return existing;
+
+    const newline = current.match(/\r\n|\r|\n/)?.[0] ?? existing.match(/\r\n|\r|\n/)?.[0] ?? '\n';
+    return `${before}${normalise(replacement).replace(/\n/g, newline)}${after}`;
   }
   const sep = existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
   return `${existing}${sep}${fragment.trim()}\n`;
