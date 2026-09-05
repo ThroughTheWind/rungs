@@ -51,7 +51,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | --- | --- | --- | --- |
 | F-047 | `release-version-consistent` advertises `pyproject.toml` as a version source but silently ignores it, so a Python version can disagree with every other release surface while the gate reports green | promoted | WI-074 takes format-aware JSON/TOML/XML extraction, explicit malformed/missing-source failures, no-source refusal, preserved exclusions, module fixtures and an exact production-path mismatch regression before any multi-ecosystem or 0.4.0 claim |
 
-## Closed — 2026-09-05 by [WI-073](items/WI-073-emitted-path-containment.md)
+## Closed — 2026-09-05 by [WI-073](archive/WI-073-emitted-path-containment.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |

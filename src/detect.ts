@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DetectResult, Manifest } from './types.ts';
 import { matchAny, walk } from './glob.ts';
-import { contentHash, emittedFiles } from './add.ts';
+import { contentHash, emittedFiles, preflightModuleEmissions } from './add.ts';
+import { resolveEmittedPath } from './emitted-path.ts';
 import type { Params } from './substitute.ts';
 
 const SAMPLE = 3;
@@ -215,7 +216,9 @@ export interface InstalledModule {
  */
 export function ownedState(mod: Manifest, repoRoot: string, installed: InstalledModule) {
   const params = installed.params_all ?? {};
-  const emitted = emittedFiles(mod, params, installed.skillsDir ?? '.claude/skills');
+  const skillsDir = installed.skillsDir ?? '.claude/skills';
+  preflightModuleEmissions([mod], repoRoot, params, skillsDir);
+  const emitted = emittedFiles(mod, params, skillsDir);
   const kept = new Set(installed.kept?.files ?? []);
   const out = {
     version: installed.version,
@@ -232,7 +235,12 @@ export function ownedState(mod: Manifest, repoRoot: string, installed: Installed
       out.kept.push(rel);
       continue;
     }
-    const full = join(repoRoot, rel);
+    const resolved = resolveEmittedPath(repoRoot, mod.name, rel);
+    const full = resolved.absolute;
+    if (resolved.leafAlias) {
+      out.diverged.push(rel);
+      continue;
+    }
     if (!existsSync(full)) {
       out.missing.push(rel);
       continue;
