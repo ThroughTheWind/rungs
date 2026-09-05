@@ -892,7 +892,7 @@ test('change-requires-file sees untracked, staged and committed work and require
   }
 });
 
-test('change-requires-file rejects inherited and deleted fragments but accepts a modified one', () => {
+test('change-requires-file rejects inherited, deleted and ignored fragments but accepts a modified one', () => {
   for (const [state, mutate, expected] of [
     ['inherited', () => {}, 1],
     ['deleted', ({ root }) => rmSync(join(root, 'changelog.d', 'old.md')), 1],
@@ -910,6 +910,15 @@ test('change-requires-file rejects inherited and deleted fragments but accepts a
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });
     }
+  }
+
+  const ignored = releaseDeltaRepo({ '.gitignore': 'changelog.d/*.md\n' });
+  try {
+    ignored.write('src/a.ts');
+    ignored.write('changelog.d/ignored.md', '# ignored fragment\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, ignored.root, []).findings.length, 1, 'ignored fragment is not changed evidence');
+  } finally {
+    rmSync(ignored.root, { recursive: true, force: true });
   }
 });
 
