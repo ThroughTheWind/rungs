@@ -19,6 +19,7 @@ import { hostname } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installedParams } from './check.ts';
+import { canonicalCaselessSegmentEqual } from './storage-key.ts';
 
 export interface LoopParams {
   integration: string;
@@ -204,24 +205,12 @@ type DirectRefResolution =
   | { value: DirectRef; error?: never }
   | { value?: never; error: string };
 
-function canonicalCaselessKey(value: string): string {
-  // APFS's default case-insensitive storage aliases compatibility and full
-  // case forms that Unicode simple folding misses: ß/ss and ﬁ/fi are measured
-  // examples. The built-in default conversions are locale-independent; the
-  // final NFKD catches decompositions introduced by case conversion itself.
-  return value.normalize('NFKD').toLowerCase().toUpperCase().normalize('NFKD');
-}
-
-function canonicalCaselessEqual(left: string, right: string): boolean {
-  return canonicalCaselessKey(left) === canonicalCaselessKey(right);
-}
-
 function refStorageCollides(left: string, right: string): boolean {
   const leftSegments = left.split('/');
   const rightSegments = right.split('/');
   const shared = Math.min(leftSegments.length, rightSegments.length);
   for (let index = 0; index < shared; index++) {
-    if (!canonicalCaselessEqual(leftSegments[index], rightSegments[index])) return false;
+    if (!canonicalCaselessSegmentEqual(leftSegments[index], rightSegments[index])) return false;
     // A spelling difference in a directory shared by two otherwise different
     // refs is itself a Windows/APFS alias. The later leaf difference does not
     // make the filesystem path unambiguous.
