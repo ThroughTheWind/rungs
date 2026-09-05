@@ -1,4 +1,4 @@
-# rungs:begin concurrency@1.3.0
+# rungs:begin concurrency@1.4.0
 # Merge drivers per conflict class. INERT until `node .ai/rungs.mjs setup git` installs them — the driver names
 # below mean nothing to git on a fresh clone, and merges quietly fall back to the default. For a
 # generated artifact that default is a clean text merge of a file that is a fixed point of nothing.

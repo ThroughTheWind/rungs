@@ -1,3 +1,0 @@
-# Fragments live here between releases. Tracked so the directory survives an empty
-# changelog: `release-runbook.md` links to it, and a fresh checkout without it made
-# `gates-links-resolve` red on CI while passing locally, where the empty dir lingers.

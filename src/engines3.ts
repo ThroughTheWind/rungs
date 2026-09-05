@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { matchAny } from './glob.ts';
 import type { Engine, Finding } from './engines.ts';
+import { readVersionSource } from './version-source.ts';
 
 const read = (root: string, rel: string) => {
   try {
@@ -34,10 +35,15 @@ export function versionCmp(a: number[], b: number[]): number {
  * `changelog.d/0.1.1.md` survived two releases and was still there at 0.2.0
  * preparation (F-022). So the rule becomes mechanical.
  *
- * A fragment is stale when its filename names a version **below** the version
- * being prepared. Files whose names are not versions are ignored rather than
- * reported: the module's own fixtures use `42.feature.md`, and a gate that
- * refuses a naming convention it was not asked about is a gate people disable.
+ * The repository also states the last version whose fragments were consumed.
+ * That boundary must equal the package version in a steady tree, and a fragment
+ * at or below it is stale. Equality is what closes F-025: after a release, the
+ * forgotten fragment and package version are equal, so comparing only those two
+ * values cannot tell preparation from already-consumed work.
+ *
+ * Files whose names are not versions are ignored rather than reported: the
+ * module's own fixtures use `42.feature.md`, and a gate that refuses a naming
+ * convention it was not asked about is a gate people disable.
  */
 export const changelogFreshness: Engine = (t, root, files) => {
   const specs = Array.isArray(t) ? t : [t];
@@ -45,34 +51,119 @@ export const changelogFreshness: Engine = (t, root, files) => {
   let examined = 0;
 
   for (const spec of specs) {
-    const src = spec.version ?? {};
+    const sources = Array.isArray(spec.versions)
+      ? spec.versions
+      : [spec.version ?? { file: 'package.json', path: 'version' }];
     let current: number[] | null = null;
-    for (const rel of matchAny(files, src.file ?? 'package.json')) {
-      try {
-        const raw = (src.path ?? 'version')
-          .split('.')
-          .reduce((o: any, k: string) => o?.[k], JSON.parse(read(root, rel)));
-        current = versionParts(String(raw ?? ''));
-      } catch {
-        /* unparseable is not a stale fragment */
+    let currentSource = '';
+    const versionProblems: Finding[] = [];
+    for (const source of sources) {
+      for (const rel of matchAny(files, source.file ?? 'package.json')) {
+        const result = readVersionSource(root, rel, source);
+        if (!result.ok) {
+          versionProblems.push({ file: rel, message: `release version source ${result.reason}` });
+          continue;
+        }
+        const parsed = versionParts(result.value);
+        if (!parsed) {
+          versionProblems.push({
+            file: rel,
+            message: `release version source must contain a three-part numeric version; found ${JSON.stringify(result.value)}`,
+          });
+          continue;
+        }
+        current = parsed;
+        if (current) {
+          currentSource = rel;
+          break;
+        }
       }
       if (current) break;
     }
-    // Without a version to compare against there is no claim to make. Saying
-    // nothing is right; passing loudly would not be.
-    if (!current) continue;
+    const marker = spec.consumed_through ?? 'changelog.d/CONSUMED_THROUGH';
+    const markerExists = existsSync(join(root, marker));
+    if (!markerExists) {
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker '${marker}' is missing — create it with 'none' if no release has consumed fragments, or the exact last consumed version`,
+      });
+      continue;
+    }
+
+    examined++;
+    const markerRaw = read(root, marker);
+    const markerValue = markerRaw.endsWith('\r\n')
+      ? markerRaw.slice(0, -2)
+      : markerRaw.endsWith('\n')
+        ? markerRaw.slice(0, -1)
+        : markerRaw;
+
+    if (markerValue === 'UNINITIALIZED') {
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker '${marker}' is UNINITIALIZED — replace it with 'none' if no release has consumed fragments, or the exact last consumed version`,
+      });
+      continue;
+    }
+
+    const firstRelease = markerValue === 'none';
+    // `versionParts` intentionally trims package metadata. The marker is a
+    // one-token schema, so validate its complete content before reusing that
+    // parser; whitespace, a BOM or a second newline must not become valid.
+    const consumed = firstRelease || !/^\d+\.\d+\.\d+$/.test(markerValue)
+      ? null
+      : versionParts(markerValue);
+    if (!firstRelease && !consumed) {
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker '${marker}' must contain exactly 'none' or a three-part numeric version; found ${JSON.stringify(markerValue)}`,
+      });
+      continue;
+    }
+
+    findings.push(...versionProblems);
+
+    // Without a package version there used to be no claim to make. A concrete
+    // consumption boundary changes that: its steady-state equality cannot be
+    // checked, so reporting green would make the new state assertion vacuous.
+    if (!current) {
+      if (consumed) {
+        findings.push({
+          file: sources[0]?.file ?? 'package.json',
+          message:
+            `cannot reconcile consumed-through ${markerValue} because none of the declared version sources contains a three-part numeric version`,
+        });
+      }
+      continue;
+    }
+
+    if (consumed && versionCmp(consumed, current) !== 0) {
+      const relation = versionCmp(consumed, current) < 0 ? 'below' : 'above';
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker names ${markerValue}, ${relation} version ${current.join('.')} in ${currentSource} — they must match in a steady tree; advance both during reversible release preparation`,
+      });
+    }
 
     for (const rel of expand(files, spec.fragments, [])) {
       const name = rel.split('/').pop()!.replace(/\.md$/, '');
       const v = versionParts(name);
       if (!v) continue;
       examined++;
-      if (versionCmp(v, current) < 0) {
+      const belowPackage = versionCmp(v, current) < 0;
+      const alreadyConsumed = consumed ? versionCmp(v, consumed) <= 0 : false;
+      if (belowPackage || alreadyConsumed) {
         findings.push({
           file: rel,
           message:
             spec.message?.trim() ||
-            `fragment names ${name}, below the ${current.join('.')} being prepared — it was consumed by an earlier release and should have been deleted`,
+            (alreadyConsumed
+              ? `fragment names ${name}, at or below consumed-through ${markerValue} — it was already assembled and should have been deleted`
+              : `fragment names ${name}, below package version ${current.join('.')} — it belongs to an earlier release and should have been deleted`),
         });
       }
     }
@@ -339,4 +430,3 @@ export const boardReconcile: Engine = (t, root, _files) => {
 
   return { findings, examined };
 };
-
