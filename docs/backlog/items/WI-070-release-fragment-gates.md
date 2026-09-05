@@ -44,10 +44,12 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
   complete change set is not ignore-only.
 - Satisfy the obligation only with a matching fragment that is both changed in this work and still
   exists. An inherited, deleted or ignored fragment must not satisfy it.
-- Accept an exemption marker only when a changed readable file states non-whitespace reasoning
-  after it; a bare marker still fails.
-- Dispatch `changelog-freshness` and `change-requires-file` to their exact table sections in the
-  source runner, module self-test runner and ejected runner template.
+- Accept an exemption marker only when a changed readable file states non-whitespace reasoning on
+  the same line; a bare marker cannot borrow text from the following line.
+- Dispatch every implemented engine through one explicit table-section inventory shared by the
+  source runner, explain path, module self-test runner and ejected runner template. Missing engine
+  mappings, missing required sections and id-bearing arrays without the requested gate fail closed;
+  there is no whole-table fallback except the explicit `id-integrity` sentinel.
 - Run all five existing change/fragment fixtures in both directions, register the corrected gate in
   Rungs itself and add a real reconstructed fragment for the upcoming v0.4.0 release.
 
@@ -55,8 +57,9 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
 
 - `src/engines2.ts` and `src/engines.ts` for the Git-aware engine, shared deterministic ref
   resolution and engine registration.
-- `src/check.ts`, `src/engines.ts` and `src/lifecycle.ts` for exact table selection in every declared
-  gate dispatch path.
+- A dependency-free `src/engine-table.ts`, consumed by `src/check.ts`, `src/explain.ts`,
+  `src/engines.ts` and the runner template in `src/lifecycle.ts`, for exact table selection in every
+  declared gate dispatch path.
 - `src/selftest.ts` for a Git-backed `{ changed, fragments, exempt }` fixture builder.
 - `modules/release/module.toml` and `modules/release/gates/release.toml`; the module advances from
   1.3.0 to 1.3.1 because this repairs an existing declared contract without adding a new module
@@ -78,9 +81,10 @@ test must pass the engine the same literal stable branch and changelog directory
 created; unresolved template parameters are never silently guessed.
 
 Pin F-041 through the production `check` path over a scratch Rungs registry/table containing a stale
-versioned fragment, not just a direct engine call. Separately assert the ejected runner template's
-selector so its converted JSON table uses the same section. Register the new gate locally only once
-its own shipping change and fragment make the real repository pass.
+versioned fragment, not just a direct engine call. Assert that every `ENGINES` key has one shared
+mapping, unknown or malformed dispatch throws, and the ejected runner imports that selector rather
+than carrying another hand-kept map. Register the new gate locally only once its own shipping change
+and fragment make the real repository pass.
 
 ### Acceptance criteria / tests
 
@@ -94,7 +98,8 @@ its own shipping change and fragment make the real repository pass.
 5. All five `release-changelog-fragment` fixtures execute with their declared outcomes, reducing the
    known unbuilt-fixture count by five.
 6. A production runner check fails on a stale versioned fragment and reports a non-zero examined
-   count; source, self-test and ejected table maps all select `changelog_freshness` exactly.
+   count; one strict selector covers every implemented engine and the generated runner contains no
+   divergent key map.
 7. Rungs registers `release-changelog-fragment`, carries a truthful `0.4.0` fragment reconstructed
    from post-v0.3.1 commits, and passes its now-30-gate registry.
 8. Focused tests, full `npm test`, the module-command audit, site claim generation/checks,
