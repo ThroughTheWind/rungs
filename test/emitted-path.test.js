@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   rmSync,
   symlinkSync,
@@ -78,7 +79,7 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
 
     const valid = resolveEmittedPath(root, 'demo', 'docs\\nested/file.md');
     assert.equal(valid.target, 'docs/nested/file.md');
-    assert.equal(relative(root, valid.absolute).replace(/\\/g, '/'), 'docs/nested/file.md');
+    assert.equal(relative(realpathSync.native(root), valid.absolute).replace(/\\/g, '/'), 'docs/nested/file.md');
 
     writeFileSync(join(root, 'ordinary-file'), 'not a directory');
     assert.throws(

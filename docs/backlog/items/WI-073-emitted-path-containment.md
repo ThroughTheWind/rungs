@@ -126,3 +126,9 @@ both be files. The last was reproduced through the real CLI before its regressio
 The two file-leaf symlink fixtures require the POSIX CI cells on the exact pushed SHA because this
 Windows host does not grant file-symlink creation. The six-cell OS/Node matrix and site job remain
 the merge gate rather than being represented as local evidence.
+
+The first exact-tip run, 33957948240, executed both leaf-symlink regressions successfully on Ubuntu
+but exposed a test-oracle alias on macOS and Windows: the assertion compared the resolver's canonical
+destination with the runner's lexical temporary root (`/var` versus `/private/var` on macOS, and the
+equivalent runner alias on Windows). The assertion now canonicalises the expected root too. That run
+is retained as diagnostic evidence and is not landing authority; a new exact-SHA matrix is required.
