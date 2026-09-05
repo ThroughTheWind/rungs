@@ -1,5 +1,6 @@
 import { lstatSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
+import { canonicalCaselessSegmentEqual } from './storage-key.ts';
 
 /**
  * A module path is repository-relative data, not a host-native path.  Treating
@@ -59,22 +60,21 @@ function hasUnpairedUtf16Surrogate(value: string): boolean {
   return false;
 }
 
-function canonicalCaselessEqual(left: string, right: string): boolean {
-  // ECMAScript's Unicode-aware ignore-case matcher uses Unicode simple case
-  // folding rather than locale-sensitive lowercasing. NFD first makes
-  // canonically equivalent spellings comparable too (for example J + caron
-  // and U+01F0), while `/iu` also folds forms lowercasing misses (for example
-  // capital sigma and final sigma).
-  const pattern = left.normalize('NFD').replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
-  return new RegExp(`^(?:${pattern})$`, 'iu').test(right.normalize('NFD'));
-}
-
 function canonicalCaselessAncestor(ancestor: string, descendant: string): boolean {
   const ancestorSegments = ancestor.split(sep);
   const descendantSegments = descendant.split(sep);
   return (
     ancestorSegments.length < descendantSegments.length &&
-    ancestorSegments.every((segment, index) => canonicalCaselessEqual(segment, descendantSegments[index]))
+    ancestorSegments.every((segment, index) => canonicalCaselessSegmentEqual(segment, descendantSegments[index]))
+  );
+}
+
+function canonicalCaselessPathEqual(left: string, right: string): boolean {
+  const leftSegments = left.split(sep);
+  const rightSegments = right.split(sep);
+  return (
+    leftSegments.length === rightSegments.length &&
+    leftSegments.every((segment, index) => canonicalCaselessSegmentEqual(segment, rightSegments[index]))
   );
 }
 
@@ -244,9 +244,9 @@ export function preflightEmittedPaths(
     const destination = resolved[i];
     // A module plan is portable: names that coexist only on a case-sensitive
     // checkout are still one destination when that record reaches Windows or a
-    // default case-insensitive macOS volume. Lowercasing is not case folding:
-    // final sigma, long s and other simple-fold forms would remain distinct.
-    const prior = seen.find((entry) => canonicalCaselessEqual(entry.resolved.absolute, destination.absolute));
+    // default case-insensitive macOS volume. Use the same conservative storage
+    // relation as managed refs, including compatibility and full case forms.
+    const prior = seen.find((entry) => canonicalCaselessPathEqual(entry.resolved.absolute, destination.absolute));
     if (!prior) {
       const structural = seen.find((entry) =>
         canonicalCaselessAncestor(entry.resolved.absolute, destination.absolute) ||
