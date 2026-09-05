@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, realpathSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,11 +88,18 @@ function commandText(value: unknown): string {
 function normalizeCommandText(value: unknown, repoRoot: string): string {
   let text = commandText(value).replace(/\r\n?/g, '\n').trim();
   const absolute = resolve(repoRoot);
-  const variants = [...new Set([
-    absolute,
-    absolute.replaceAll('\\', '/'),
-    absolute.replaceAll('/', '\\'),
-  ])].sort((left, right) => right.length - left.length);
+  const roots = [absolute];
+  try {
+    roots.push(realpathSync.native(absolute));
+  } catch {
+    // A command failure still needs a diagnostic if the checkout disappears or
+    // cannot be canonicalized while its error is being reported.
+  }
+  const variants = [...new Set(roots.flatMap((root) => [
+    root,
+    root.replaceAll('\\', '/'),
+    root.replaceAll('/', '\\'),
+  ]))].sort((left, right) => right.length - left.length);
   for (const variant of variants) {
     const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     text = text.replace(new RegExp(escaped, process.platform === 'win32' ? 'gi' : 'g'), '<repo>');

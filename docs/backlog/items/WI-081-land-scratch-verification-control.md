@@ -108,9 +108,10 @@ both were removed after confirming the real managed refs remained unchanged.
 The docs claim gate formerly obtained its command count by launching the full CLI, making that
 gate itself dependent on ignored `node_modules`. The bounded correction moves the exact command
 and flag tables that render help into dependency-free `src/help.ts`; the claim checker imports that
-same authority, while `module-commands-exist` remains responsible for proving dispatch. A focused
-structural regression holds the authority dependency-free and proves that both help and the claim
-checker consume it. Provisioning dependencies into scratch remains rejected: Rungs cannot infer
+same authority, while `module-commands-exist` derives real dispatch from the CLI and reconciles it
+against that table. A focused structural regression holds the authority dependency-free and proves
+that help, claim counting and dispatch reconciliation consume it. Provisioning dependencies into
+scratch remains rejected: Rungs cannot infer
 or safely reproduce arbitrary ecosystems, and doing so would conceal rather than measure an
 unrunnable verification environment.
 
@@ -119,6 +120,11 @@ full suite reported 129 passed, zero failed and three host-limited skips (132 to
 registered gates passed, including direct dependency-free runs of `docs-version-claims` and
 `module-commands-exist`. `npm pack --dry-run` succeeded with 112 files (377.0 kB packed, 1.3 MB
 unpacked), and `git diff --check` passed. CI evidence remains pending on the exact pushed tip.
+
+The first pushed candidate exposed a macOS alias boundary in that normalization: a lexical
+`/var/...` worktree is reported by `process.cwd()` as its canonical `/private/var/...` path. The
+diagnostic normalizer now safely covers both lexical and `realpath` roots, and the focused
+regression asserts that no canonical-root spelling survives.
 
 ## Review
 

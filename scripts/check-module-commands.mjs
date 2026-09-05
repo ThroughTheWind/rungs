@@ -9,10 +9,11 @@
  * entry document, so an agent was instructed to run them and told "never
  * `git merge` by hand" (F-026). WI-062 built them; this stops the next one.
  *
- * **Both sides are derived.** The command list comes from the `switch (cmd)` in
- * `src/cli.ts` and the subcommand lists from the guards inside it, so this
- * cannot drift the way a hand-kept list would — which is the failure it exists
- * to catch, one level up.
+ * **Both sides are derived and reconciled.** Dispatch comes from the
+ * `switch (cmd)` in `src/cli.ts`, help claims come from the dependency-free
+ * `COMMANDS` authority, and subcommands come from the guards inside the switch.
+ * Neither side can silently drift the way a hand-kept list would — which is the
+ * failure this exists to catch, one level up.
  *
  * Four things are checked, and the second through fourth were added after the first
  * version missed a live defect:
@@ -38,13 +39,25 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
-import { FLAGS } from '../src/help.ts';
+import { COMMANDS, FLAGS } from '../src/help.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = readFileSync(join(root, 'src', 'cli.ts'), 'utf8');
+const problems = [];
 
 // Derived side 1: what the dispatch actually handles.
 const commands = new Set([...cli.matchAll(/^\s{2}case '([a-z-]+)':/gm)].map((m) => m[1]));
+const helpCommands = new Set(COMMANDS.map(([usage]) => usage.split(' ')[0]));
+for (const command of commands) {
+  if (!helpCommands.has(command)) {
+    problems.push(`src/help.ts: COMMANDS omits dispatched command '${command}'`);
+  }
+}
+for (const command of helpCommands) {
+  if (!commands.has(command)) {
+    problems.push(`src/help.ts: COMMANDS claims '${command}', but src/cli.ts does not dispatch it`);
+  }
+}
 // `help` never reaches the switch — it is the default branch's success case.
 commands.add('help');
 
@@ -81,7 +94,6 @@ function walk(dir) {
   return out;
 }
 
-const problems = [];
 let spans = 0;
 
 for (const file of walk(join(root, 'modules'))) {

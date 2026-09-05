@@ -1729,12 +1729,17 @@ test('command gate failures retain stable normalized diagnostics and exit status
       return runGates(root)[0];
     });
 
-    for (const run of runs) {
+    for (const [index, run] of runs.entries()) {
       assert.equal(run.status, 'fail');
       assert.match(run.findings[0].message, /command exited with status 7/);
       assert.match(run.findings[0].message, /first <repo>/);
       assert.match(run.findings[0].message, /second detail/);
       assert.doesNotMatch(run.findings[0].message, /\r/);
+      assert.equal(
+        run.findings[0].message.includes(realpathSync.native(roots[index])),
+        false,
+        'a physical root alias such as macOS /private/var is normalized in full',
+      );
       assert.ok(run.findings[0].identity, 'land receives a comparison identity separate from display text');
     }
     assert.equal(runs[0].findings[0].identity, runs[1].findings[0].identity, 'root paths do not destabilize identity');
@@ -1754,7 +1759,10 @@ test('docs command claims read the dependency-free authority that renders help',
   assert.doesNotMatch(authority, /^\s*import\s/m, 'the help authority remains runnable without installed packages');
   assert.match(cli, /import \{ COMMANDS, FLAGS \} from '\.\/help\.ts'/);
   assert.match(cli, /COMMANDS\.map\(\(\[u\]\) => u\.length\)/, 'renderHelp consumes the counted authority');
-  assert.match(moduleChecker, /import \{ FLAGS \} from '\.\.\/src\/help\.ts'/);
+  assert.match(moduleChecker, /import \{ COMMANDS, FLAGS \} from '\.\.\/src\/help\.ts'/);
+  assert.match(moduleChecker, /helpCommands = new Set\(COMMANDS\.map/);
+  assert.match(moduleChecker, /COMMANDS omits dispatched command/);
+  assert.match(moduleChecker, /COMMANDS claims/);
   assert.match(moduleChecker, /for \(const \[entry\] of FLAGS\)/, 'module command validation consumes the flag authority');
   assert.ok(COMMANDS.length > 0, 'the help authority is structurally present');
   const names = COMMANDS.map(([usage]) => usage.split(' ')[0]);
