@@ -25,7 +25,7 @@
  *      for. The `ci` module's workflow shipped
  *      `check --tier full --reporter github` to three of five profiles and the
  *      first version of this gate could not see it (F-030).
- *   3. **Flags**, against the `FLAGS` table in `src/cli.ts`. Both real defects
+ *   3. **Flags**, against the dependency-free `FLAGS` help authority. Both real defects
  *      here were flag defects, not command defects — `--tier` is not a flag and
  *      `--reporter` does not exist, and each was parsed as a positional instead.
  *   4. **Consumer pinning.** A command emitted into a consumer must go through
@@ -38,6 +38,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
+import { FLAGS } from '../src/help.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = readFileSync(join(root, 'src', 'cli.ts'), 'utf8');
@@ -59,11 +60,12 @@ for (const m of cli.matchAll(/case '([a-z]+)': \{\s*\n\s*if \(args\[0\] !== '([a
   subcommands.set(m[1], m[2]);
 }
 
-// Derived side 3: every flag the parser honours, from the same `FLAGS` help table
-// the CLI prints. Entries look like `--fast, --full` or `--into <path>`.
+// Derived side 3: every flag the parser honours, from the same dependency-free
+// `FLAGS` authority the CLI prints. Entries look like `--fast, --full` or
+// `--into <path>`.
 const flags = new Set();
-for (const m of cli.matchAll(/^\s*\['(--[^']+)',/gm)) {
-  for (const f of m[1].split(',')) {
+for (const [entry] of FLAGS) {
+  for (const f of entry.split(',')) {
     const name = f.trim().split(/[ =]/)[0];
     if (name.startsWith('--')) flags.add(name);
   }

@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'smol-toml';
 import { ENGINES, isImplemented, type Finding } from './engines.ts';
@@ -80,6 +80,48 @@ export class UnknownTierError extends Error {
   }
 }
 
+function commandText(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  return Buffer.isBuffer(value) ? value.toString('utf8') : String(value);
+}
+
+function normalizeCommandText(value: unknown, repoRoot: string): string {
+  let text = commandText(value).replace(/\r\n?/g, '\n').trim();
+  const absolute = resolve(repoRoot);
+  const variants = [...new Set([
+    absolute,
+    absolute.replaceAll('\\', '/'),
+    absolute.replaceAll('/', '\\'),
+  ])].sort((left, right) => right.length - left.length);
+  for (const variant of variants) {
+    const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text.replace(new RegExp(escaped, process.platform === 'win32' ? 'gi' : 'g'), '<repo>');
+  }
+  return text;
+}
+
+/** Preserve actionable command output while keeping land attribution independent of root spelling and EOL. */
+function commandFailure(error: any, repoRoot: string): Finding {
+  const stderr = normalizeCommandText(error?.stderr, repoRoot);
+  const stdout = normalizeCommandText(error?.stdout, repoRoot);
+  const fallback = normalizeCommandText(error?.message, repoRoot);
+  const status = typeof error?.status === 'number'
+    ? String(error.status)
+    : error?.signal
+      ? `signal ${error.signal}`
+      : 'unknown';
+  const streams = [
+    ...(stderr ? [`stderr:\n${stderr}`] : []),
+    ...(stdout ? [`stdout:\n${stdout}`] : []),
+  ];
+  const detail = streams.length ? streams.join('\n') : fallback;
+  const diagnostic = `command exited with status ${status}${detail ? `\n${detail}` : ''}`;
+  return {
+    message: diagnostic,
+    identity: `command:${status}${detail ? `\n${detail}` : ''}`,
+  };
+}
+
 /**
  * `only` narrows the run to named gate ids. Attribution needs it: after a merged
  * tree goes red, `land` re-runs **just the failing gates** against the merge base
@@ -115,7 +157,7 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
         execSync(g.command, { cwd: repoRoot, stdio: 'pipe' });
       } catch (e: any) {
         status = 'fail';
-        findings = [{ message: String(e.stderr ?? e.stdout ?? e.message).trim().split('\n').slice(-3).join(' ') }];
+        findings = [commandFailure(e, repoRoot)];
       }
     } else if (!g.engine || !isImplemented(g.engine)) {
       // Never green. An engine named in a table and missing from the CLI is an

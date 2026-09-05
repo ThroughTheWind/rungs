@@ -105,6 +105,21 @@ Started from exact verified green `main` commit `6c3b846b` with `rungs session s
 default worktree detached. The reproducer above used a disposable clone and detached worktree;
 both were removed after confirming the real managed refs remained unchanged.
 
+The docs claim gate formerly obtained its command count by launching the full CLI, making that
+gate itself dependent on ignored `node_modules`. The bounded correction moves the exact command
+and flag tables that render help into dependency-free `src/help.ts`; the claim checker imports that
+same authority, while `module-commands-exist` remains responsible for proving dispatch. A focused
+structural regression holds the authority dependency-free and proves that both help and the claim
+checker consume it. Provisioning dependencies into scratch remains rejected: Rungs cannot infer
+or safely reproduce arbitrary ecosystems, and doing so would conceal rather than measure an
+unrunnable verification environment.
+
+Verification on Windows completed with six focused control/diagnostic regressions passing; the
+full suite reported 129 passed, zero failed and three host-limited skips (132 total). All 30
+registered gates passed, including direct dependency-free runs of `docs-version-claims` and
+`module-commands-exist`. `npm pack --dry-run` succeeded with 112 files (377.0 kB packed, 1.3 MB
+unpacked), and `git diff --check` passed. CI evidence remains pending on the exact pushed tip.
+
 ## Review
 
 Pending independent review.
