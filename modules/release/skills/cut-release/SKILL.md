@@ -95,9 +95,11 @@ Branch **from the deploy branch, never from the candidate** — the candidate co
 work, and shipping it as a hotfix is how an unrelated feature reaches production during an
 incident.
 
-Fix → gate → tag a patch version → merge into `{{stable_branch}}` **and forward into the active
-candidate**. The forward-merge is the step people skip, and skipping it means the next release
-silently reverts the hotfix.
+Fix and add its patch fragment, then use the same reversible preparation as a normal cut: assemble
+the fragment, delete it, advance `{{changelog_dir}}/CONSUMED_THROUGH`, bump every version surface,
+and run every gate against the exact prepared commit. Only then tag the patch, merge it into
+`{{stable_branch}}` **and forward into the active candidate**. The forward-merge is the step people
+skip, and skipping it means the next release silently reverts the hotfix.
 
 ## Rollback
 

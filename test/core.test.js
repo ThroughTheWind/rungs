@@ -1095,8 +1095,8 @@ test('release fragment fixtures execute and every engine uses the strict shared 
     selectEngineTable(table, 'changelog-freshness', 'release-fragment-current'),
     freshnessBlocks,
   );
-  assert.equal(freshness.length, 12);
-  assert.deepEqual(freshness.map((result) => result.outcome), Array(12).fill('ok'));
+  assert.equal(freshness.length, 17);
+  assert.deepEqual(freshness.map((result) => result.outcome), Array(17).fill('ok'));
 });
 
 test('the production runner rejects the equal-version F-025 shape and eject keeps strict table selection', () => {

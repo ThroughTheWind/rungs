@@ -295,11 +295,14 @@ discipline and the gates that hold it.**
 
 **Rung 3 · deps: `backlog`, `ci`**
 
-- **params:** `lines` (`candidate` / `main` / `release/<version>`) · `changelog` (`changelog.d` |
-  `keepachangelog`) · `version_scheme`
-- **skills:** `cut-release` — gates → bump → changelog → tag → deploy branch → next candidate, plus
-  **hotfix and rollback**
-- **gates:** `changelog-entry-present` (declared) · `version-consistent` (declared)
+- **params:** `candidate_prefix` · `stable_branch` · `deploy_branch_prefix` · `changelog_dir` ·
+  `version_scheme`
+- **skills:** `cut-release` — initialize the consumed-through boundary → decide version → gate the
+  current tree → assemble/delete fragments and advance the boundary → bump versions → gate the
+  exact prepared tree → tag/deploy branch → next candidate, plus **hotfix and rollback** through
+  the same boundary/bump/final-gate sequence
+- **gates:** `release-changelog-fragment` (declared) · `release-fragment-current` (declared) ·
+  `release-version-consistent` (declared)
 - **cost:** one procedure per release
 - **implements:** `candidate-and-release-lines` `release-skill`
 - **provenance:** `rift-forge`

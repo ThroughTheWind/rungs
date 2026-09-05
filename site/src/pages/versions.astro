@@ -234,14 +234,14 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
       <div class="discipline">
         <div class="card">
           <div class="card-title">Entries land with the change</div>
-          <p>Each release-worthy change adds one fragment to <code>changelog.d/</code> on the same branch. The next version is decided from those fragments, not reconstructed at tag time.</p>
+          <p>Each release-worthy change adds one fragment to <code>changelog.d/</code> on the same branch. The next version is decided from those fragments, not reconstructed at tag time. After assembly, <code>CONSUMED_THROUGH</code> advances with the version so an equal-version fragment left behind cannot look unreleased.</p>
           {/*
             WI-070 found that both earlier green results were false-greens: one gate used a table
             schema its engine never read, while the production runner handed the other engine the
             whole table. Their fixtures and production dispatch now fail when either path regresses.
           */}
           <div class="tag-line"><EnforcementTag state="gated" /> <span>release-changelog-fragment · change-requires-file</span></div>
-          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-fragment-current · changelog-freshness, new in 0.2.0</span></div>
+          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-fragment-current · changelog-freshness, boundary-backed in 0.4.0</span></div>
         </div>
         <div class="card">
           <div class="card-title">The version agrees with itself</div>

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { parse as parseToml } from 'smol-toml';
 import { matchAny } from './glob.ts';
 import type { Engine, Finding } from './engines.ts';
 
@@ -14,6 +15,31 @@ const read = (root: string, rel: string) => {
 const expand = (files: string[], p: string[] | undefined, f: string[] = []) =>
   [...new Set((p ?? f).flatMap((x) => matchAny(files, x)))];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Read one version source in the same three formats the release module declares. */
+function versionFromSource(root: string, rel: string, source: any): number[] | null {
+  const text = read(root, rel);
+  let raw: unknown;
+  try {
+    if (source.xpath) {
+      const element = String(source.xpath).split('//').pop();
+      if (!element) return null;
+      raw = text.match(new RegExp(`<${escapeRe(element)}(?:\\s[^>]*)?>(.*?)<\\/${escapeRe(element)}\\s*>`, 's'))?.[1];
+    } else if (source.path) {
+      const parsed = rel.endsWith('.json')
+        ? JSON.parse(text)
+        : rel.endsWith('.toml')
+          ? parseToml(text)
+          : null;
+      raw = String(source.path)
+        .split('.')
+        .reduce((value: any, key: string) => value?.[key], parsed as any);
+    }
+  } catch {
+    return null;
+  }
+  return versionParts(String(raw ?? ''));
+}
 
 /** `1.2.3` → [1,2,3]; anything else → null. Deliberately not a semver parser. */
 export function versionParts(s: string): number[] | null {
@@ -50,16 +76,18 @@ export const changelogFreshness: Engine = (t, root, files) => {
   let examined = 0;
 
   for (const spec of specs) {
-    const src = spec.version ?? {};
+    const sources = Array.isArray(spec.versions)
+      ? spec.versions
+      : [spec.version ?? { file: 'package.json', path: 'version' }];
     let current: number[] | null = null;
-    for (const rel of matchAny(files, src.file ?? 'package.json')) {
-      try {
-        const raw = (src.path ?? 'version')
-          .split('.')
-          .reduce((o: any, k: string) => o?.[k], JSON.parse(read(root, rel)));
-        current = versionParts(String(raw ?? ''));
-      } catch {
-        /* unparseable is not a stale fragment */
+    let currentSource = '';
+    for (const source of sources) {
+      for (const rel of matchAny(files, source.file ?? 'package.json')) {
+        current = versionFromSource(root, rel, source);
+        if (current) {
+          currentSource = rel;
+          break;
+        }
       }
       if (current) break;
     }
@@ -92,7 +120,12 @@ export const changelogFreshness: Engine = (t, root, files) => {
     }
 
     const firstRelease = markerValue === 'none';
-    const consumed = firstRelease ? null : versionParts(markerValue);
+    // `versionParts` intentionally trims package metadata. The marker is a
+    // one-token schema, so validate its complete content before reusing that
+    // parser; whitespace, a BOM or a second newline must not become valid.
+    const consumed = firstRelease || !/^\d+\.\d+\.\d+$/.test(markerValue)
+      ? null
+      : versionParts(markerValue);
     if (!firstRelease && !consumed) {
       findings.push({
         file: marker,
@@ -108,8 +141,9 @@ export const changelogFreshness: Engine = (t, root, files) => {
     if (!current) {
       if (consumed) {
         findings.push({
-          file: src.file ?? 'package.json',
-          message: `cannot reconcile consumed-through ${markerValue} because the package version is missing or not a three-part numeric version`,
+          file: sources[0]?.file ?? 'package.json',
+          message:
+            `cannot reconcile consumed-through ${markerValue} because none of the declared version sources contains a three-part numeric version`,
         });
       }
       continue;
@@ -120,7 +154,7 @@ export const changelogFreshness: Engine = (t, root, files) => {
       findings.push({
         file: marker,
         message:
-          `release consumption marker names ${markerValue}, ${relation} package version ${current.join('.')} — they must match in a steady tree; advance both during reversible release preparation`,
+          `release consumption marker names ${markerValue}, ${relation} version ${current.join('.')} in ${currentSource} — they must match in a steady tree; advance both during reversible release preparation`,
       });
     }
 

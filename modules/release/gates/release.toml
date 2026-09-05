@@ -76,7 +76,12 @@ note = "A green check means these files agree, not that the version is correct e
 [[changelog_freshness]]
 id        = "release-fragment-current"
 fragments = ["{{changelog_dir}}/*.md"]
-version   = { file = "package.json", path = "version" }
+versions = [
+  { file = "package.json", path = "version" },
+  { file = "Directory.Build.props", xpath = "//Version" },
+  { file = "pyproject.toml", path = "project.version" },
+  { file = "*/package.json", path = "version" },
+]
 consumed_through = "{{changelog_dir}}/CONSUMED_THROUGH"
 message = """
 This fragment names an already-consumed version or falls below the package version being prepared.
@@ -141,6 +146,21 @@ fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "v0.2.0",
 [[self_test]]
 gate    = "release-fragment-current"
 expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = " 0.2.0 ", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "\uFEFF0.2.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0\n", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
 fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.1.0", fragments = [] }
 
 [[self_test]]
@@ -184,6 +204,19 @@ fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", 
 gate    = "release-fragment-current"
 expect  = "pass"
 fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", fragments = ["42.feature.md"] }
+
+# The release module's version gate supports Node, .NET and Python repositories. The consumption
+# boundary must use the same ecosystem-neutral source set rather than making the latter two
+# permanently red after their first release.
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", version_file = "Directory.Build.props", consumed_through = "0.2.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", version_file = "pyproject.toml", consumed_through = "0.2.0", fragments = [] }
 
 [[self_test]]
 gate    = "release-version-consistent"
