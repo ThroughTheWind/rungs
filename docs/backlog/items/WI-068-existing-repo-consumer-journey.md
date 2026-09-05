@@ -68,6 +68,11 @@ installed `rungs` binary via `npm exec --offline --prefix <tool> -- rungs`, with
 launcher is inspected but deliberately not executed before publication, because its exact registry
 version may still name the previous immutable release.
 
+Packing the exact declared `smol-toml` version from the configured npm registry is the journey's one
+online package-integration precondition. Its bytes and integrity must match the producer lockfile.
+After the dependency and candidate tarballs exist, both installation steps and every candidate CLI
+invocation run offline; the candidate never gets an opportunity to resolve through the registry.
+
 Snapshot the seed commit, refs, status and pre-existing file bytes before running `doctor` and a
 tracked `init --dry-run`. Perform the real tracked init with explicit backlog and findings prefixes,
 then assert preservation at the byte or managed-block boundary appropriate to each file. Commit the
@@ -113,9 +118,11 @@ root in `finally`, and assert the producer's status is unchanged.
 Implemented the package-level journey in `test/package.test.js` without changing production or
 module code.
 
-- The fixture packs the candidate, verifies its SHA-512 integrity, fetches the exact declared
-  `smol-toml` artifact into an isolated npm cache, and installs both tarballs into a temporary tool
-  prefix before invoking only that prefix with offline `npm exec` calls.
+- The fixture packs the candidate, verifies its SHA-512 integrity, and uses its one online
+  package-integration precondition to fetch the exact declared `smol-toml` artifact into an isolated
+  npm cache and verify its bytes against the exact lockfile integrity. It then installs both
+  tarballs offline into a temporary tool prefix before invoking only that prefix with offline
+  `npm exec` calls.
 - It seeds and commits the six existing authority surfaces plus one repository-owned validator,
   removes local `main` while retaining `origin/main`, proves `doctor` and dry-run are read-only,
   performs the tracked install with `NEXT`/`AF`, and verifies preservation, emitted path bounds,
@@ -135,13 +142,16 @@ consumer clean. WI-068 itself remains a test-and-documentation-only change.
 
 ## Review
 
-Ready for independent review. Acceptance evidence, measured on 2026-09-05:
+Requested review changes are addressed and the item is ready for follow-up review. Acceptance
+evidence, measured on 2026-09-05:
 
 1. **Met.** The test recomputes and matches npm's SHA-512 integrity, packs the exact declared
-   `smol-toml@1.8.0` dependency through npm into the isolated cache, and inspects the isolated
-   install's package name, version, bin, exact dependency and installed dependency version. Every
-   candidate command uses offline `npm exec` against that prefix with producer resolution paths
-   removed; the registry launcher is inspected but never executed.
+   `smol-toml@1.8.0` dependency through npm into the isolated cache, recomputes its integrity and
+   matches the exact `package-lock.json` entry, then inspects the isolated install's package name,
+   version, bin, exact dependency and installed dependency version. Registry acquisition is an
+   explicit online package-integration precondition; both installs and every candidate command
+   after packing are offline, against that prefix with producer resolution paths removed. The
+   registry launcher is inspected but never executed.
 2. **Met.** The committed fixture contains all six existing authority surfaces and its own
    validator. Full Git state and tracked/untracked bytes are identical before and after `doctor`
    and tracked `init --dry-run`.
@@ -149,18 +159,20 @@ Ready for independent review. Acceptance evidence, measured on 2026-09-05:
    file byte-for-byte except the declared managed appends to `AGENTS.md` and `.gitignore`, adopts the
    validator, stays inside the allowed generated path families, and emits no consumer package,
    lockfile or `node_modules`.
-4. **Met.** The installed tree has one exact `@rungs/cli@0.3.1` launcher authority, whose derived
-   12-character managed hash is recorded in `.ai/rungs.toml`; it contains no mutable selector,
-   tarball path or duplicate CLI version source.
+4. **Met.** Extraction of every literal `@rungs/cli@<selector>` occurrence across the complete
+   consumer corpus produces exactly one value, `@rungs/cli@0.3.1`. The separately tested launcher
+   permits its template expression only after validating an explicit upgrade target as an exact
+   version. Its derived 12-character managed hash is recorded in `.ai/rungs.toml`, and neither a
+   tarball name nor its local path leaks into the consumer.
 5. **Met.** Repeated init refuses with no diff. Two full checks pass on `consumer/canary` with only
    `origin/main`, including merged-status reconciliation and the adopted validator. The ignored
    ledger doubles exactly while the tracked digest and repository status stay clean.
-6. **Met.** Upgrade preview reports zero work without changing Git state. Both same-version applies
-   report `0 to update · 0 diverged`, preserve the adoption digest byte-for-byte and leave clean
-   status; the final preview also reports zero work.
+6. **Met.** Both upgrade previews report zero work while preserving every ref, local config entry,
+   index mode/entry/flag, status value and tracked byte. Both same-version applies report
+   `0 to update · 0 diverged`, preserve the adoption digest byte-for-byte and leave clean status.
 7. **Met.** Rollback is path-guarded to the temporary consumer and restores its complete seed Git
    state and bytes before cleanup; producer status is unchanged. The focused packed journey passed
-   1/1 in 15.29 s and `npm test` passed 45/45 in 18.80 s.
+   1/1 in 15.53 s and `npm test` passed 45/45 in 19.44 s.
 
 Repository audit also passed: 52 module command spans resolve across 15 dispatched commands,
 `npm run rungs -- check` passes 29/29 gates, and `git diff --check` reports no whitespace errors.

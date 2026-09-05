@@ -34,15 +34,22 @@ function runGit(repo, args) {
   return spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' });
 }
 
+function gitRaw(repo, args) {
+  return expectOk(runGit(repo, args), `git ${args.join(' ')}`).stdout;
+}
+
 function gitText(repo, args) {
-  return expectOk(runGit(repo, args), `git ${args.join(' ')}`).stdout.trim();
+  return gitRaw(repo, args).trim();
 }
 
 function gitState(repo) {
   return {
     head: gitText(repo, ['rev-parse', 'HEAD']),
     symbolicHead: gitText(repo, ['symbolic-ref', 'HEAD']),
-    refs: gitText(repo, ['for-each-ref', '--sort=refname', '--format=%(refname)=%(objectname)', 'refs/heads', 'refs/remotes']),
+    refs: gitRaw(repo, ['for-each-ref', '--sort=refname', '--format=%(refname)=%(objectname) %(symref)']),
+    localConfig: gitRaw(repo, ['config', '--local', '--null', '--list']),
+    indexEntries: gitRaw(repo, ['ls-files', '--stage', '-z']),
+    indexFlags: gitRaw(repo, ['ls-files', '-v', '-z']),
     status: gitText(repo, ['status', '--porcelain=v1', '--untracked-files=all']),
   };
 }
@@ -241,6 +248,17 @@ test('a packed candidate retrofits an existing repository without taking over it
     );
     assert.equal(`${packedDependency.name}@${packedDependency.version}`, dependencySpec);
     const dependencyTarball = join(packRoot, packedDependency.filename);
+    const dependencyIntegrity = `sha512-${createHash('sha512').update(readFileSync(dependencyTarball)).digest('base64')}`;
+    const packageLock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
+    const lockedDependency = packageLock.packages['node_modules/smol-toml'];
+    assert.equal(packageLock.packages[''].dependencies['smol-toml'], dependencyVersion);
+    assert.equal(lockedDependency.version, dependencyVersion);
+    assert.equal(dependencyIntegrity, packedDependency.integrity, 'the dependency bytes must match npm\'s integrity');
+    assert.equal(
+      dependencyIntegrity,
+      lockedDependency.integrity,
+      'the packed dependency must be the exact artifact recorded in package-lock.json',
+    );
 
     const installFlags = [
       '--offline',
@@ -413,8 +431,14 @@ test('a packed candidate retrofits an existing repository without taking over it
     const launcherHash = createHash('sha256').update(launcher.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
     assert.ok(record.includes(`".ai/rungs.mjs" = "${launcherHash}"`), 'the launcher hash must be recorded');
     const consumerCorpus = installedFiles.map((file) => readFileSync(join(consumer, file), 'utf8')).join('\n');
-    assert.equal([...consumerCorpus.matchAll(/@rungs\/cli@\d+[0-9A-Za-z.+-]*/g)].length, 1);
-    assert.doesNotMatch(consumerCorpus, /@rungs\/cli@(latest|next|beta|\^|~|\*)/);
+    const rungsSelectors = [...consumerCorpus.matchAll(/@rungs\/cli@(?!\$\{)[^\s"'`<>{}\[\](),;]+/g)].map(
+      ([selector]) => selector,
+    );
+    assert.deepEqual(
+      rungsSelectors,
+      [exactPackage],
+      'the complete consumer corpus must contain only the one expected exact literal Rungs selector',
+    );
     assert.equal(consumerCorpus.includes(candidateTarball), false, 'the local candidate path must not leak into the repo');
     assert.equal(consumerCorpus.includes(packedCandidate.filename), false, 'the tarball name must not become an authority');
     for (const rel of ['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'node_modules']) {
@@ -466,9 +490,12 @@ test('a packed candidate retrofits an existing repository without taking over it
     assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '');
     assert.equal(trackedDigest(consumer), adoptedDigest);
 
+    const beforePreviewState = gitState(consumer);
+    const beforePreviewDigest = trackedDigest(consumer);
     const preview = expectOk(candidate('upgrade', consumer), 'same-version upgrade preview');
     assert.match(preview.stdout, /0 to update\s*·\s*0 diverged/);
-    assert.equal(trackedDigest(consumer), adoptedDigest, 'upgrade preview must be read-only');
+    assert.deepEqual(gitState(consumer), beforePreviewState, 'upgrade preview must preserve complete Git state');
+    assert.equal(trackedDigest(consumer), beforePreviewDigest, 'upgrade preview must preserve every tracked byte');
     const applyDigests = [];
     const applyDiffs = [];
     for (let pass = 1; pass <= 2; pass++) {
@@ -482,8 +509,20 @@ test('a packed candidate retrofits an existing repository without taking over it
         `same-version upgrade apply ${pass} must leave the consumer clean`,
       );
     }
+    const beforeFinalPreviewState = gitState(consumer);
+    const beforeFinalPreviewDigest = trackedDigest(consumer);
     const finalPreview = expectOk(candidate('upgrade', consumer), 'post-apply upgrade preview');
     assert.match(finalPreview.stdout, /0 to update\s*·\s*0 diverged/);
+    assert.deepEqual(
+      gitState(consumer),
+      beforeFinalPreviewState,
+      'post-apply upgrade preview must preserve complete Git state',
+    );
+    assert.equal(
+      trackedDigest(consumer),
+      beforeFinalPreviewDigest,
+      'post-apply upgrade preview must preserve every tracked byte',
+    );
 
     const resolvedTemporaryRoot = realpathSync(temporaryRoot);
     const resolvedConsumer = realpathSync(consumer);
