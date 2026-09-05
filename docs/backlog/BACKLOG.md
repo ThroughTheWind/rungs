@@ -10,7 +10,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-081](items/WI-081-land-scratch-verification-control.md) | Refuse land when its detached scratch cannot reproduce a trustworthy control | feature | `feature/WI-081-land-scratch-verification-control` |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 
 ## Review

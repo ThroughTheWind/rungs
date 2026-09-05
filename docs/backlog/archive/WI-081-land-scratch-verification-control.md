@@ -2,7 +2,7 @@
 id: WI-081
 title: Refuse land when detached-scratch verification lacks a trustworthy control
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-081-land-scratch-verification-control
 created: 2026-09-05
 updated: 2026-09-05
@@ -118,14 +118,25 @@ unrunnable verification environment.
 Verification on Windows completed with six focused control/diagnostic regressions passing; the
 full suite reported 129 passed, zero failed and three host-limited skips (132 total). All 30
 registered gates passed, including direct dependency-free runs of `docs-version-claims` and
-`module-commands-exist`. `npm pack --dry-run` succeeded with 112 files (377.0 kB packed, 1.3 MB
-unpacked), and `git diff --check` passed. CI evidence remains pending on the exact pushed tip.
+`module-commands-exist`. `npm pack --dry-run` succeeded with 112 files (376,687 bytes packed and
+1,286,359 bytes unpacked), and `git diff --check` passed. Exact-tip CI run 33975190804 passed all
+six OS/Node matrix cells plus the site job at `527676f7`.
 
 The first pushed candidate exposed a macOS alias boundary in that normalization: a lexical
 `/var/...` worktree is reported by `process.cwd()` as its canonical `/private/var/...` path. The
 diagnostic normalizer now safely covers both lexical and `realpath` roots, and the focused
-regression asserts that no canonical-root spelling survives.
+regression asserts that no canonical-root spelling survives. `rungs land` then verified all 30
+gates in the merged scratch and atomically advanced `main` plus `green/main` to implementation
+merge `6b0dd31e`. The direct merged full suite reported the same 129 passes, zero failures and
+three expected host skips; its only gate failure was the intentional lifecycle transition closed
+by this commit.
 
 ## Review
 
-Pending independent review.
+Independent review approved exact implementation tip `527676f7` with no findings. The reviewer
+traced exact-control eligibility and its before/after revalidation, per-finding three-way
+attribution, collision-safe recovery, and genuine inherited-red behaviour; independently reran
+the six focused regressions, full suite, all gates and package dry-run; and proved both command
+gates execute in a fresh dependency-less exact-SHA worktree. The first candidate's macOS path
+alias failure was treated as blocking and superseded before approval. Exact CI run 33975190804
+then passed the site job and every Linux, macOS and Windows Node cell.
