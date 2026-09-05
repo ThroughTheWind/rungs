@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
-import { land, sessionStart, worktrees } from '../src/concurrency.ts';
+import { land, parseGitRefFormatOutput, sessionStart, worktrees } from '../src/concurrency.ts';
 
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
 import { addModule, blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
@@ -1625,6 +1625,22 @@ function loopRepo(refFormat) {
   return { dir, g };
 }
 
+test('ref-format detection falls back only for Git versions predating the query', () => {
+  assert.equal(parseGitRefFormatOutput(undefined), 'files', 'a failed query is an old files-only Git');
+  assert.equal(
+    parseGitRefFormatOutput('--show-ref-format'),
+    'files',
+    'old rev-parse can echo the unknown option and still exit zero',
+  );
+  assert.equal(parseGitRefFormatOutput('files'), 'files');
+  assert.equal(parseGitRefFormatOutput('reftable'), 'reftable');
+  assert.throws(
+    () => parseGitRefFormatOutput('future-format'),
+    /unsupported Git ref format 'future-format'/,
+    'a genuinely unknown declared backend still fails closed',
+  );
+});
+
 function gitText(dir, ...args) {
   return execFileSync('git', args, { cwd: dir, stdio: 'pipe', encoding: 'utf8' }).trim();
 }
@@ -2050,6 +2066,46 @@ test('land refuses a missing green ref whose branch name is still held by a dang
       spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/green/main'], { cwd: dir }).status,
       0,
       'the dangling held branch is not recreated',
+    );
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses a creatable green ref whose case alias is held by a dangling worktree', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-dangling green alias holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/dangling-green-alias');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'GREEN/main', 'main');
+    g('worktree', 'add', '-q', holder, 'GREEN/main');
+    g('update-ref', '-d', 'refs/heads/GREEN/main');
+    const holderBefore = unresolvedWorktreeSnapshot(holder, ['a.txt']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/dangling-green-alias', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*checked out/i);
+    assert.equal(runnerCalls, 0, 'a storage-aliased holder refuses before gates');
+    assert.deepEqual(unresolvedWorktreeSnapshot(holder, ['a.txt']), holderBefore);
+    assert.notEqual(
+      spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/green/main'], { cwd: dir }).status,
+      0,
+      'the colliding configured spelling is not created behind the holder',
     );
     assert.equal(existsSync(landLockPath(dir)), false);
   } finally {
@@ -2674,6 +2730,49 @@ test('parking skips a dangling preferred ref still held by a worktree', () => {
       spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/integ/feature/dangling-parked'], { cwd: dir }).status,
       0,
       'the missing held ref is not recreated beneath the holder',
+    );
+    assert.deepEqual(unresolvedWorktreeSnapshot(holder, ['a.txt']), holderBefore);
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parking skips a preferred ref whose case alias is held by a dangling worktree', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-dangling parked alias holder`);
+  try {
+    const branch = 'feature/dangling-parked-alias';
+    const preferred = `integ/${branch}`;
+    const heldAlias = `INTEG/${branch}`;
+    g('switch', '-q', '-c', branch);
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', heldAlias, 'main');
+    g('worktree', 'add', '-q', holder, heldAlias);
+    g('update-ref', '-d', `refs/heads/${heldAlias}`);
+    const holderBefore = unresolvedWorktreeSnapshot(holder, ['a.txt']);
+    let verifiedMerge;
+
+    const result = land(dir, branch, (scratch, only) => {
+      if (!only) verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      return introducedFailure(scratch, only);
+    });
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.notEqual(recovery, preferred, 'the colliding preferred spelling is never recreated');
+    assert.equal(g('rev-parse', recovery), verifiedMerge);
+    assert.notEqual(
+      spawnSync('git', ['show-ref', '--verify', '--quiet', `refs/heads/${preferred}`], { cwd: dir }).status,
+      0,
+      'the missing storage-aliased recovery ref stays missing',
     );
     assert.deepEqual(unresolvedWorktreeSnapshot(holder, ['a.txt']), holderBefore);
   } finally {

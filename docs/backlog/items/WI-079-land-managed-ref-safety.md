@@ -178,3 +178,26 @@ behavior was unchanged. Independent review approved the corrected exact tip `b69
 remaining implementable blocker, and Actions run 33970794192 passed all six OS/Node cells plus the
 site job. That candidate is now superseded only by the required merge of exact green main
 `2358993`; final reconciled-tip review and CI evidence remain pending.
+
+Exact reconciled candidate `a0ad1c4` passed all seven jobs in Actions run 33971138069, but final
+review then reproduced one more managed-holder gap before approval: raw branch-string equality
+missed a dangling worktree on `GREEN/main` when `green/main` was creatable, and did the same for a
+dangling `INTEG/...` recovery holder. On a case-insensitive filesystem, creating the colliding
+spelling moved the holder's resolved `HEAD` behind its unchanged index and files. The shared holder
+checks now use the same Windows/APFS storage-collision relation as ref identity and allocation.
+Exact green and parking regressions preserve the dangling holder snapshot and prove the colliding
+spelling is not created. The `a0ad1c4` CI run is therefore diagnostic evidence only; review and
+exact-SHA CI must repeat on the corrected tip.
+
+The same final audit found an older-Git compatibility error in the new stored-ref scanner. Git can
+echo an unrecognized `--show-ref-format` option and exit zero, which the first implementation
+mistook for an unsupported declared backend instead of its intended files-only fallback. Ref-format
+output now has a direct unit seam: query failure and that exact legacy echo select `files`, the two
+known backends remain accepted, and every genuinely unknown backend still fails closed.
+
+On the combined corrected worktree, the two holder-alias regressions and the legacy-format parser
+regression passed 3/3; full `npm test` passed 124 tests with three platform skips (127 total); all
+30 registered Rungs gates passed; `npm pack --dry-run` included 111 files in a 368.7 kB package;
+and `git diff --check` was clean. The reviewer froze the source audit with no additional
+implementable WI-079 blockers, but exact-tip approval and exact-SHA CI remain pending until this
+repair is committed and pushed.

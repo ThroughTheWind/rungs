@@ -69,6 +69,14 @@ direct stored refs without following symbolic refs. Two things follow:
 worktree holds either one, then checks exact ref identity and holders again after arbitrary gate
 code and immediately before the transaction. Case-aliased and symbolic configured refs are
 rejected because their spelling can otherwise make checkout discovery and ref mutation disagree.
+A worktree branch spelling that collides by the same Windows/APFS key counts as a holder even when
+its branch ref is dangling, so Rungs will not create a differently spelled managed or recovery ref
+behind that worktree's stale index and files.
+
+Rungs queries the repository's ref backend before checking raw stored refs. Git versions that
+predate that query are files-only and may either reject the option or echo it while exiting zero;
+both responses use the files scanner. An actual backend other than `files` or `reftable` is refused
+until Rungs can enumerate it safely.
 
 There is one deliberately narrow raw-Git boundary. After the last identity check but before Git
 takes a lock, another process can replace a validated direct ref with a same-object-ID symbolic ref,

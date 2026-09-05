@@ -72,6 +72,19 @@ interface GitBranchRef {
   symref?: string;
 }
 
+type GitRefFormat = 'files' | 'reftable';
+
+/** @internal Exported only so the legacy-Git compatibility boundary is directly testable. */
+export function parseGitRefFormatOutput(output: string | undefined): GitRefFormat {
+  // Git versions predating `--show-ref-format` can treat it as a revision-like
+  // unknown option: they echo the literal argument and exit successfully. Those
+  // versions predate reftable, so that response has the same meaning as a failed
+  // query. Do not generalize the fallback: a real future backend must fail closed.
+  if (output === undefined || output === '--show-ref-format') return 'files';
+  if (output === 'files' || output === 'reftable') return output;
+  throw new Error(`unsupported Git ref format '${output}'`);
+}
+
 /**
  * Read worktree paths without line parsing.
  *
@@ -162,15 +175,15 @@ function gitLocalBranchRefs(root: string): GitBranchRef[] {
       }
     }
   };
-  let refFormat = 'files';
+  let refFormatOutput: string | undefined;
   try {
-    refFormat = git(root, ['rev-parse', '--show-ref-format']);
+    refFormatOutput = git(root, ['rev-parse', '--show-ref-format']);
   } catch {
     // `--show-ref-format` predates reftable support. A Git without the query
     // only has the files backend this scanner was written for.
   }
+  const refFormat = parseGitRefFormatOutput(refFormatOutput);
   if (refFormat === 'files') visit(heads, '');
-  else if (refFormat !== 'reftable') throw new Error(`unsupported Git ref format '${refFormat}'`);
   return [...refs.values()];
 }
 
@@ -287,7 +300,9 @@ function managedRefsState(root: string, integration: string, green: string): Man
     if (!greenRef.value) return greenRef;
     const withHolders = (ref: DirectRef): ManagedRef => ({
       ...ref,
-      holders: worktrees.filter((worktree) => worktree.branch === ref.ref).map((worktree) => worktree.path),
+      holders: worktrees
+        .filter((worktree) => worktree.branch !== undefined && refStorageCollides(worktree.branch, ref.ref))
+        .map((worktree) => worktree.path),
     });
     return {
       value: {
@@ -365,7 +380,9 @@ function parkVerifiedMerge(
       const exact = stored.find((entry) => entry.ref === wanted);
       const alias = stored.find((entry) => entry.ref !== wanted && refStorageCollides(entry.ref, wanted));
       const exactSymbolicTarget = symbolicRefTarget(root, wanted);
-      const held = worktrees.some((worktree) => worktree.branch === wanted);
+      const held = worktrees.some(
+        (worktree) => worktree.branch !== undefined && refStorageCollides(worktree.branch, wanted),
+      );
       if (alias || exact?.symref || exactSymbolicTarget || held) break;
       if (exact) {
         if (exact.oid === merged) return { name: candidate };
