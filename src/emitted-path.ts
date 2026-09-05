@@ -1,0 +1,274 @@
+import { lstatSync, realpathSync, statSync } from 'node:fs';
+import { basename, dirname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
+
+/**
+ * A module path is repository-relative data, not a host-native path.  Treating
+ * both separators as structural is what makes the same parameter safe when a
+ * record written on Windows is later upgraded on POSIX (or the reverse).
+ */
+export class UnsafeEmittedPathError extends Error {
+  readonly moduleName: string;
+  readonly target: string;
+  readonly reason: string;
+
+  constructor(
+    moduleName: string,
+    target: string,
+    reason: string,
+  ) {
+    super(`module '${moduleName}' emitted unsafe target ${JSON.stringify(target)}: ${reason}`);
+    this.name = 'UnsafeEmittedPathError';
+    this.moduleName = moduleName;
+    this.target = target;
+    this.reason = reason;
+  }
+}
+
+export interface ResolvedEmittedPath {
+  /** Portable, slash-separated form used in actions and install records. */
+  target: string;
+  /** Canonical absolute destination proven to be below the canonical repo root. */
+  absolute: string;
+  /** The final path entry itself is an alias; writes must not follow it. */
+  leafAlias: boolean;
+}
+
+export interface EmittedPathCandidate {
+  moduleName: string;
+  target: string;
+  /** Managed block/shared-registry destinations may intentionally coincide. */
+  shared?: boolean;
+  /** This phase replaces or merges an existing file rather than keeping it. */
+  writeExisting?: boolean;
+}
+
+const missingEntry = (error: unknown) =>
+  error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR');
+
+function hasUnpairedUtf16Surrogate(value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const unit = value.charCodeAt(i);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(i + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      i++;
+      continue;
+    }
+    if (unit >= 0xdc00 && unit <= 0xdfff) return true;
+  }
+  return false;
+}
+
+function canonicalCaselessEqual(left: string, right: string): boolean {
+  // ECMAScript's Unicode-aware ignore-case matcher uses Unicode simple case
+  // folding rather than locale-sensitive lowercasing. NFD first makes
+  // canonically equivalent spellings comparable too (for example J + caron
+  // and U+01F0), while `/iu` also folds forms lowercasing misses (for example
+  // capital sigma and final sigma).
+  const pattern = left.normalize('NFD').replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+  return new RegExp(`^(?:${pattern})$`, 'iu').test(right.normalize('NFD'));
+}
+
+function canonicalCaselessAncestor(ancestor: string, descendant: string): boolean {
+  const ancestorSegments = ancestor.split(sep);
+  const descendantSegments = descendant.split(sep);
+  return (
+    ancestorSegments.length < descendantSegments.length &&
+    ancestorSegments.every((segment, index) => canonicalCaselessEqual(segment, descendantSegments[index]))
+  );
+}
+
+/**
+ * Realpath the deepest existing ancestor, then append the still-missing suffix.
+ * `resolve()` alone cannot see an in-repository symlink or junction that points
+ * out of the repository.  A dangling alias fails closed because realpath cannot
+ * establish where a subsequent write would land.
+ */
+function canonicalWithMissing(path: string, moduleName: string, target: string): string {
+  let cursor = resolve(path);
+  const suffix: string[] = [];
+
+  for (;;) {
+    try {
+      lstatSync(cursor);
+    } catch (error) {
+      if (!missingEntry(error)) {
+        throw new UnsafeEmittedPathError(moduleName, target, 'its existing ancestor cannot be inspected');
+      }
+      const parent = dirname(cursor);
+      if (parent === cursor) {
+        throw new UnsafeEmittedPathError(moduleName, target, 'no canonical existing ancestor can be established');
+      }
+      suffix.unshift(basename(cursor));
+      cursor = parent;
+      continue;
+    }
+
+    let canonical: string;
+    try {
+      canonical = realpathSync.native(cursor);
+    } catch {
+      throw new UnsafeEmittedPathError(moduleName, target, 'its existing ancestor cannot be resolved canonically');
+    }
+    if (suffix.length) {
+      try {
+        if (!statSync(canonical).isDirectory()) {
+          throw new UnsafeEmittedPathError(moduleName, target, 'its deepest existing ancestor is not a directory');
+        }
+      } catch (error) {
+        if (error instanceof UnsafeEmittedPathError) throw error;
+        throw new UnsafeEmittedPathError(moduleName, target, 'its existing ancestor cannot be inspected');
+      }
+    }
+    return resolve(canonical, ...suffix);
+  }
+}
+
+/**
+ * Resolve one module-emitted destination and prove it remains in `repoRoot`.
+ * Unsafe syntax is refused before host path resolution so `C:relative`, `\\rooted`
+ * and mixed-separator traversal cannot change meaning between operating systems.
+ */
+export function resolveEmittedPath(repoRoot: string, moduleName: string, target: string): ResolvedEmittedPath {
+  if (!target || target.includes('\0')) {
+    throw new UnsafeEmittedPathError(moduleName, target, 'a non-empty portable relative file path is required');
+  }
+
+  const portable = target.replace(/\\/g, '/');
+  if (portable.startsWith('/') || win32.isAbsolute(target) || /^[A-Za-z]:/.test(portable)) {
+    throw new UnsafeEmittedPathError(moduleName, target, 'absolute, rooted, and drive-relative paths are not allowed');
+  }
+
+  const segments = portable.split('/');
+  if (segments.includes('..')) {
+    throw new UnsafeEmittedPathError(moduleName, target, "parent traversal ('..') is not allowed");
+  }
+  if (segments.some((segment) => segment === '' || segment === '.')) {
+    throw new UnsafeEmittedPathError(moduleName, target, "empty and current-directory ('.') path segments are not allowed");
+  }
+  if (segments.some(hasUnpairedUtf16Surrogate)) {
+    throw new UnsafeEmittedPathError(
+      moduleName,
+      target,
+      'unpaired UTF-16 surrogate code units are not allowed in path segments',
+    );
+  }
+  if (segments.some((segment) => /[\u0000-\u001f<>:"|?*]/.test(segment) || /[ .]$/.test(segment))) {
+    throw new UnsafeEmittedPathError(
+      moduleName,
+      target,
+      'it contains a character or trailing suffix that is not a portable filename',
+    );
+  }
+  const windowsDevice = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+  if (segments.some((segment) => windowsDevice.test(segment))) {
+    throw new UnsafeEmittedPathError(moduleName, target, 'Windows device-name path segments are not allowed');
+  }
+
+  const canonicalRoot = canonicalWithMissing(repoRoot, moduleName, target);
+  const lexicalDestination = resolve(repoRoot, ...segments);
+  const canonicalDestination = canonicalWithMissing(lexicalDestination, moduleName, target);
+  const fromRoot = relative(canonicalRoot, canonicalDestination);
+
+  if (!fromRoot || fromRoot === '..' || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
+    throw new UnsafeEmittedPathError(moduleName, target, 'it resolves outside the canonical consumer repository');
+  }
+
+  let leafAlias = false;
+  try {
+    leafAlias = lstatSync(lexicalDestination).isSymbolicLink();
+  } catch (error) {
+    if (!missingEntry(error)) {
+      throw new UnsafeEmittedPathError(moduleName, target, 'its destination cannot be inspected');
+    }
+  }
+
+  return { target: portable, absolute: canonicalDestination, leafAlias };
+}
+
+/** Resolve a complete operation and reject two exclusive names for one destination. */
+export function preflightEmittedPaths(
+  repoRoot: string,
+  candidates: EmittedPathCandidate[],
+): ResolvedEmittedPath[] {
+  const resolved = candidates.map((candidate) => {
+    const destination = resolveEmittedPath(repoRoot, candidate.moduleName, candidate.target);
+    if (candidate.writeExisting) {
+      if (destination.leafAlias) {
+        throw new UnsafeEmittedPathError(
+          candidate.moduleName,
+          candidate.target,
+          'the destination is a symlink or junction leaf and this operation will not write through it',
+        );
+      }
+
+      // Every overwrite/merge sink ultimately uses writeFileSync.  Prove an
+      // existing leaf is a regular file now, during the complete-operation
+      // preflight, so a later directory/FIFO/socket cannot fail after an
+      // earlier candidate has already been written. A hard-linked file is also
+      // refused: replacing it would mutate every other name for the same inode,
+      // including a name outside the consumer repository.
+      try {
+        const leaf = lstatSync(destination.absolute);
+        if (!leaf.isFile()) {
+          throw new UnsafeEmittedPathError(
+            candidate.moduleName,
+            candidate.target,
+            'the existing destination is not a regular file',
+          );
+        }
+        if (leaf.nlink > 1) {
+          throw new UnsafeEmittedPathError(
+            candidate.moduleName,
+            candidate.target,
+            'the existing destination has multiple hard links and this operation will not overwrite it',
+          );
+        }
+      } catch (error) {
+        if (error instanceof UnsafeEmittedPathError) throw error;
+        if (!missingEntry(error)) {
+          throw new UnsafeEmittedPathError(
+            candidate.moduleName,
+            candidate.target,
+            'the destination cannot be inspected before writing',
+          );
+        }
+      }
+    }
+    return destination;
+  });
+  const seen: { candidate: EmittedPathCandidate; resolved: ResolvedEmittedPath }[] = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    const destination = resolved[i];
+    // A module plan is portable: names that coexist only on a case-sensitive
+    // checkout are still one destination when that record reaches Windows or a
+    // default case-insensitive macOS volume. Lowercasing is not case folding:
+    // final sigma, long s and other simple-fold forms would remain distinct.
+    const prior = seen.find((entry) => canonicalCaselessEqual(entry.resolved.absolute, destination.absolute));
+    if (!prior) {
+      const structural = seen.find((entry) =>
+        canonicalCaselessAncestor(entry.resolved.absolute, destination.absolute) ||
+        canonicalCaselessAncestor(destination.absolute, entry.resolved.absolute),
+      );
+      if (!structural) {
+        seen.push({ candidate, resolved: destination });
+        continue;
+      }
+      throw new UnsafeEmittedPathError(
+        candidate.moduleName,
+        candidate.target,
+        `it has a file/descendant collision with module '${structural.candidate.moduleName}' target '${structural.candidate.target}' after canonical resolution`,
+      );
+    }
+    if (candidate.shared && prior.candidate.shared && destination.target === prior.resolved.target) continue;
+    throw new UnsafeEmittedPathError(
+      candidate.moduleName,
+      candidate.target,
+      `it collides with module '${prior.candidate.moduleName}' target '${prior.candidate.target}' after canonical resolution`,
+    );
+  }
+
+  return resolved;
+}

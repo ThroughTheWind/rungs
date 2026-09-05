@@ -42,6 +42,10 @@ description = "semver | calver"
 default     = "semver"
 consumed_by = "render"
 
+[params.version_exclude]
+description = "One glob for files versioned independently of this release. Use a brace group for several paths; empty excludes nothing."
+default     = ""
+
 [[gates]]
 id     = "release-changelog-fragment"
 kind   = "declared"

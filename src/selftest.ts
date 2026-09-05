@@ -108,6 +108,26 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
     );
   }
 
+  // Format-aware release-version sources. Values are rendered into the real
+  // source shape so one fixture can prove JSON, TOML and Directory.Build.props
+  // all participate in the same comparison.
+  if (fx.versions && typeof fx.versions === 'object') {
+    return Object.entries(fx.versions).map(([rel, version]) => {
+      const value = String(version).replace(/"/g, '\\"');
+      if (rel.endsWith('.toml')) return write(rel, `[project]\nversion = "${value}"\n`);
+      if (rel.endsWith('.props')) {
+        return write(rel, `<Project><PropertyGroup><Version>${String(version)}</Version></PropertyGroup></Project>\n`);
+      }
+      return write(rel, JSON.stringify({ name: rel.replace(/\W/g, '-'), version }));
+    });
+  }
+
+  // Raw version-source fixtures preserve malformed documents and missing or
+  // non-scalar values exactly; normalising them would erase the failure under test.
+  if (fx.version_files && typeof fx.version_files === 'object') {
+    return Object.entries(fx.version_files).map(([rel, content]) => write(rel, String(content)));
+  }
+
   // Named files in a parameterised directory, plus the version they are judged
   // against — the changelog shapes. `dir` is stated by the fixture rather than
   // assumed here, because the self-test sees the module's *raw* table and a
@@ -256,13 +276,6 @@ export function runSelfTests(
         spec = Array.isArray(spec)
           ? spec.map((s: any) => ({ ...s, base_branch: base }))
           : { ...spec, base_branch: base };
-      }
-      // And for `exclude`, which is the thing under test in half these fixtures:
-      // the table ships it empty by default, so a fixture proving exclusion works
-      // has to set it, exactly as a repo would.
-      if (Array.isArray(b.fixture?.exclude)) {
-        const ex = b.fixture.exclude;
-        spec = Array.isArray(spec) ? spec.map((s: any) => ({ ...s, exclude: ex })) : { ...spec, exclude: ex };
       }
       if (!files) {
         out.push({ gate: gateId, expect, outcome: 'unrun', detail: `no builder for fixture ${JSON.stringify(b.fixture).slice(0, 60)}` });
