@@ -20,7 +20,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | --- | --- | --- | --- |
 | F-025 | `release-fragment-current` could not catch a retained fragment equal to the version just published | promoted | WI-072 adds the consumer-owned `CONSUMED_THROUGH` boundary, reconciles it with package versions, rejects fragments at or below a concrete boundary, and proves the exact retained-0.2.0 false green fails through production `runGates` |
 
-## Closed — 2026-09-05 by [WI-079](items/WI-079-land-managed-ref-safety.md)
+## Closed — 2026-09-05 by [WI-079](archive/WI-079-land-managed-ref-safety.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
