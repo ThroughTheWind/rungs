@@ -48,8 +48,9 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
   the same line; a bare marker cannot borrow text from the following line.
 - Dispatch every implemented engine through one explicit table-section inventory shared by the
   source runner, explain path, module self-test runner and ejected runner template. Missing engine
-  mappings, missing required sections and id-bearing arrays without the requested gate fail closed;
-  there is no whole-table fallback except the explicit `id-integrity` sentinel.
+  mappings and missing required sections fail closed; there is no whole-table fallback except the
+  explicit `id-integrity` sentinel. A matching entry id narrows an array, while a subject-named
+  section intentionally shared by sibling gates remains intact.
 - Run all five existing change/fragment fixtures in both directions, register the corrected gate in
   Rungs itself and add a real reconstructed fragment for the upcoming v0.4.0 release.
 
@@ -83,7 +84,7 @@ created; unresolved template parameters are never silently guessed.
 
 Pin F-041 through the production `check` path over a scratch Rungs registry/table containing a stale
 versioned fragment, not just a direct engine call. Assert that every `ENGINES` key has one shared
-mapping, unknown or malformed dispatch throws, and the ejected runner imports that selector rather
+  mapping, unknown or missing-section dispatch throws, and the ejected runner imports that selector rather
 than carrying another hand-kept map. Register the new gate locally only once its own shipping change
 and fragment make the real repository pass.
 
