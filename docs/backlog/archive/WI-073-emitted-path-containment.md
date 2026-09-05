@@ -2,7 +2,7 @@
 id: WI-073
 title: Contain every emitted module path inside the consumer repository
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-073-emitted-path-containment
 created: 2026-09-05
 updated: 2026-09-05
@@ -155,3 +155,14 @@ comparison now uses canonical decomposition plus ECMAScript's locale-independent
 case folding, segment by segment for ancestry. All four reproductions remain regressions. Run
 `33959177479` remains useful cross-platform evidence for `ba00621`, but it is superseded as landing
 authority because it predates this repair.
+
+Independent review approved the final repair tip `d8b7a5ad1dd3644925e4af00151321885e6efa3c`.
+GitHub Actions run `33959691198` passed all six supported OS/Node cells plus the site job at that
+exact SHA. Main tip `65932f335f860f674e47253fc046c5d3b5f47ad5` independently passed the same seven-job
+matrix in run `33967604265` before integration.
+
+Merge commit `e50ebf6` integrates that main tip without changing the approved WI-073 repair. On the
+merged tree, `npm test` passed 79 tests with three expected platform/privilege skips, all 30
+registered Rungs gates passed, `npm pack --dry-run --json` reported 110 package entries including
+`src/emitted-path.ts`, and both staged and unstaged diff checks were clean. WI-073 is therefore
+`done` and ready to archive and land; the exact lifecycle tip still requires its own pushed CI run.
