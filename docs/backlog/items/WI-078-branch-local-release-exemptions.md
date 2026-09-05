@@ -2,8 +2,8 @@
 id: WI-078
 title: Require release exemptions from the current branch
 type: feature
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-078-branch-local-release-exemptions
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-067, WI-070, WI-072, F-043]
@@ -92,7 +92,8 @@ means no exemption, not a guessed pass.
 
 ## Execution
 
-Not started.
+Started from verified `green/main` at `0833172a780da6377da081e7423c46d7bc370186` after WI-076
+landed.
 
 ## Review
 
