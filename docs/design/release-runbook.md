@@ -265,10 +265,23 @@ Verify from outside the repo before announcing anything — a package that passe
 fails a clean install is exactly the failure v0.1.1 shipped
 ([release-readiness](release-readiness.md)):
 
+**Run the install from inside the consumer directory, not with `--prefix` from this checkout.**
+`--prefix` places `node_modules/` where you asked, and npm still resolves the manifest it *saves
+to* from the current working directory — so the documented `npm install --prefix "$(mktemp -d)"`
+added `"@rungs/cli": "^0.4.0"` to this repository's own `package.json` and lockfile, and installed
+a copy of the published package into the producer's `node_modules/`. Measured 2026-09-05 verifying
+v0.4.0: the package was made to depend on itself by the step whose entire purpose is proving it
+works somewhere else. It was caught by reading the diff before pushing, which is not a control.
+
 ```bash
 npm view @rungs/cli dist-tags
-npm install --prefix "$(mktemp -d)" @rungs/cli && npx --yes @rungs/cli@<version> --help
+consumer="$(mktemp -d)" && ( cd "$consumer" && npm init -y >/dev/null &&
+  npm install @rungs/cli && npx --yes @rungs/cli@<version> --help )
 ```
+
+The subshell is what keeps the `cd` from outliving the check. Confirm afterwards that
+`git status` is clean here — a verification that edits the thing it verifies has told you nothing
+about the registry and something you did not want about your tree.
 
 ### Last: record the publish, in the one place that claims it
 
