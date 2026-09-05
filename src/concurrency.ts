@@ -68,6 +68,7 @@ interface GitWorktree {
 
 interface GitBranchRef {
   ref: string;
+  oid: string;
   symref?: string;
 }
 
@@ -113,68 +114,213 @@ function gitWorktrees(root: string): GitWorktree[] {
  * names cannot contain tabs or newlines, so this argv-only format is unambiguous.
  */
 function gitLocalBranchRefs(root: string): GitBranchRef[] {
-  const out = git(root, ['for-each-ref', '--format=%(refname)%09%(symref)', 'refs/heads/']);
+  const out = git(root, ['for-each-ref', '--format=%(refname)%09%(objectname)%09%(symref)', 'refs/heads/']);
   if (!out) return [];
   return out.split('\n').map((line) => {
-    const [ref, symref] = line.split('\t');
-    return { ref, ...(symref ? { symref } : {}) };
+    const [ref, oid, symref] = line.split('\t');
+    return { ref, oid, ...(symref ? { symref } : {}) };
   });
 }
 
-type IntegrationRefResolution =
-  | { ref: string; error?: never }
-  | { ref?: never; error: string };
+interface DirectRef {
+  ref: string;
+  oid: string | null;
+}
 
-function exactIntegrationRef(root: string, integration: string): IntegrationRefResolution {
-  const wanted = `refs/heads/${integration}`;
-  let stored: GitBranchRef[];
-  try {
-    stored = gitLocalBranchRefs(root);
-  } catch {
-    return {
-      error: `cannot enumerate local branch refs for '${integration}'; ref identity is unknown, so land is refused.`,
-    };
+type DirectRefResolution =
+  | { value: DirectRef; error?: never }
+  | { value?: never; error: string };
+
+function canonicalCaselessEqual(left: string, right: string): boolean {
+  const pattern = left.normalize('NFD').replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+  return new RegExp(`^(?:${pattern})$`, 'iu').test(right.normalize('NFD'));
+}
+
+function refStorageCollides(left: string, right: string): boolean {
+  const leftSegments = left.split('/');
+  const rightSegments = right.split('/');
+  const shared = Math.min(leftSegments.length, rightSegments.length);
+  for (let index = 0; index < shared; index++) {
+    if (!canonicalCaselessEqual(leftSegments[index], rightSegments[index])) return false;
+    // A spelling difference in a directory shared by two otherwise different
+    // refs is itself a Windows/APFS alias. The later leaf difference does not
+    // make the filesystem path unambiguous.
+    if (
+      leftSegments[index] !== rightSegments[index] &&
+      index < leftSegments.length - 1 &&
+      index < rightSegments.length - 1
+    ) return true;
+  }
+  // Every segment of the shorter ref matched: the names are aliases, or one is
+  // a directory/file prefix of the other.
+  return true;
+}
+
+/** Resolve one configured spelling against stored refs without filesystem aliasing or symref dereferencing. */
+function exactDirectRef(
+  root: string,
+  stored: GitBranchRef[],
+  shortName: string,
+  role: 'integration' | 'green',
+  required: boolean,
+): DirectRefResolution {
+  const wanted = `refs/heads/${shortName}`;
+  const label = role === 'integration'
+    ? `configured integration branch '${shortName}'`
+    : `configured green ref '${shortName}'`;
+  if (!gitOk(root, ['check-ref-format', wanted])) {
+    return { error: `${label} is not a valid direct local branch ref; land is refused.` };
   }
 
+  const alias = stored.find((entry) => entry.ref !== wanted && refStorageCollides(entry.ref, wanted));
+  if (alias) {
+    return { error: `${label} collides with case-aliased or directory/file-conflicting stored ref '${alias.ref}'; remove the ambiguity and retry.` };
+  }
   const exact = stored.find((entry) => entry.ref === wanted);
   if (!exact) {
-    const asciiCaseKey = (value: string) => value.replace(/[A-Z]/g, (character) => character.toLowerCase());
-    const alias = stored.find((entry) => asciiCaseKey(entry.ref) === asciiCaseKey(wanted));
-    return {
-      error: alias
-        ? `configured integration branch '${integration}' does not exactly match stored ref '${alias.ref}'; use the stored spelling and retry.`
-        : `configured integration branch '${integration}' has no exact stored local ref '${wanted}'; land is refused.`,
-    };
+    if (required) return { error: `${label} has no exact stored local ref '${wanted}'; land is refused.` };
+    return { value: { ref: wanted, oid: null } };
   }
   if (exact.symref) {
     return {
-      error: `configured integration branch '${integration}' is symbolic (${exact.ref} -> ${exact.symref}); land requires a direct local branch ref and is refused.`,
+      error: `${label} is symbolic (${exact.ref} -> ${exact.symref}); land requires a direct local branch ref and is refused.`,
     };
   }
-  return { ref: exact.ref };
+  return { value: { ref: exact.ref, oid: exact.oid } };
 }
 
-function findIntegrationHolders(root: string, integrationRef: string): string[] {
-  return gitWorktrees(root)
-    .filter((worktree) => worktree.branch === integrationRef)
-    .map((worktree) => worktree.path);
+interface ManagedRef extends DirectRef {
+  holders: string[];
 }
 
-type IntegrationState =
-  | { ref: string; holders: string[]; error?: never }
-  | { ref?: never; holders?: never; error: string };
+interface ManagedRefs {
+  integration: ManagedRef;
+  green: ManagedRef;
+}
 
-/** Prove ref identity and checkout state together wherever land may mutate. */
-function integrationState(root: string, integration: string): IntegrationState {
-  const resolved = exactIntegrationRef(root, integration);
-  if (!resolved.ref) return resolved;
+type ManagedRefsResolution =
+  | { value: ManagedRefs; error?: never }
+  | { value?: never; error: string };
+
+/** Prove canonical/direct identity and checkout state for both refs the final transaction mutates. */
+function managedRefsState(root: string, integration: string, green: string): ManagedRefsResolution {
   try {
-    return { ref: resolved.ref, holders: findIntegrationHolders(root, resolved.ref) };
+    const stored = gitLocalBranchRefs(root);
+    const worktrees = gitWorktrees(root);
+    const integrationRef = exactDirectRef(root, stored, integration, 'integration', true);
+    if (!integrationRef.value) return integrationRef;
+    const greenRef = exactDirectRef(root, stored, green, 'green', false);
+    if (!greenRef.value) return greenRef;
+    const withHolders = (ref: DirectRef): ManagedRef => ({
+      ...ref,
+      holders: worktrees.filter((worktree) => worktree.branch === ref.ref).map((worktree) => worktree.path),
+    });
+    return {
+      value: {
+        integration: withHolders(integrationRef.value),
+        green: withHolders(greenRef.value),
+      },
+    };
   } catch {
     return {
-      error: `cannot read git worktrees for '${integration}'; checkout state is unknown, so land is refused.`,
+      error: 'cannot enumerate local branch refs and worktrees; managed-ref identity or checkout state is unknown, so land is refused.',
     };
   }
+}
+
+interface RecoveryRefResult {
+  name?: string;
+  error?: string;
+}
+
+/**
+ * Preserve a verified merge without overwriting, dereferencing or deleting operator state.
+ *
+ * The merge-derived candidate makes retries deterministic. A numeric suffix is needed only
+ * when that exact candidate is occupied by distinct work or held by a worktree.
+ */
+function createDirectRef(root: string, ref: string, oid: string): void {
+  const input = `option no-deref\0create ${ref}\0${oid}\0`;
+  execFileSync('git', ['update-ref', '--stdin', '-z', '-m', 'rungs park verified merge'], {
+    cwd: root,
+    stdio: 'pipe',
+    input: Buffer.from(input, 'utf8'),
+  });
+}
+
+function parkVerifiedMerge(
+  root: string,
+  preferred: string,
+  merged: string,
+  reserved: ReadonlySet<string>,
+): RecoveryRefResult {
+  const derived = `${preferred}-${merged}`;
+  const flat = `rungs-park-${merged}`;
+
+  for (let index = 0; index < 1000; index++) {
+    const candidate = index === 0
+      ? preferred
+      : index === 1
+        ? derived
+        : index === 2
+          ? flat
+          : `${flat}-${index - 2}`;
+    const wanted = `refs/heads/${candidate}`;
+    if (reserved.has(candidate) || !gitOk(root, ['check-ref-format', wanted])) continue;
+
+    // Inspect again after a failed create-only CAS so a concurrent creator of
+    // this same merge is reused while distinct work sends us to the next name.
+    for (let inspection = 0; inspection < 2; inspection++) {
+      let stored: GitBranchRef[];
+      let worktrees: GitWorktree[];
+      try {
+        stored = gitLocalBranchRefs(root);
+        worktrees = gitWorktrees(root);
+      } catch {
+        return { error: 'cannot enumerate refs and worktrees, so no recovery ref can be created safely.' };
+      }
+
+      const exact = stored.find((entry) => entry.ref === wanted);
+      const alias = stored.find((entry) => entry.ref !== wanted && refStorageCollides(entry.ref, wanted));
+      const held = worktrees.some((worktree) => worktree.branch === wanted);
+      if (alias || exact?.symref || held) break;
+      if (exact) {
+        if (exact.oid === merged) return { name: candidate };
+        break;
+      }
+
+      try {
+        createDirectRef(root, wanted, merged);
+        return { name: candidate };
+      } catch {
+        // One re-inspection distinguishes a benign same-merge race from a
+        // collision. Never turn the retry into an overwrite.
+      }
+    }
+  }
+  return { error: `could not allocate an unheld collision-free recovery ref below '${preferred}'.` };
+}
+
+/** Advance both markers as one no-dereference, expected-old Git ref transaction. */
+function advanceVerifiedRefs(
+  root: string,
+  integration: DirectRef,
+  green: DirectRef,
+  merged: string,
+): void {
+  const input = [
+    'option no-deref\0',
+    `update ${integration.ref}\0${merged}\0${integration.oid}\0`,
+    'option no-deref\0',
+    green.oid === null
+      ? `create ${green.ref}\0${merged}\0`
+      : `update ${green.ref}\0${merged}\0${green.oid}\0`,
+  ].join('');
+  execFileSync('git', ['update-ref', '--stdin', '-z', '-m', 'rungs land verified merge'], {
+    cwd: root,
+    stdio: 'pipe',
+    input: Buffer.from(input, 'utf8'),
+  });
 }
 
 export interface Result {
@@ -328,22 +474,30 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
   if (!branch) return { ok: false, lines: ['a branch name is required: `rungs land <branch>`'] };
   const head = revParse(root, `refs/heads/${branch}`);
   if (!head) return { ok: false, lines: [`branch '${branch}' does not exist`] };
-  const initialIntegration = integrationState(root, integration);
-  if (!initialIntegration.ref) return { ok: false, lines: [initialIntegration.error] };
-  const integrationRef = initialIntegration.ref;
-  const before = revParse(root, integrationRef);
+  const preferredParked = `${integPrefix}${branch}`;
+  const initialManaged = managedRefsState(root, integration, greenRef);
+  if (!initialManaged.value) return { ok: false, lines: [initialManaged.error] };
+  const { integration: initialIntegration, green: initialGreen } = initialManaged.value;
+  if (initialIntegration.ref === initialGreen.ref) {
+    return {
+      ok: false,
+      lines: [`configured integration branch '${integration}' and green ref '${greenRef}' resolve to the same direct ref; land requires two distinct managed refs.`],
+    };
+  }
+  const before = initialIntegration.oid;
   if (!before) return { ok: false, lines: [`'${integration}' does not resolve`] };
 
   // ADR-0009 rule 3 is a mutation precondition, not merely a gate installed in
   // some consumers. Keep this before even inspecting the coordination lock: a
   // known-invalid land must not replace a stale lock or create any artifact.
-  const integrationHolders = initialIntegration.holders;
-  if (integrationHolders.length) {
+  const heldManagedRef = [initialIntegration, initialGreen].find((ref) => ref.holders.length);
+  if (heldManagedRef) {
+    const name = heldManagedRef.ref.slice('refs/heads/'.length);
     return {
       ok: false,
       lines: [
-        `'${integration}' is checked out in ${integrationHolders.length} worktree(s), so land is refused:`,
-        ...integrationHolders.map((path) => `  ${path}`),
+        `'${name}' is checked out in ${heldManagedRef.holders.length} worktree(s), so land is refused:`,
+        ...heldManagedRef.holders.map((path) => `  ${path}`),
         'Switch each listed worktree to another branch or detach it (`git switch --detach`), then retry.',
       ],
     };
@@ -368,14 +522,14 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
     }
   }
   if (dryRun) {
-    lines.push(`would merge ${branch} (${head.slice(0, 8)}) onto ${integration} (${before.slice(0, 8)}) via ${integPrefix}${branch}, verify, then advance.`);
+    lines.push(`would merge ${branch} (${head.slice(0, 8)}) onto ${integration} (${before.slice(0, 8)}) via ${preferredParked}, verify, then atomically advance ${integration} and ${greenRef}.`);
     return { ok: true, lines };
   }
 
   const lock: Lock = { pid: process.pid, host: hostname(), started: new Date().toISOString(), branch };
   writeFileSync(lp, JSON.stringify(lock));
   const scratch = mkdtempSync(join(tmpdir(), 'rungs-land-'));
-  const parked = `${integPrefix}${branch}`;
+  let preserveScratch = false;
 
   try {
     // Rule 3: a throwaway worktree, detached. The integration branch is never
@@ -402,6 +556,32 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
     const merged = git(scratch, ['rev-parse', 'HEAD']);
     const res = runner(scratch);
     lines.push(`merged tree ${merged.slice(0, 8)} — ${res.pass} pass · ${res.failing.length} fail`);
+
+    const refuseWithRecovery = (details: string[], guidance: string): Result => {
+      const recovery = parkVerifiedMerge(
+        root,
+        preferredParked,
+        merged,
+        new Set([integration, greenRef, branch]),
+      );
+      if (!recovery.name) {
+        // Last-resort preservation: an unenumerable or completely blocked ref
+        // namespace must not turn refusal into data loss. The detached scratch
+        // stays registered until the operator resolves the condition.
+        preserveScratch = true;
+        return {
+          ok: false,
+          lines: [...lines, ...details,
+            `The verified merge ${merged} could not be parked safely: ${recovery.error}`,
+            `Its detached scratch worktree is retained at ${scratch}. Resolve the ref/worktree state, create a recovery branch at that exact commit, then remove the scratch explicitly.`],
+        };
+      }
+      return {
+        ok: false,
+        lines: [...lines, ...details,
+          `Your verified merge is parked on '${recovery.name}'. ${guidance}`],
+      };
+    };
 
     if (res.failing.length) {
       // **Attribution.** A gate that is red for reasons you did not cause and
@@ -454,11 +634,10 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
       if (introduced.length) {
         // Rule 2: park it, do not discard it. The merge is the expensive part
         // and throwing it away means doing it again to see the same failure.
-        git(root, ['update-ref', `refs/heads/${parked}`, merged]);
-        lines.push(
-          `${introduced.length} introduced by this branch. ${integration} is unchanged, and the merged tree is parked on '${parked}' — fix it there and land again.`,
+        return refuseWithRecovery(
+          [`${introduced.length} introduced by this branch. ${integration} and ${greenRef} were not advanced.`],
+          'Fix it there and land again; recovery-ref cleanup remains operator-owned.',
         );
-        return { ok: false, lines };
       }
 
       lines.push(
@@ -469,64 +648,69 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
       git(scratch, ['reset', '--hard', merged]);
     }
 
-    // The runner is arbitrary repository code. It can create a worktree while
-    // gates execute, after the early precondition was proved. Re-establish the
-    // same fact at the mutation boundary; otherwise advancing the ref leaves
-    // that new holder's index and files at the old commit (F-048 again).
-    const lateIntegration = integrationState(root, integration);
-    if (!lateIntegration.ref || lateIntegration.ref !== integrationRef) {
-      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
-      return {
-        ok: false,
-        lines: [...lines,
-          `integration ref identity and checkout state could not be revalidated after verification, so the ref advance is refused.`,
-          `  ${lateIntegration.error ?? `'${integration}' no longer names the original direct ref '${integrationRef}'.`}`,
-          `Your verified merge is parked on '${parked}'. Re-run \`rungs land ${branch}\` after checkout state can be verified.`],
-      };
+    // The runner is arbitrary repository code. Re-establish every managed-ref
+    // identity and holder fact at the mutation boundary, not just integration.
+    const lateManaged = managedRefsState(root, integration, greenRef);
+    if (!lateManaged.value) {
+      return refuseWithRecovery(
+        [
+          'managed-ref identity and checkout state could not be revalidated after verification, so the atomic advance is refused.',
+          `  ${lateManaged.error}`,
+        ],
+        `Re-run \`rungs land ${branch}\` after ref identity and checkout state can be verified.`,
+      );
     }
-    const lateHolders = lateIntegration.holders;
-    if (lateHolders.length) {
-      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
-      return {
-        ok: false,
-        lines: [...lines,
-          `'${integration}' became checked out in ${lateHolders.length} worktree(s) while this land was verifying, so the ref advance is refused:`,
-          ...lateHolders.map((path) => `  ${path}`),
+    const { integration: lateIntegration, green: lateGreen } = lateManaged.value;
+    const lateHolder = [lateIntegration, lateGreen].find((ref) => ref.holders.length);
+    if (lateHolder) {
+      const name = lateHolder.ref.slice('refs/heads/'.length);
+      return refuseWithRecovery(
+        [
+          `'${name}' became checked out in ${lateHolder.holders.length} worktree(s) while this land was verifying, so the atomic ref advance is refused:`,
+          ...lateHolder.holders.map((path) => `  ${path}`),
           'Switch each listed worktree to another branch or detach it (`git switch --detach`), then retry.',
-          `Your verified merge is parked on '${parked}'. Re-run \`rungs land ${branch}\` to rebuild it after releasing the branch.`],
-      };
+        ],
+        `Re-run \`rungs land ${branch}\` to rebuild the merge after releasing the branch.`,
+      );
+    }
+    if (lateIntegration.oid !== initialIntegration.oid || lateGreen.oid !== initialGreen.oid) {
+      const moved = [
+        ...(lateIntegration.oid !== initialIntegration.oid ? [integration] : []),
+        ...(lateGreen.oid !== initialGreen.oid ? [greenRef] : []),
+      ];
+      return refuseWithRecovery(
+        [`${moved.join(' and ')} moved while this land was verifying, so the atomic advance was refused rather than overwriting concurrent work.`],
+        `Re-run \`rungs land ${branch}\` to rebuild the merge on the new managed-ref state.`,
+      );
     }
 
-    // Rule 1: compare-and-swap. If someone else advanced the branch while we
-    // verified, this fails and nothing is lost — their merge is not overwritten.
-    // `--no-deref` also makes a symbolic-ref swap after the revalidation unable
-    // to redirect this write into the branch another worktree actually holds.
+    // Rule 1: one compare-and-swap transaction. If either expected-old value
+    // loses, Git commits neither update. `--no-deref` prevents a symref swap in
+    // the final check-to-transaction interval from redirecting either write.
     try {
-      git(root, ['update-ref', '--no-deref', integrationRef, merged, before]);
+      advanceVerifiedRefs(root, initialIntegration, initialGreen, merged);
     } catch {
-      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
-      return {
-        ok: false,
-        lines: [...lines,
-          `${integration} moved while this land was verifying, so the advance was refused rather than overwriting it.`,
-          `Your verified merge is parked on '${parked}'. Re-run \`rungs land ${branch}\` to rebuild it on the new tip.`],
-      };
+      return refuseWithRecovery(
+        [`${integration} or ${greenRef} moved, became symbolic, or could not be locked while this land was verifying. The atomic managed-ref transaction was refused, so Rungs did not partially update either ref.`],
+        `Re-run \`rungs land ${branch}\` to rebuild the merge after inspecting the competing ref state.`,
+      );
     }
-    git(root, ['update-ref', `refs/heads/${greenRef}`, merged]);
-    lines.push(`${integration} → ${merged.slice(0, 8)}, and ${greenRef} now marks it verified.`);
-    if (revParse(root, `refs/heads/${parked}`)) git(root, ['update-ref', '-d', `refs/heads/${parked}`]);
+    lines.push(`${integration} and ${greenRef} → ${merged.slice(0, 8)} in one atomic verified-ref transaction.`);
+    lines.push('Existing recovery refs are retained; cleanup remains an explicit operator decision.');
     return { ok: true, lines };
   } finally {
     // The scratch worktree is ours and only ours, so removing it is not rule 2's
     // "never destroy" — that is about the operator's branches and worktrees.
-    try {
-      git(root, ['worktree', 'remove', '--force', scratch]);
-    } catch {
-      rmSync(scratch, { recursive: true, force: true });
+    if (!preserveScratch) {
       try {
-        git(root, ['worktree', 'prune']);
+        git(root, ['worktree', 'remove', '--force', scratch]);
       } catch {
-        /* leaving a stale worktree record is not worth failing a successful land */
+        rmSync(scratch, { recursive: true, force: true });
+        try {
+          git(root, ['worktree', 'prune']);
+        } catch {
+          /* leaving a stale worktree record is not worth failing a successful land */
+        }
       }
     }
     try {

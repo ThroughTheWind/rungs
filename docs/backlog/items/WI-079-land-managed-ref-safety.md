@@ -2,8 +2,8 @@
 id: WI-079
 title: Protect every land-managed ref from checked-out worktrees
 type: feature
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-079-land-managed-ref-safety
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-062, WI-075, F-048, F-050, ADR-0009]
@@ -101,8 +101,9 @@ recovery ref is no longer needed.
 
 ## Execution
 
-Not started. Begin after WI-075 lands so this item reuses its canonical direct-ref and late-holder
-boundary rather than building a parallel implementation.
+Started from exact green `main` commit `65932f3` on
+`feature/WI-079-land-managed-ref-safety`, after WI-075 landed. Implementation and adversarial
+verification are in progress.
 
 ## Review
 

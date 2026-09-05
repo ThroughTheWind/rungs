@@ -1487,12 +1487,17 @@ function landLockPath(dir) {
   return resolve(dir, gitText(dir, 'rev-parse', '--git-common-dir'), 'rungs-land.lock');
 }
 
-function configureIntegration(dir, integration) {
+function configureConcurrency(dir, params) {
   mkdirSync(join(dir, '.ai'), { recursive: true });
+  const values = Object.entries(params).map(([name, value]) => `${name} = ${JSON.stringify(value)}`).join(', ');
   writeFileSync(
     join(dir, '.ai', 'rungs.toml'),
-    `[repo]\nharnesses = ["agents-md"]\n\n[modules.concurrency]\nversion = "1.0.0"\nstate = "managed"\nparams = { integration_branch = "${integration}" }\n`,
+    `[repo]\nharnesses = ["agents-md"]\n\n[modules.concurrency]\nversion = "1.0.0"\nstate = "managed"\nparams = { ${values} }\n`,
   );
+}
+
+function configureIntegration(dir, integration) {
+  configureConcurrency(dir, { integration_branch: integration });
 }
 
 function worktreeSnapshot(dir, files) {
@@ -1508,6 +1513,37 @@ function worktreeSnapshot(dir, files) {
     files: Object.fromEntries(files.map((file) => [file, readFileSync(join(dir, file))])),
   };
 }
+
+function withoutSharedRefs(snapshot) {
+  const { refs: _refs, ...local } = snapshot;
+  return local;
+}
+
+function unresolvedWorktreeSnapshot(dir, files) {
+  const gitDir = resolve(dir, gitText(dir, 'rev-parse', '--git-dir'));
+  const status = spawnSync('git', ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], {
+    cwd: dir,
+  });
+  return {
+    status: status.status,
+    stdout: status.stdout,
+    stderr: status.stderr,
+    head: readFileSync(join(gitDir, 'HEAD')),
+    index: readFileSync(join(gitDir, 'index')),
+    files: Object.fromEntries(files.map((file) => [file, readFileSync(join(dir, file))])),
+  };
+}
+
+function parkedRef(result) {
+  const match = result.lines.join('\n').match(/parked on '([^']+)'/);
+  assert.ok(match, `expected a reported parked ref, got:\n${result.lines.join('\n')}`);
+  return match[1];
+}
+
+const introducedFailure = (_dir, only) =>
+  only
+    ? { pass: 1, failing: [] }
+    : { pass: 0, failing: [{ id: 'new-gate', findings: ['new failure'] }] };
 
 test('session start states a fallback to the tip instead of silently cutting from an unverified merge', () => {
   const { dir, g } = loopRepo();
@@ -1763,7 +1799,7 @@ test('land rejects a configured integration spelling that is not an exact stored
     });
 
     assert.equal(result.ok, false);
-    assert.match(result.lines.join('\n'), /MAIN.*exact.*stored|stored.*main.*MAIN|ref spelling/i);
+    assert.match(result.lines.join('\n'), /MAIN.*exact.*stored|stored.*main.*MAIN|ref spelling|MAIN.*case-aliased.*main/i);
     assert.equal(runnerCalls, 0, 'a non-canonical integration ref never reaches gates');
     assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before, 'HEAD, index, files, status and refs are unchanged');
     assert.equal(existsSync(landLockPath(dir)), false, 'refusal creates no land lock');
@@ -1797,6 +1833,805 @@ test('land rejects a symbolic integration ref instead of dereferencing it into t
     assert.equal(runnerCalls, 0, 'a symbolic integration ref never reaches gates');
     assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before, 'the target branch and holder stay byte-identical');
     assert.equal(existsSync(landLockPath(dir)), false, 'refusal creates no land lock');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses a checked-out green ref before gates, locks, refs or holder bytes change', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-green holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/green-holder');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('branch', 'integ/feature/green-holder', 'main');
+    g('worktree', 'add', '-q', holder, 'green/main');
+
+    const invokingBefore = worktreeSnapshot(dir, ['a.txt']);
+    const holderBefore = worktreeSnapshot(holder, ['a.txt']);
+    let runnerCalls = 0;
+    const result = land(dir, 'feature/green-holder', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*checked out/);
+    assert.ok(result.lines.join('\n').includes(gitText(holder, 'rev-parse', '--show-toplevel')));
+    assert.equal(runnerCalls, 0, 'the gate runner is unreachable');
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt']), invokingBefore, 'the invoking worktree and every ref are unchanged');
+    assert.deepEqual(worktreeSnapshot(holder, ['a.txt']), holderBefore, 'the green holder is byte-identical');
+    assert.equal(existsSync(landLockPath(dir)), false, 'refusal creates no lock');
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses a missing green ref whose branch name is still held by a dangling worktree', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-dangling green holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/dangling-green');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('worktree', 'add', '-q', holder, 'green/main');
+    g('update-ref', '-d', 'refs/heads/green/main');
+    const holderBefore = unresolvedWorktreeSnapshot(holder, ['a.txt']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/dangling-green', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*checked out/);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(unresolvedWorktreeSnapshot(holder, ['a.txt']), holderBefore);
+    assert.notEqual(
+      spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/green/main'], { cwd: dir }).status,
+      0,
+      'the dangling held branch is not recreated',
+    );
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land parks instead of advancing when green becomes checked out during gates', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-late green holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/late-green-holder');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    const integrationBefore = g('rev-parse', 'main');
+    const greenBefore = g('rev-parse', 'green/main');
+    let verifiedMerge;
+    let holderBefore;
+
+    const result = land(dir, 'feature/late-green-holder', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      g('worktree', 'add', '-q', holder, 'green/main');
+      holderBefore = worktreeSnapshot(holder, ['a.txt']);
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*checked out.*verif|checked out.*green\/main.*verif/i);
+    assert.equal(g('rev-parse', 'main'), integrationBefore, 'integration does not advance');
+    assert.equal(g('rev-parse', 'green/main'), greenBefore, 'green does not advance');
+    assert.equal(g('rev-parse', parkedRef(result)), verifiedMerge, 'the verified merge is recoverable');
+    assert.deepEqual(
+      withoutSharedRefs(worktreeSnapshot(holder, ['a.txt'])),
+      withoutSharedRefs(holderBefore),
+      'holder HEAD, index, status and file bytes remain identical',
+    );
+    assert.equal(gitText(holder, 'status', '--porcelain').length, 0, 'the late holder remains clean');
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land parks when green becomes symbolic during gates and never updates its target', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/late-green-symref');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    const integrationBefore = g('rev-parse', 'main');
+    const greenBefore = g('rev-parse', 'green/main');
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/late-green-symref', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      g('update-ref', 'refs/heads/green-replacement', greenBefore);
+      g('update-ref', '-d', 'refs/heads/green/main');
+      g('symbolic-ref', 'refs/heads/green/main', 'refs/heads/green-replacement');
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*symbolic|green.*identity.*revalid/i);
+    assert.equal(g('rev-parse', 'main'), integrationBefore, 'integration remains at its captured value');
+    assert.equal(g('symbolic-ref', 'refs/heads/green/main'), 'refs/heads/green-replacement');
+    assert.equal(g('rev-parse', 'green-replacement'), greenBefore, 'the symbolic target is never advanced');
+    assert.equal(g('rev-parse', parkedRef(result)), verifiedMerge, 'the verified merge is recoverable');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land preserves a competing green advance and parks without moving integration', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/green-cas');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('switch', '-q', '-c', 'feature/green-advance', 'main');
+    writeFileSync(join(dir, 'advanced.txt'), 'competing work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'competing green');
+    const competing = g('rev-parse', 'HEAD');
+    g('switch', '--detach', '-q', 'main');
+    const integrationBefore = g('rev-parse', 'main');
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/green-cas', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      g('update-ref', 'refs/heads/green/main', competing);
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main moved|managed refs.*changed|transaction.*refused/i);
+    assert.equal(g('rev-parse', 'main'), integrationBefore, 'integration is not partially advanced');
+    assert.equal(g('rev-parse', 'green/main'), competing, 'the competing green advance is preserved');
+    assert.equal(g('rev-parse', parkedRef(result)), verifiedMerge, 'the verified merge is recoverable');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land requires the configured green ref to match one exact direct stored ref', () => {
+  const { dir, g } = loopRepo();
+  try {
+    configureConcurrency(dir, { green_prefix: 'GREEN/' });
+    g('add', '.ai/rungs.toml');
+    g('commit', '-qm', 'configure green');
+    g('switch', '-q', '-c', 'feature/green-case');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/green-case', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /GREEN\/main.*exact.*green\/main|stored spelling|GREEN\/main.*case-aliased.*green\/main/i);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before, 'no ref or repository state changes');
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land rejects an existing symbolic green ref before gates or mutation', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/green-symbolic');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green-target', 'main');
+    g('symbolic-ref', 'refs/heads/green/main', 'refs/heads/green-target');
+    const before = worktreeSnapshot(dir, ['a.txt']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/green-symbolic', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*symbolic|direct.*green\/main/i);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt']), before, 'the symbolic ref and its target are untouched');
+    assert.equal(g('symbolic-ref', 'refs/heads/green/main'), 'refs/heads/green-target');
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land rejects coexisting exact and case-aliased managed refs, including packed exact refs', async (t) => {
+  await t.test('integration alias', () => {
+    const { dir, g } = loopRepo();
+    try {
+      g('switch', '-q', '-c', 'feature/integration-alias-pair');
+      writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+      g('add', '-A');
+      g('commit', '-qm', 'branch');
+      g('switch', '--detach', '-q', 'main');
+      g('pack-refs', '--all');
+      g('update-ref', '--no-deref', 'refs/heads/MAIN', 'main');
+      const rows = g('for-each-ref', '--format=%(refname)', 'refs/heads/').split('\n');
+      assert.ok(rows.includes('refs/heads/main') && rows.includes('refs/heads/MAIN'), 'the adversarial pair exists');
+      const before = worktreeSnapshot(dir, ['a.txt']);
+      let runnerCalls = 0;
+
+      const result = land(dir, 'feature/integration-alias-pair', () => {
+        runnerCalls++;
+        return { pass: 1, failing: [] };
+      });
+
+      assert.equal(result.ok, false);
+      assert.match(result.lines.join('\n'), /main.*case-aliased.*MAIN|MAIN.*collides.*main/i);
+      assert.equal(runnerCalls, 0);
+      assert.deepEqual(worktreeSnapshot(dir, ['a.txt']), before, 'neither stored spelling is changed');
+      assert.equal(existsSync(landLockPath(dir)), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('green alias', () => {
+    const { dir, g } = loopRepo();
+    try {
+      g('switch', '-q', '-c', 'feature/green-alias-pair');
+      writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+      g('add', '-A');
+      g('commit', '-qm', 'branch');
+      g('switch', '--detach', '-q', 'main');
+      g('branch', 'green/main', 'main');
+      g('pack-refs', '--all');
+      g('update-ref', '--no-deref', 'refs/heads/GREEN/main', 'main');
+      const rows = g('for-each-ref', '--format=%(refname)', 'refs/heads/').split('\n');
+      assert.ok(rows.includes('refs/heads/green/main') && rows.includes('refs/heads/GREEN/main'), 'the adversarial pair exists');
+      const before = worktreeSnapshot(dir, ['a.txt']);
+      let runnerCalls = 0;
+
+      const result = land(dir, 'feature/green-alias-pair', () => {
+        runnerCalls++;
+        return { pass: 1, failing: [] };
+      });
+
+      assert.equal(result.ok, false);
+      assert.match(result.lines.join('\n'), /green\/main.*case-aliased.*GREEN\/main|GREEN\/main.*collides/i);
+      assert.equal(runnerCalls, 0);
+      assert.deepEqual(worktreeSnapshot(dir, ['a.txt']), before, 'neither stored spelling is changed');
+      assert.equal(existsSync(landLockPath(dir)), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('non-ASCII integration alias', () => {
+    const { dir, g } = loopRepo();
+    try {
+      configureIntegration(dir, 'Ä');
+      g('add', '.ai/rungs.toml');
+      g('commit', '-qm', 'configure accented integration');
+      g('branch', 'Ä', 'main');
+      g('switch', '-q', '-c', 'feature/accented-alias', 'Ä');
+      writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+      g('add', '-A');
+      g('commit', '-qm', 'branch');
+      g('switch', '--detach', '-q', 'Ä');
+      g('pack-refs', '--all');
+      g('update-ref', '--no-deref', 'refs/heads/ä', 'Ä');
+      const rows = g('for-each-ref', '--format=%(refname)', 'refs/heads/').split('\n');
+      assert.ok(rows.includes('refs/heads/Ä') && rows.includes('refs/heads/ä'), 'the Unicode case pair exists');
+      const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+      let runnerCalls = 0;
+
+      const result = land(dir, 'feature/accented-alias', () => {
+        runnerCalls++;
+        return { pass: 1, failing: [] };
+      });
+
+      assert.equal(result.ok, false);
+      assert.match(result.lines.join('\n'), /Ä.*aliased.*ä|ä.*collides.*Ä/i);
+      assert.equal(runnerCalls, 0);
+      assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before);
+      assert.equal(existsSync(landLockPath(dir)), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+test('land rejects a configuration where integration and green are the same ref', () => {
+  const { dir, g } = loopRepo();
+  try {
+    configureConcurrency(dir, { green_prefix: '' });
+    g('add', '.ai/rungs.toml');
+    g('commit', '-qm', 'collapse green into integration');
+    g('switch', '-q', '-c', 'feature/same-managed-ref');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/same-managed-ref', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /same direct ref|two distinct managed refs/);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before);
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land preserves unsafe preferred parking refs and uses collision-free recovery names', async (t) => {
+  await t.test('case alias', () => {
+    const { dir, g } = loopRepo();
+    try {
+      configureConcurrency(dir, { integ_prefix: 'INTEG/' });
+      g('add', '.ai/rungs.toml');
+      g('commit', '-qm', 'configure parking prefix');
+      g('switch', '-q', '-c', 'feature/park-case');
+      writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+      g('add', '-A');
+      g('commit', '-qm', 'branch');
+      g('switch', '--detach', '-q', 'main');
+      g('branch', 'integ/feature/park-case', 'main');
+      g('pack-refs', '--all');
+      const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+      const preferredBefore = g('rev-parse', 'integ/feature/park-case');
+      let runnerCalls = 0;
+      let verifiedMerge;
+
+      const result = land(dir, 'feature/park-case', (scratch, only) => {
+        runnerCalls++;
+        if (!only) verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+        return introducedFailure(scratch, only);
+      });
+      const recovery = parkedRef(result);
+
+      assert.equal(result.ok, false);
+      assert.equal(runnerCalls, 2);
+      assert.notEqual(recovery, 'INTEG/feature/park-case');
+      assert.equal(g('rev-parse', recovery), verifiedMerge);
+      assert.equal(g('rev-parse', 'integ/feature/park-case'), preferredBefore);
+      assert.deepEqual(
+        withoutSharedRefs(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml'])),
+        withoutSharedRefs(before),
+      );
+      assert.equal(existsSync(landLockPath(dir)), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('symbolic ref', () => {
+    const { dir, g } = loopRepo();
+    try {
+      g('switch', '-q', '-c', 'feature/park-symbolic');
+      writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+      g('add', '-A');
+      g('commit', '-qm', 'branch');
+      g('switch', '--detach', '-q', 'main');
+      g('branch', 'park-target', 'main');
+      g('symbolic-ref', 'refs/heads/integ/feature/park-symbolic', 'refs/heads/park-target');
+      const before = worktreeSnapshot(dir, ['a.txt']);
+      const targetBefore = g('rev-parse', 'park-target');
+      let runnerCalls = 0;
+      let verifiedMerge;
+
+      const result = land(dir, 'feature/park-symbolic', (scratch, only) => {
+        runnerCalls++;
+        if (!only) verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+        return introducedFailure(scratch, only);
+      });
+      const recovery = parkedRef(result);
+
+      assert.equal(result.ok, false);
+      assert.equal(runnerCalls, 2);
+      assert.notEqual(recovery, 'integ/feature/park-symbolic');
+      assert.equal(g('rev-parse', recovery), verifiedMerge);
+      assert.equal(g('symbolic-ref', 'refs/heads/integ/feature/park-symbolic'), 'refs/heads/park-target');
+      assert.equal(g('rev-parse', 'park-target'), targetBefore);
+      assert.deepEqual(withoutSharedRefs(worktreeSnapshot(dir, ['a.txt'])), withoutSharedRefs(before));
+      assert.equal(existsSync(landLockPath(dir)), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+test('introduced failure preserves a checked-out preferred parking ref and allocates a distinct recovery ref', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-parked failure holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/parked-held-failure');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('branch', 'integ/feature/parked-held-failure', 'main');
+    g('worktree', 'add', '-q', holder, 'integ/feature/parked-held-failure');
+    const preferredBefore = g('rev-parse', 'integ/feature/parked-held-failure');
+    const holderBefore = worktreeSnapshot(holder, ['a.txt']);
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/parked-held-failure', (scratch, only) => {
+      if (!only) verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      return introducedFailure(scratch, only);
+    });
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.notEqual(recovery, 'integ/feature/parked-held-failure');
+    assert.equal(g('rev-parse', recovery), verifiedMerge);
+    assert.equal(g('rev-parse', 'integ/feature/parked-held-failure'), preferredBefore);
+    assert.deepEqual(
+      withoutSharedRefs(worktreeSnapshot(holder, ['a.txt'])),
+      withoutSharedRefs(holderBefore),
+      'the parked holder remains byte-identical',
+    );
+    assert.equal(gitText(holder, 'status', '--porcelain').length, 0);
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parking skips a dangling preferred ref still held by a worktree', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-dangling parked holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/dangling-parked');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'integ/feature/dangling-parked', 'main');
+    g('worktree', 'add', '-q', holder, 'integ/feature/dangling-parked');
+    g('update-ref', '-d', 'refs/heads/integ/feature/dangling-parked');
+    const holderBefore = unresolvedWorktreeSnapshot(holder, ['a.txt']);
+
+    const result = land(dir, 'feature/dangling-parked', introducedFailure);
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.notEqual(recovery, 'integ/feature/dangling-parked');
+    assert.notEqual(
+      spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/integ/feature/dangling-parked'], { cwd: dir }).status,
+      0,
+      'the missing held ref is not recreated beneath the holder',
+    );
+    assert.deepEqual(unresolvedWorktreeSnapshot(holder, ['a.txt']), holderBefore);
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('integration CAS refusal preserves a checked-out preferred parking ref and allocates a distinct recovery ref', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-parked cas holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/parked-held-cas');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '-q', '-c', 'feature/competing', 'main');
+    writeFileSync(join(dir, 'competing.txt'), 'competing work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'competing');
+    const competing = g('rev-parse', 'HEAD');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('branch', 'integ/feature/parked-held-cas', 'main');
+    g('worktree', 'add', '-q', holder, 'integ/feature/parked-held-cas');
+    const greenBefore = g('rev-parse', 'green/main');
+    const preferredBefore = g('rev-parse', 'integ/feature/parked-held-cas');
+    const holderBefore = worktreeSnapshot(holder, ['a.txt']);
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/parked-held-cas', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      g('update-ref', 'refs/heads/main', competing);
+      return { pass: 1, failing: [] };
+    });
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.notEqual(recovery, 'integ/feature/parked-held-cas');
+    assert.equal(g('rev-parse', recovery), verifiedMerge);
+    assert.equal(g('rev-parse', 'main'), competing, 'the competing integration advance is preserved');
+    assert.equal(g('rev-parse', 'green/main'), greenBefore);
+    assert.equal(g('rev-parse', 'integ/feature/parked-held-cas'), preferredBefore);
+    assert.deepEqual(withoutSharedRefs(worktreeSnapshot(holder, ['a.txt'])), withoutSharedRefs(holderBefore));
+    assert.equal(gitText(holder, 'status', '--porcelain').length, 0);
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parking preserves distinct work and repeated parking of the same merge is idempotent', () => {
+  const { dir, g } = loopRepo();
+  const oldAuthorDate = process.env.GIT_AUTHOR_DATE;
+  const oldCommitterDate = process.env.GIT_COMMITTER_DATE;
+  try {
+    g('switch', '-q', '-c', 'feature/idempotent-parking');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('branch', 'integ/feature/idempotent-parking', 'main');
+    const distinct = g('rev-parse', 'integ/feature/idempotent-parking');
+    process.env.GIT_AUTHOR_DATE = '2001-02-03T04:05:06Z';
+    process.env.GIT_COMMITTER_DATE = '2001-02-03T04:05:06Z';
+
+    const first = land(dir, 'feature/idempotent-parking', introducedFailure);
+    const firstRecovery = parkedRef(first);
+    const firstMerge = g('rev-parse', firstRecovery);
+    const refsAfterFirst = g(
+      'for-each-ref',
+      '--format=%(refname)',
+      'refs/heads/integ/feature/idempotent-parking*',
+    ).split('\n').filter(Boolean);
+    const second = land(dir, 'feature/idempotent-parking', introducedFailure);
+    const refsAfterSecond = g(
+      'for-each-ref',
+      '--format=%(refname)',
+      'refs/heads/integ/feature/idempotent-parking*',
+    ).split('\n').filter(Boolean);
+
+    assert.equal(first.ok, false);
+    assert.equal(second.ok, false);
+    assert.notEqual(firstRecovery, 'integ/feature/idempotent-parking');
+    assert.equal(parkedRef(second), firstRecovery, 'the existing ref for the same merge is reused');
+    assert.equal(g('rev-parse', firstRecovery), firstMerge);
+    assert.equal(g('rev-parse', 'integ/feature/idempotent-parking'), distinct, 'distinct work is never overwritten');
+    assert.deepEqual(refsAfterSecond, refsAfterFirst, 'retrying creates no duplicate recovery ref');
+  } finally {
+    if (oldAuthorDate === undefined) delete process.env.GIT_AUTHOR_DATE;
+    else process.env.GIT_AUTHOR_DATE = oldAuthorDate;
+    if (oldCommitterDate === undefined) delete process.env.GIT_COMMITTER_DATE;
+    else process.env.GIT_COMMITTER_DATE = oldCommitterDate;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a parking ref created during gates is preserved and forces a collision-free recovery name', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/late-parking');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    const distinct = g('rev-parse', 'main');
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/late-parking', (scratch, only) => {
+      if (!only) {
+        verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+        g('update-ref', 'refs/heads/integ/feature/late-parking', distinct);
+      }
+      return introducedFailure(scratch, only);
+    });
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.notEqual(recovery, 'integ/feature/late-parking');
+    assert.equal(g('rev-parse', 'integ/feature/late-parking'), distinct);
+    assert.equal(g('rev-parse', recovery), verifiedMerge);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parking escapes a directory-file collision under the configured prefix', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/df-parking');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'integ', 'main');
+    const integBefore = g('rev-parse', 'integ');
+
+    const result = land(dir, 'feature/df-parking', introducedFailure);
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.match(recovery, /^rungs-park-[0-9a-f]+$/);
+    assert.equal(g('rev-parse', 'integ'), integBefore, 'the blocking operator branch is preserved');
+    assert.ok(g('rev-parse', recovery), 'the verified merge is recoverable outside the blocked namespace');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parking escapes a packed case-aliased ancestor under the configured prefix', () => {
+  const { dir, g } = loopRepo();
+  try {
+    configureConcurrency(dir, { integ_prefix: 'blocked/' });
+    g('add', '.ai/rungs.toml');
+    g('commit', '-qm', 'configure blocked parking prefix');
+    g('switch', '-q', '-c', 'feature/case-df-parking');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'BLOCKED', 'main');
+    g('pack-refs', '--all');
+    const blockingBefore = g('rev-parse', 'BLOCKED');
+
+    const result = land(dir, 'feature/case-df-parking', introducedFailure);
+    const recovery = parkedRef(result);
+
+    assert.equal(result.ok, false);
+    assert.match(recovery, /^rungs-park-[0-9a-f]+$/);
+    assert.equal(g('rev-parse', 'BLOCKED'), blockingBefore, 'the packed blocking branch is preserved');
+    assert.ok(g('rev-parse', recovery));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parking avoids a case-aliased sibling directory and reuses the exact stored fallback', () => {
+  const { dir, g } = loopRepo();
+  const oldAuthorDate = process.env.GIT_AUTHOR_DATE;
+  const oldCommitterDate = process.env.GIT_COMMITTER_DATE;
+  try {
+    configureConcurrency(dir, { integ_prefix: 'INTEG/' });
+    g('add', '.ai/rungs.toml');
+    g('commit', '-qm', 'configure upper parking prefix');
+    g('switch', '-q', '-c', 'feature/sibling-case-parking');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'integ/existing', 'main');
+    g('pack-refs', '--all');
+    const siblingBefore = g('rev-parse', 'integ/existing');
+    process.env.GIT_AUTHOR_DATE = '2002-03-04T05:06:07Z';
+    process.env.GIT_COMMITTER_DATE = '2002-03-04T05:06:07Z';
+
+    const first = land(dir, 'feature/sibling-case-parking', introducedFailure);
+    const recovery = parkedRef(first);
+    const stored = g('for-each-ref', '--format=%(refname)', 'refs/heads/').split('\n');
+    const second = land(dir, 'feature/sibling-case-parking', introducedFailure);
+
+    assert.equal(first.ok, false);
+    assert.equal(second.ok, false);
+    assert.match(recovery, /^rungs-park-[0-9a-f]+$/);
+    assert.ok(stored.includes(`refs/heads/${recovery}`), 'the reported spelling is the exact stored ref');
+    assert.equal(parkedRef(second), recovery, 'the exact fallback is reused on an identical retry');
+    assert.equal(g('rev-parse', 'integ/existing'), siblingBefore, 'the case-aliased sibling is preserved');
+  } finally {
+    if (oldAuthorDate === undefined) delete process.env.GIT_AUTHOR_DATE;
+    else process.env.GIT_AUTHOR_DATE = oldAuthorDate;
+    if (oldCommitterDate === undefined) delete process.env.GIT_COMMITTER_DATE;
+    else process.env.GIT_COMMITTER_DATE = oldCommitterDate;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('atomic ref transaction failure moves neither integration nor green and parks the verified merge', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/transaction-failure');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    const integrationBefore = g('rev-parse', 'main');
+    const greenBefore = g('rev-parse', 'green/main');
+    const common = resolve(dir, g('rev-parse', '--git-common-dir'));
+    const greenLock = join(common, 'refs', 'heads', 'green', 'main.lock');
+    mkdirSync(dirname(greenLock), { recursive: true });
+    writeFileSync(greenLock, 'competing lock\n');
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/transaction-failure', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /transaction.*refused|managed refs.*unchanged/i);
+    assert.equal(g('rev-parse', 'main'), integrationBefore, 'integration is not partially advanced');
+    assert.equal(g('rev-parse', 'green/main'), greenBefore, 'green is not partially advanced');
+    assert.equal(g('rev-parse', parkedRef(result)), verifiedMerge, 'the verified merge is recoverable');
+    assert.equal(readFileSync(greenLock, 'utf8'), 'competing lock\n', 'the competing lock is preserved');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('successful land advances integration and green together and retains an existing recovery ref', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/retain-recovery');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    g('branch', 'integ/feature/retain-recovery', 'main');
+    const recoveryBefore = g('rev-parse', 'integ/feature/retain-recovery');
+
+    const result = land(dir, 'feature/retain-recovery', () => ({ pass: 1, failing: [] }));
+
+    assert.equal(result.ok, true, result.lines.join('\n'));
+    assert.equal(g('rev-parse', 'main'), g('rev-parse', 'green/main'));
+    assert.notEqual(g('rev-parse', 'main'), recoveryBefore);
+    assert.equal(
+      g('rev-parse', 'integ/feature/retain-recovery'),
+      recoveryBefore,
+      'Rungs never auto-deletes an operator-visible recovery ref',
+    );
+    assert.match(result.lines.join('\n'), /recovery refs.*retained|retained.*operator/i);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -1969,6 +2804,11 @@ test('land keeps its compare-and-swap refusal when integration moves during veri
     assert.equal(result.ok, false);
     assert.match(result.lines.join('\n'), /main moved while this land was verifying/);
     assert.equal(g('rev-parse', 'main'), advanced, 'the concurrent advance is never overwritten');
+    assert.notEqual(
+      spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/green/main'], { cwd: dir }).status,
+      0,
+      'a failed integration CAS does not partially create an initially-missing green ref',
+    );
     assert.ok(g('rev-parse', '--verify', 'refs/heads/integ/feature/cas'), 'the verified merge is parked');
     assert.equal(existsSync(landLockPath(dir)), false, 'the land lock is released');
   } finally {
