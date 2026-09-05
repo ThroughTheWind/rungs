@@ -1001,6 +1001,95 @@ test('change-requires-file ignores non-shipping work and requires an exemption r
   }
 });
 
+test('change-requires-file rejects inherited exemption evidence through the production runner', () => {
+  const registry = [
+    '[[gates]]',
+    'id = "release-changelog-fragment"',
+    'kind = "declared"',
+    'engine = "change-requires-file"',
+    'table = "release/release.toml"',
+    '',
+  ].join('\n');
+  const fixture = releaseDeltaRepo({
+    '.ai/gates.toml': registry,
+    'src/a.ts': '// changelog-ok: historical internal rename\nexport const value = 1;\n',
+  });
+  try {
+    fixture.write(
+      'src/a.ts',
+      '// changelog-ok: historical internal rename\nexport const value = 2;\n',
+    );
+
+    assert.equal(
+      changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length,
+      1,
+      'an unchanged reason inherited from main is not evidence for this branch',
+    );
+    const production = runGates(fixture.root).find((run) => run.id === 'release-changelog-fragment');
+    assert.equal(production?.status, 'fail', 'the F-043 shape must fail through production runGates');
+
+    fixture.write(
+      'src/a.ts',
+      '// changelog-ok: value is now cached internally; output is unchanged\nexport const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'unstaged reason edit');
+    fixture.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'staged reason edit');
+    fixture.git('commit', '-q', '-m', 'change reason with implementation');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'committed reason edit');
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('release exemption provenance rejects moved and copied history but accepts new untracked evidence', () => {
+  const historical = '// changelog-ok: historical internal rename\n';
+
+  const moved = releaseDeltaRepo({
+    'src/a.ts': `${historical}export const value = 1;\n`,
+  });
+  try {
+    moved.write('src/a.ts', `export const value = 2;\n${historical}`);
+    assert.equal(changeRequiresFile(releaseChangeTable, moved.root, []).findings.length, 1, 'line move');
+
+    moved.git('mv', 'src/a.ts', 'src/renamed.ts');
+    assert.equal(changeRequiresFile(releaseChangeTable, moved.root, []).findings.length, 1, 'pure rename');
+
+    moved.write(
+      'src/renamed.ts',
+      '// changelog-ok: renamed to align the private module boundary\nexport const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, moved.root, []).findings.length, 0, 'reason edit during rename');
+  } finally {
+    rmSync(moved.root, { recursive: true, force: true });
+  }
+
+  const copied = releaseDeltaRepo({
+    'src/source.ts': `${historical}export const source = 1;\n`,
+  });
+  try {
+    copied.write('src/change.ts', 'export const changed = true;\n');
+    copied.write('src/copied.ts', `${historical}export const source = 1;\n`);
+    copied.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, copied.root, []).findings.length, 1, 'staged historical copy');
+  } finally {
+    rmSync(copied.root, { recursive: true, force: true });
+  }
+
+  const untracked = releaseDeltaRepo();
+  try {
+    untracked.write('src/a.ts', 'export const changed = true;\n');
+    untracked.write('notes/exemption.txt', '// changelog-ok: internal cache only; output is unchanged\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new untracked evidence');
+    untracked.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new staged evidence');
+    untracked.git('commit', '-q', '-m', 'branch-local exemption');
+    assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new committed evidence');
+  } finally {
+    rmSync(untracked.root, { recursive: true, force: true });
+  }
+});
+
 test('change-requires-file refuses missing or malformed pattern configuration', () => {
   const { root } = releaseDeltaRepo();
   try {
