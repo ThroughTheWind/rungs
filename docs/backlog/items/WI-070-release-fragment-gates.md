@@ -73,8 +73,10 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
 ### Approach
 
 Factor the exact integration-ref resolver already proven by WI-067 so both Git-aware engines use one
-precedence rule. Collect NUL-delimited path output from explicit Git argv calls, normalise separators
-to repository-relative forward slashes, and de-duplicate it before applying the table's path sets.
+precedence rule. Collect NUL-delimited path output from explicit Git argv calls, keep each entry as
+Git's canonical repository-relative name, and de-duplicate it before applying the table's path
+sets. Git already uses `/` as its index separator; a literal POSIX backslash remains a filename byte
+rather than being aliased to a different path.
 Use the merge base rather than comparing branch tips directly, so unrelated movement on the stable
 line is not attributed to the working branch.
 

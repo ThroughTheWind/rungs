@@ -366,12 +366,11 @@ export const crossReference: Engine = (t, root, files) => {
 const gitArgs = (root: string, args: string[]) =>
   execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString().trim();
 
+export const parseGitPathList = (output: string): string[] =>
+  output.split('\0').filter(Boolean);
+
 const gitPaths = (root: string, args: string[]) =>
-  execFileSync('git', args, { cwd: root, stdio: 'pipe' })
-    .toString()
-    .split('\0')
-    .filter(Boolean)
-    .map((rel) => rel.replace(/\\/g, '/'));
+  parseGitPathList(execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString());
 
 const gitRefExists = (root: string, ref: string): boolean => {
   try {

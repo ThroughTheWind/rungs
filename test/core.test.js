@@ -9,7 +9,7 @@ import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
 import { blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
-import { changeRequiresFile, gitStatusReconcile, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
+import { changeRequiresFile, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
 import { applyUpgrade, eject, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { ENGINES, frontmatterSchema, linkIntegrity } from '../src/engines.ts';
@@ -919,6 +919,26 @@ test('change-requires-file rejects inherited, deleted and ignored fragments but 
     assert.equal(changeRequiresFile(releaseChangeTable, ignored.root, []).findings.length, 1, 'ignored fragment is not changed evidence');
   } finally {
     rmSync(ignored.root, { recursive: true, force: true });
+  }
+});
+
+test('Git path parsing preserves literal backslashes instead of aliasing a different path', () => {
+  assert.deepEqual(
+    parseGitPathList('src/a.ts\0changelog.d\\old.md\0'),
+    ['src/a.ts', 'changelog.d\\old.md'],
+  );
+});
+
+test('a POSIX backslash filename cannot impersonate a changed release fragment', {
+  skip: process.platform === 'win32',
+}, () => {
+  const fixture = releaseDeltaRepo({ 'changelog.d/old.md': '# inherited fragment\n' });
+  try {
+    fixture.write('src/a.ts');
+    fixture.write('changelog.d\\old.md', '# different POSIX filename\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 
