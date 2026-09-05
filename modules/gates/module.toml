@@ -1,6 +1,6 @@
 [module]
 name    = "gates"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 1
 summary = "The gate runner, the registry every other module registers into, the run ledger, and the generic structural gate set."
 

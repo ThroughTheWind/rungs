@@ -1,8 +1,8 @@
 # Path-scoped rules
 
 **These files are the source. The copies under `.claude/rules/`, `.github/instructions/` and
-`.cursor/rules/` are generated — do not edit those.** Run `rungs render` after changing anything
-here; `rungs check` refuses a stale rendering.
+`.cursor/rules/` are generated — do not edit those.** Run `node .ai/rungs.mjs render` after changing
+anything here; `node .ai/rungs.mjs check` refuses a stale rendering.
 
 A rule here loads only when an agent touches a matching file, so it costs nothing until it is
 relevant. That is what keeps [`../../AGENTS.md`](../../AGENTS.md) inside its line budget.

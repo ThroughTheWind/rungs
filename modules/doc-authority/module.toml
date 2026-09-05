@@ -1,6 +1,6 @@
 [module]
 name    = "doc-authority"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 4
 summary = "One owner per topic, declared in a registry and checked — plus a propagation gate for rules that live in more surfaces than their authority."
 

@@ -64,7 +64,7 @@ Status → `in_progress`.
 Run the narrowest validation that covers what you touched, then the repo's standard gate set:
 
 ```bash
-rungs check
+node .ai/rungs.mjs check
 ```
 
 Existing tests are not weakened to make a change pass. If a test is genuinely wrong, that is its

@@ -46,7 +46,7 @@ reason**:
 | **fixed** | It was resolved directly | What changed, and where |
 | **dismissed** | It is not a problem, or not one worth solving | *Why not* — this is the one people skip, and it is the one that stops the same observation being recorded again next month |
 
-`rungs check` refuses a closed finding with no reason.
+`node .ai/rungs.mjs check` refuses a closed finding with no reason.
 
 ## What this register does not do
 

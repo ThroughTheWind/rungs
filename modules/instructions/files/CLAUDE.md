@@ -5,7 +5,7 @@
   no second copy to drift (ADR-0001). The import is used rather than a symlink because a symlink
   requires Administrator or Developer Mode on Windows.
 
-  Add Claude-specific content below this comment. It is yours; `rungs upgrade` will not touch it.
+  Add Claude-specific content below this comment. It is yours; `node .ai/rungs.mjs upgrade` will not touch it.
 -->
 
 ## Claude Code

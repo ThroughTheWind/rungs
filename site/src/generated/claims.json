@@ -38,21 +38,21 @@
   "modules": [
     {
       "name": "instructions",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 0,
       "summary": "The agent entry point, the harness bridge, path-scoped rule sources, and the render pipeline. The one module every repo installs.",
       "requires": []
     },
     {
       "name": "adr",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 1,
       "summary": "Numbered, immutable decision records, with an admission rule that keeps the directory from becoming a second documentation tree.",
       "requires": []
     },
     {
       "name": "backlog",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 1,
       "summary": "Work items with stable ids, an eight-status lifecycle, a board, and the three gates that keep the bookkeeping honest.",
       "requires": [
@@ -61,7 +61,7 @@
     },
     {
       "name": "ci",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 1,
       "summary": "One workflow that runs the gate registry, a matrix instead of a file per item, and a check that keeps it that way.",
       "requires": [
@@ -70,7 +70,7 @@
     },
     {
       "name": "findings",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 1,
       "summary": "A register for what is noticed before it is decided, with a triage path into work items.",
       "requires": [
@@ -79,7 +79,7 @@
     },
     {
       "name": "gates",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 1,
       "summary": "The gate runner, the registry every other module registers into, the run ledger, and the generic structural gate set.",
       "requires": [
@@ -88,14 +88,14 @@
     },
     {
       "name": "session",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "rung": 1,
       "summary": "A handoff document carrying state between sessions: resume point, active constraints, and a dated archive.",
       "requires": []
     },
     {
       "name": "audit",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 2,
       "summary": "A repeatable assessment whose output is rows in the findings register, never a document per subject.",
       "requires": [
@@ -113,14 +113,14 @@
     },
     {
       "name": "specs",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 2,
       "summary": "Behaviour specifications with stable feature and story ids, per-story status, a mandatory scope section, and a gate against overclaiming.",
       "requires": []
     },
     {
       "name": "workflows",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "rung": 2,
       "summary": "Decision procedures: how to decompose work, whether to reuse or build, and how much planning a piece of work earns.",
       "requires": [
@@ -139,7 +139,7 @@
     },
     {
       "name": "release",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "rung": 3,
       "summary": "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file.",
       "requires": [
@@ -149,7 +149,7 @@
     },
     {
       "name": "doc-authority",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 4,
       "summary": "One owner per topic, declared in a registry and checked — plus a propagation gate for rules that live in more surfaces than their authority.",
       "requires": [
@@ -158,7 +158,7 @@
     },
     {
       "name": "concurrency",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "rung": 5,
       "summary": "Many sessions on one integration branch: a verified base to cut from, attributed failures, a land protocol that cannot redden the branch, and merge drivers per conflict class.",
       "requires": [
@@ -246,6 +246,6 @@
     "fail": 0,
     "unimplemented": 0,
     "error": 0,
-    "at": "2026-08-17"
+    "at": "2026-09-05"
   }
 }

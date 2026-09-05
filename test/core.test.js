@@ -7,11 +7,11 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
-import { blockedByConflict, blockedByParadigm, emittedFiles } from '../src/add.ts';
+import { blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { gitStatusReconcile, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
-import { applyUpgrade, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
+import { applyUpgrade, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { frontmatterSchema, linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
@@ -43,6 +43,68 @@ test('resolveParams applies overrides before cross-module defaults', () => {
 
   const resolved = resolveParams(modules, { backlog: { root: '.ai/backlog' } });
   assert.equal(resolved.findings.path, 'docs/.ai/backlog/FINDINGS.md');
+});
+
+test('resolveParams exposes the executing package version as a reserved render fact', () => {
+  const expected = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version;
+  const resolved = resolveParams([], { rungs: { version: '9.9.9' } }, '.');
+
+  assert.equal(resolved.rungs.version, expected);
+  assert.equal(
+    substitute('use @rungs/cli@{{rungs.version}} and keep ${{ github.sha }}', 'instructions', resolved),
+    `use @rungs/cli@${expected} and keep \${{ github.sha }}`,
+  );
+});
+
+test('the generated launcher upgrades when managed and remains protected when diverged', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-launcher-upgrade-'));
+  const instructions = loadManifest(resolve('modules', 'instructions'));
+  const rel = '.ai/rungs.mjs';
+  const old = "const packageSpec = '@rungs/cli@0.0.0';\n";
+
+  try {
+    mkdirSync(join(root, '.ai'), { recursive: true });
+    writeFileSync(join(root, rel), old);
+    writeFileSync(
+      join(root, '.ai', 'rungs.toml'),
+      [
+        '[repo]',
+        'harnesses = ["agents-md"]',
+        '',
+        '[modules.instructions]',
+        'version = "1.1.0"',
+        'state = "managed"',
+        '',
+        '[modules.instructions.hashes]',
+        `"${rel}" = "${contentHash(old)}"`,
+        '',
+      ].join('\n'),
+    );
+
+    const record = readRecord(root);
+    assert.ok(record);
+    const planned = planUpgrade(root, [instructions], record);
+    const launcher = planned[0].files.find((file) => file.rel === rel);
+    assert.equal(launcher?.state, 'stale', 'an unchanged old launcher is ours to advance');
+
+    applyUpgrade(root, [instructions], record, [
+      { ...planned[0], files: planned[0].files.filter((file) => file.rel === rel) },
+    ]);
+    const updatedRecord = readRecord(root);
+    assert.ok(updatedRecord);
+    const current = planUpgrade(root, [instructions], updatedRecord)[0].files.find((file) => file.rel === rel);
+    assert.equal(current?.state, 'current', 'the rewritten launcher and recorded hash agree');
+
+    const edited = `${readFileSync(join(root, rel), 'utf8')}\n// consumer edit\n`;
+    writeFileSync(join(root, rel), edited);
+    const divergedPlan = planUpgrade(root, [instructions], updatedRecord);
+    const diverged = divergedPlan[0].files.find((file) => file.rel === rel);
+    assert.equal(diverged?.state, 'diverged');
+    applyUpgrade(root, [instructions], updatedRecord, divergedPlan);
+    assert.equal(readFileSync(join(root, rel), 'utf8'), edited, 'upgrade never overwrites a diverged launcher');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('mergeBlock replaces only the managed block and preserves surrounding text', () => {

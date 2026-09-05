@@ -149,6 +149,10 @@ whether its guard has ever actually fired.
    WI-001, where the same inference existed as a comment beside a `""` default, was implemented
    nowhere, and shipped a dangling `# AGENTS.md — ` into every scaffold. **A default that states
    its own derivation is checkable; a comment that states it is not.**
+9b-ii. **`rungs` is the other reserved namespace.** `{{rungs.version}}` is read from the executing
+   package's manifest and cannot be set by a module or consumer. It lets generated launchers pin the
+   artifact that emitted them without freezing that version as an install parameter: explicitly
+   running a newer CLI makes the managed launcher stale, and `upgrade --apply` advances it.
 9c. **A path parameter may contain separators**, so one parameter places a whole subtree —
    `files/{{path}}/README.md` with `path = "docs/decisions"`. A second "leaf" parameter is never
    needed, and adding one was caught and reverted during authoring.

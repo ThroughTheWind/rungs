@@ -5,7 +5,9 @@ Canonical agent policy for this repository. Read in full before making changes.
 This is the **always-on** document: facts every session needs. Anything that applies to one part of
 the tree belongs in [`.ai/rules/`](.ai/rules/README.md) instead, and anything that is a multi-step
 procedure belongs in a skill. Both load only when relevant, and this file has a line budget that
-`rungs check` enforces.
+`node .ai/rungs.mjs check` enforces. Use `node .ai/rungs.mjs <command>` for every Rungs command;
+the committed launcher pins the exact CLI version this repository has reviewed. To upgrade, choose
+the next immutable version explicitly: `node .ai/rungs.mjs upgrade --to <exact-version> --apply`.
 
 ## What this is
 
@@ -19,7 +21,7 @@ everything is slow enough to get skipped; running the wrong subset proves nothin
 | Change surface | Run |
 | --- | --- |
 | *(fill in per surface)* | |
-| anything | `rungs check` |
+| anything | `node .ai/rungs.mjs check` |
 
 ## Task loop
 

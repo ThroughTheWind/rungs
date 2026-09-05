@@ -8,7 +8,7 @@ block   = { file = "{{path}}/README.md", marker = "adr-index" }
 derives = "file-index"
 sources = ["{{path}}/{{id_prefix}}-*.md"]
 columns = ["id", "title", "status", "date"]
-command = "rungs render"
+command = "node .ai/rungs.mjs render"
 
 # ── adr-required-fields ───────────────────────────────────────────────────────
 
