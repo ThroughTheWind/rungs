@@ -2,7 +2,7 @@
 id: WI-082
 title: Normalize consumer text semantics without rewriting bytes
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-082-consumer-crlf-normalization
 created: 2026-09-05
 updated: 2026-09-05
@@ -103,11 +103,20 @@ Started from exact verified `green/main` `6c3b846bbbc21d6255db84323db54facc08dde
 
 ## Review
 
-Local acceptance evidence:
+Final acceptance evidence:
 
-1. Focused semantic/record/packed journey: 3/3 pass; the packed journey alone completes in 34.2s.
-2. Full `npm test`: 129 total, 126 pass, 3 expected platform skips, 0 fail.
-3. Registered Rungs gates: 30/30 pass; `git diff --check` is clean.
-4. `npm pack --dry-run --json`: 112 entries, including `src/text.ts`; 369,538 bytes packed.
-
-Independent review and the exact pushed OS/Node/site matrix remain pending.
+1. Independent review approved exact implementation commit
+   `c2ebdce5ca8aa15ab7ea3eb769e7baa4c653ef30` with no findings. Later integrations changed no
+   production semantics; their only manual conflict combined filesystem imports in the test file.
+2. On final integrated tip `a5185b4fc6693f552ac222b7433b07bf12562898`, the focused
+   semantic/record/packed journey passed 3/3 and full `npm test` passed 139 tests with 3 expected
+   platform skips and 0 failures.
+3. Registered Rungs gates passed 30/30, `git diff --check` was clean, and
+   `npm pack --dry-run --json` contained 114 entries including `src/text.ts` and
+   `src/storage-key.ts` at 385,222 packed bytes.
+4. Exact-tip GitHub Actions run 33977653274 passed the site plus both Node versions on Linux,
+   macOS and Windows: 7/7 jobs green.
+5. `rungs land` verified the merged implementation tree at
+   `2e9bd0611cf0b1ce380353fc3ce50e19116fe561` with 30/30 gates. A direct check of that exact tree
+   then failed only `backlog-merged-status`, because this item was intentionally still marked
+   `in_progress` until the implementation landing succeeded.
