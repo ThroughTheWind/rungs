@@ -2,7 +2,7 @@
 id: WI-068
 title: Gate the packaged existing-repository consumer journey
 type: feature
-status: planned
+status: in_progress
 branch: feature/WI-068-existing-repo-consumer-journey
 created: 2026-09-05
 updated: 2026-09-05
@@ -110,8 +110,29 @@ root in `finally`, and assert the producer's status is unchanged.
 
 ## Execution
 
-Not started.
+Implemented the package-level journey in `test/package.test.js` without changing production or
+module code.
+
+- The fixture packs the candidate, verifies its SHA-512 integrity, fetches the exact declared
+  `smol-toml` artifact into an isolated npm cache, and installs both tarballs into a temporary tool
+  prefix before invoking only that prefix with offline `npm exec` calls.
+- It seeds and commits the six existing authority surfaces plus one repository-owned validator,
+  removes local `main` while retaining `origin/main`, proves `doctor` and dry-run are read-only,
+  performs the tracked install with `NEXT`/`AF`, and verifies preservation, emitted path bounds,
+  validator adoption and the single exact launcher authority.
+- It commits the adoption, proves repeated init refuses unchanged, runs the complete gate set twice,
+  checks the ignored ledger doubles, exercises upgrade preview/apply, rolls back only the validated
+  temporary consumer, and proves the seed refs, branch, bytes and producer status are restored.
+- The parallel release audit's unrelated changelog-gate mismatch was recorded as [F-039](../FINDINGS.md),
+  not folded into this item.
+
+The focused run on 2026-09-05 reaches the final upgrade assertion, after rollback succeeds, and
+then deliberately fails criterion 6. [F-040](../FINDINGS.md) records the product defect: the first
+same-version apply removes four inter-block blank lines and the terminal newline from
+`.ai/gates.toml` despite preview reporting `0 to update · 0 diverged`; the second apply is stable.
+The strict reproducer remains failing and this item remains `in_progress` until that separate fix
+lands. No production behavior was changed here.
 
 ## Review
 
-Not started.
+Not started — acceptance criterion 6 is blocked by F-040's confirmed same-version apply rewrite.

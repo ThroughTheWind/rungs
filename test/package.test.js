@@ -1,5 +1,6 @@
-import { readFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { delimiter, dirname, resolve, join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { readFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { delimiter, dirname, isAbsolute, relative, resolve, join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
@@ -7,6 +8,72 @@ import assert from 'node:assert/strict';
 
 const root = resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+
+const combinedOutput = (run) => [run.stdout, run.stderr].filter(Boolean).join('\n');
+const withoutAnsi = (text) => text.replace(/\u001b\[[0-9;]*m/g, '');
+
+function expectOk(run, label) {
+  assert.equal(run.error, undefined, `${label}: ${run.error?.message ?? ''}`);
+  assert.equal(run.status, 0, `${label}: ${combinedOutput(run)}`);
+  return run;
+}
+
+function runNpm(args, options = {}) {
+  const npmEntry = [
+    process.env.npm_execpath,
+    join(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    join(dirname(dirname(process.execPath)), 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+  ].find((candidate) => candidate && existsSync(candidate));
+  const common = { encoding: 'utf8', ...options };
+  return npmEntry
+    ? spawnSync(process.execPath, [npmEntry, ...args], common)
+    : spawnSync('npm', args, common);
+}
+
+function runGit(repo, args) {
+  return spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' });
+}
+
+function gitText(repo, args) {
+  return expectOk(runGit(repo, args), `git ${args.join(' ')}`).stdout.trim();
+}
+
+function gitState(repo) {
+  return {
+    head: gitText(repo, ['rev-parse', 'HEAD']),
+    symbolicHead: gitText(repo, ['symbolic-ref', 'HEAD']),
+    refs: gitText(repo, ['for-each-ref', '--sort=refname', '--format=%(refname)=%(objectname)', 'refs/heads', 'refs/remotes']),
+    status: gitText(repo, ['status', '--porcelain=v1', '--untracked-files=all']),
+  };
+}
+
+function gitFiles(repo, includeUntracked = false) {
+  const args = includeUntracked
+    ? ['ls-files', '--cached', '--others', '--exclude-standard', '-z']
+    : ['ls-files', '-z'];
+  return expectOk(runGit(repo, args), `git ${args.join(' ')}`).stdout.split('\0').filter(Boolean).sort();
+}
+
+function trackedDigest(repo) {
+  const hash = createHash('sha256');
+  for (const file of gitFiles(repo)) {
+    hash.update(file).update('\0').update(readFileSync(join(repo, file))).update('\0');
+  }
+  return hash.digest('hex');
+}
+
+function isWithin(parent, child) {
+  const rel = relative(resolve(parent), resolve(child));
+  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
+}
+
+function parsePackResult(stdout) {
+  const start = stdout.search(/^\[/m);
+  assert.notEqual(start, -1, `npm pack did not return JSON: ${stdout}`);
+  const parsed = JSON.parse(stdout.slice(start));
+  assert.equal(parsed.length, 1, 'npm pack should describe exactly one artifact');
+  return parsed[0];
+}
 
 test('the published bin points at a built executable and answers help', () => {
   const bin = resolve(root, manifest.bin.rungs);
@@ -124,6 +191,325 @@ test('a consumer gets one exact launcher shared by local instructions and CI', (
     assert.equal(lock.packages['node_modules/smol-toml'].version, '1.8.0');
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a packed candidate retrofits an existing repository without taking over its authorities', () => {
+  const producerStatus = gitText(root, ['status', '--porcelain=v1', '--untracked-files=all']);
+  const temporaryRoot = mkdtempSync(join(tmpdir(), 'rungs-existing-consumer-'));
+  const packRoot = join(temporaryRoot, 'pack');
+  const toolRoot = join(temporaryRoot, 'tool');
+  const consumer = join(temporaryRoot, 'consumer');
+  const npmCache = join(temporaryRoot, 'npm-cache');
+  for (const dir of [packRoot, toolRoot, consumer, npmCache]) mkdirSync(dir, { recursive: true });
+
+  const packageEnv = { ...process.env, npm_config_cache: npmCache };
+  const initArgs = [
+    'init',
+    consumer,
+    'tracked',
+    '--set',
+    'backlog.id_prefix=NEXT',
+    '--set',
+    'findings.id_prefix=AF',
+  ];
+
+  try {
+    const packedCandidate = parsePackResult(
+      expectOk(
+        runNpm(['pack', '.', '--json', '--pack-destination', packRoot], { cwd: root, env: packageEnv }),
+        'pack candidate',
+      ).stdout,
+    );
+    assert.equal(packedCandidate.name, '@rungs/cli');
+    assert.equal(packedCandidate.version, manifest.version);
+    const candidateTarball = join(packRoot, packedCandidate.filename);
+    const candidateIntegrity = `sha512-${createHash('sha512').update(readFileSync(candidateTarball)).digest('base64')}`;
+    assert.equal(candidateIntegrity, packedCandidate.integrity, 'the candidate bytes must match npm\'s integrity');
+
+    const dependencyVersion = manifest.dependencies['smol-toml'];
+    assert.match(dependencyVersion, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'the runtime dependency must be exact');
+    const dependencySpec = `smol-toml@${dependencyVersion}`;
+    const packedDependency = parsePackResult(
+      expectOk(
+        runNpm(['pack', dependencySpec, '--json', '--ignore-scripts', '--pack-destination', packRoot], {
+          cwd: packRoot,
+          env: packageEnv,
+        }),
+        `pack ${dependencySpec}`,
+      ).stdout,
+    );
+    assert.equal(`${packedDependency.name}@${packedDependency.version}`, dependencySpec);
+    const dependencyTarball = join(packRoot, packedDependency.filename);
+
+    const installFlags = [
+      '--offline',
+      '--prefix',
+      toolRoot,
+      '--ignore-scripts',
+      '--no-audit',
+      '--no-fund',
+      '--package-lock=false',
+      '--cache',
+      npmCache,
+    ];
+    expectOk(
+      runNpm(['install', ...installFlags, dependencyTarball], { cwd: toolRoot, env: packageEnv }),
+      'install exact runtime dependency',
+    );
+    expectOk(
+      runNpm(['install', ...installFlags, candidateTarball], { cwd: toolRoot, env: packageEnv }),
+      'install packed candidate',
+    );
+
+    const installedPackageRoot = realpathSync(join(toolRoot, 'node_modules', '@rungs', 'cli'));
+    const installedDependencyRoot = realpathSync(join(toolRoot, 'node_modules', 'smol-toml'));
+    assert.ok(isWithin(toolRoot, installedPackageRoot), 'the candidate must resolve inside the isolated tool prefix');
+    assert.ok(isWithin(toolRoot, installedDependencyRoot), 'the dependency must resolve inside the isolated tool prefix');
+    assert.equal(isWithin(root, installedPackageRoot), false, 'the candidate must not resolve from the producer');
+    assert.equal(isWithin(root, installedDependencyRoot), false, 'the dependency must not resolve from the producer');
+    const installedManifest = JSON.parse(readFileSync(join(installedPackageRoot, 'package.json'), 'utf8'));
+    const installedDependency = JSON.parse(readFileSync(join(installedDependencyRoot, 'package.json'), 'utf8'));
+    assert.equal(installedManifest.name, '@rungs/cli');
+    assert.equal(installedManifest.version, manifest.version);
+    assert.deepEqual(installedManifest.bin, { rungs: 'dist/cli.js' });
+    assert.equal(installedManifest.dependencies['smol-toml'], dependencyVersion);
+    assert.equal(installedDependency.name, 'smol-toml');
+    assert.equal(installedDependency.version, dependencyVersion);
+    const installedBin = join(toolRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'rungs.cmd' : 'rungs');
+    assert.ok(existsSync(installedBin), 'npm should expose the installed package bin in the isolated prefix');
+
+    const isolatedEnv = { ...process.env };
+    for (const key of Object.keys(isolatedEnv)) {
+      if (key === 'INIT_CWD' || key.startsWith('npm_package_')) delete isolatedEnv[key];
+    }
+    isolatedEnv.NODE_PATH = '';
+    isolatedEnv.NO_COLOR = '1';
+    isolatedEnv.FORCE_COLOR = '0';
+    isolatedEnv.RUNGS_DATE = '2026-09-05';
+    isolatedEnv.npm_config_cache = npmCache;
+    isolatedEnv.npm_config_offline = 'true';
+    isolatedEnv.npm_config_audit = 'false';
+    isolatedEnv.npm_config_fund = 'false';
+    isolatedEnv.PATH = (process.env.PATH ?? '')
+      .split(delimiter)
+      .filter((entry) => entry && !isWithin(root, entry))
+      .join(delimiter);
+    assert.equal(isolatedEnv.PATH.toLowerCase().includes(root.toLowerCase()), false);
+
+    const candidate = (...args) =>
+      runNpm(['exec', '--offline', '--prefix', toolRoot, '--', 'rungs', ...args], {
+        cwd: consumer,
+        env: isolatedEnv,
+      });
+
+    expectOk(runGit(consumer, ['init', '-q', '-b', 'main']), 'initialise consumer git repository');
+    expectOk(runGit(consumer, ['config', 'core.autocrlf', 'false']), 'disable fixture line-ending conversion');
+    const existing = new Map([
+      ['README.md', '# Existing repository\n\nThis project predates Rungs.\n'],
+      ['AGENTS.md', '# Existing agent authority\n\nKeep the repository headless and deterministic.\n'],
+      ['CLAUDE.md', '# Existing Claude authority\n\nRead AGENTS.md before changing this repository.\n'],
+      ['.gitignore', '# Existing ignores\nscratch/\n'],
+      ['docs/backlog.md', '# Existing backlog authority\n\nProduct work remains in this historical flat file.\n'],
+      ['docs/decisions.md', '# Existing decision authority\n\nDEC-001 keeps product decisions in this register.\n'],
+      ['docs/session-log.md', '# Existing session history\n\n2026-09-04: discovery handoff preserved.\n'],
+      [
+        '.github/scripts/check-existing.mjs',
+        [
+          "import { readFileSync } from 'node:fs';",
+          "const backlog = readFileSync(new URL('../../docs/backlog.md', import.meta.url), 'utf8');",
+          "if (!backlog.includes('Existing backlog authority')) throw new Error('existing authority changed');",
+          "console.log('existing validator passed');",
+          '',
+        ].join('\n'),
+      ],
+    ]);
+    for (const [rel, content] of existing) {
+      mkdirSync(dirname(join(consumer, rel)), { recursive: true });
+      writeFileSync(join(consumer, rel), content);
+    }
+    expectOk(runGit(consumer, ['add', '--all']), 'stage seed repository');
+    expectOk(
+      runGit(consumer, [
+        '-c',
+        'user.name=rungs-test',
+        '-c',
+        'user.email=rungs@localhost',
+        'commit',
+        '-q',
+        '-m',
+        'seed existing repository',
+      ]),
+      'commit seed repository',
+    );
+    const seedCommit = gitText(consumer, ['rev-parse', 'HEAD']);
+    const seedFiles = gitFiles(consumer);
+    expectOk(
+      runGit(consumer, ['remote', 'add', 'origin', 'https://example.invalid/arena-lab.git']),
+      'add inert origin remote',
+    );
+    expectOk(runGit(consumer, ['update-ref', 'refs/remotes/origin/main', seedCommit]), 'create origin/main');
+    expectOk(runGit(consumer, ['switch', '-q', '-c', 'consumer/canary']), 'create canary branch');
+    expectOk(runGit(consumer, ['branch', '-D', 'main']), 'remove local main');
+    assert.equal(runGit(consumer, ['show-ref', '--verify', '--quiet', 'refs/heads/main']).status, 1);
+    expectOk(runGit(consumer, ['show-ref', '--verify', '--quiet', 'refs/remotes/origin/main']), 'verify origin/main');
+
+    const beforeReadOnlyCommands = gitState(consumer);
+    const doctor = expectOk(candidate('doctor', consumer), 'packed doctor');
+    assert.match(doctor.stdout, /not a rungs repo/);
+    const dryRun = expectOk(candidate(...initArgs, '--dry-run'), 'packed tracked init dry-run');
+    assert.match(dryRun.stdout, /dry run/i);
+    assert.deepEqual(gitState(consumer), beforeReadOnlyCommands, 'doctor and dry-run must not change files or refs');
+
+    const installed = expectOk(candidate(...initArgs), 'packed tracked init');
+    assert.match(installed.stdout, /adopting 1 existing validator/);
+    const installedFiles = gitFiles(consumer, true);
+    const generatedFiles = installedFiles.filter((file) => !seedFiles.includes(file));
+    const allowedGeneratedPath = (file) =>
+      file.startsWith('.ai/') ||
+      file.startsWith('.claude/') ||
+      file.startsWith('docs/backlog/') ||
+      file.startsWith('docs/decisions/');
+    assert.deepEqual(
+      generatedFiles.filter((file) => !allowedGeneratedPath(file)),
+      [],
+      'tracked init should write only its declared repository-infrastructure families',
+    );
+    for (const required of ['.ai/gates.toml', '.ai/rungs.mjs', '.ai/rungs.toml', 'docs/backlog/BACKLOG.md']) {
+      assert.ok(generatedFiles.includes(required), `${required} should be generated`);
+    }
+
+    for (const rel of [
+      'README.md',
+      'CLAUDE.md',
+      'docs/backlog.md',
+      'docs/decisions.md',
+      'docs/session-log.md',
+      '.github/scripts/check-existing.mjs',
+    ]) {
+      assert.equal(readFileSync(join(consumer, rel), 'utf8'), existing.get(rel), `${rel} must remain byte-for-byte`);
+    }
+    const agents = readFileSync(join(consumer, 'AGENTS.md'), 'utf8');
+    assert.equal(agents.slice(0, existing.get('AGENTS.md').length), existing.get('AGENTS.md'));
+    assert.match(agents.slice(existing.get('AGENTS.md').length), /^\n<!-- rungs:begin instructions@/);
+    const gitignore = readFileSync(join(consumer, '.gitignore'), 'utf8');
+    assert.equal(gitignore.slice(0, existing.get('.gitignore').length), existing.get('.gitignore'));
+    assert.match(gitignore.slice(existing.get('.gitignore').length), /^\n# rungs:begin gates@/);
+
+    const backlogBoard = readFileSync(join(consumer, 'docs', 'backlog', 'BACKLOG.md'), 'utf8');
+    const findings = readFileSync(join(consumer, 'docs', 'backlog', 'FINDINGS.md'), 'utf8');
+    const record = readFileSync(join(consumer, '.ai', 'rungs.toml'), 'utf8');
+    const registry = readFileSync(join(consumer, '.ai', 'gates.toml'), 'utf8');
+    assert.match(backlogBoard, /NEXT-ID: NEXT-001/);
+    assert.match(findings, /NEXT-ID: AF-001/);
+    assert.match(record, /\[modules\.backlog\][\s\S]*?params\s*=\s*\{[^}]*id_prefix = "NEXT"/);
+    assert.match(record, /\[modules\.findings\][\s\S]*?params\s*=\s*\{[^}]*id_prefix = "AF"/);
+    assert.match(registry, /id\s*=\s*"adopted-check-existing"/);
+    assert.match(registry, /command\s*=\s*"node \.github\/scripts\/check-existing\.mjs"/);
+
+    const launcher = readFileSync(join(consumer, '.ai', 'rungs.mjs'), 'utf8');
+    const exactPackage = `@rungs/cli@${manifest.version}`;
+    assert.equal(launcher.split(exactPackage).length - 1, 1, 'the launcher owns one exact package spec');
+    const launcherHash = createHash('sha256').update(launcher.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
+    assert.ok(record.includes(`".ai/rungs.mjs" = "${launcherHash}"`), 'the launcher hash must be recorded');
+    const consumerCorpus = installedFiles.map((file) => readFileSync(join(consumer, file), 'utf8')).join('\n');
+    assert.equal([...consumerCorpus.matchAll(/@rungs\/cli@\d+[0-9A-Za-z.+-]*/g)].length, 1);
+    assert.doesNotMatch(consumerCorpus, /@rungs\/cli@(latest|next|beta|\^|~|\*)/);
+    assert.equal(consumerCorpus.includes(candidateTarball), false, 'the local candidate path must not leak into the repo');
+    assert.equal(consumerCorpus.includes(packedCandidate.filename), false, 'the tarball name must not become an authority');
+    for (const rel of ['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'node_modules']) {
+      assert.equal(existsSync(join(consumer, rel)), false, `consumer must not gain ${rel}`);
+    }
+
+    expectOk(runGit(consumer, ['add', '--all']), 'stage Rungs adoption');
+    expectOk(
+      runGit(consumer, [
+        '-c',
+        'user.name=rungs-test',
+        '-c',
+        'user.email=rungs@localhost',
+        'commit',
+        '-q',
+        '-m',
+        'adopt repository infrastructure',
+      ]),
+      'commit Rungs adoption',
+    );
+    const adoptedCommit = gitText(consumer, ['rev-parse', 'HEAD']);
+    assert.notEqual(adoptedCommit, seedCommit);
+    const adoptedDigest = trackedDigest(consumer);
+    const repeatedInit = candidate(...initArgs);
+    assert.equal(repeatedInit.status, 1, combinedOutput(repeatedInit));
+    assert.match(repeatedInit.stdout, /already initialised/);
+    assert.equal(trackedDigest(consumer), adoptedDigest);
+    assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '');
+
+    const firstCheck = expectOk(candidate('check', consumer, 'full'), 'first full consumer check');
+    const firstCheckText = withoutAnsi(firstCheck.stdout);
+    assert.match(firstCheckText, /pass\s+backlog-merged-status/);
+    assert.match(firstCheckText, /pass\s+adopted-check-existing/);
+    assert.doesNotMatch(firstCheckText, /cannot read git branches/);
+    assert.match(firstCheckText, /0 fail/);
+    const ledger = join(consumer, '.ai', '.gate-ledger.jsonl');
+    const firstLedgerCount = readFileSync(ledger, 'utf8').trim().split(/\r?\n/).filter(Boolean).length;
+    assert.ok(firstLedgerCount > 0, 'the first check should record gate observations');
+    assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '');
+    assert.equal(trackedDigest(consumer), adoptedDigest);
+
+    const secondCheck = expectOk(candidate('check', consumer, 'full'), 'second full consumer check');
+    const secondCheckText = withoutAnsi(secondCheck.stdout);
+    assert.match(secondCheckText, /pass\s+backlog-merged-status/);
+    assert.match(secondCheckText, /pass\s+adopted-check-existing/);
+    assert.match(secondCheckText, /0 fail/);
+    const secondLedgerCount = readFileSync(ledger, 'utf8').trim().split(/\r?\n/).filter(Boolean).length;
+    assert.equal(secondLedgerCount, firstLedgerCount * 2, 'the ignored append-only ledger should record both runs');
+    assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '');
+    assert.equal(trackedDigest(consumer), adoptedDigest);
+
+    const preview = expectOk(candidate('upgrade', consumer), 'same-version upgrade preview');
+    assert.match(preview.stdout, /0 to update\s*·\s*0 diverged/);
+    assert.equal(trackedDigest(consumer), adoptedDigest, 'upgrade preview must be read-only');
+    const applyDigests = [];
+    const applyDiffs = [];
+    for (let pass = 1; pass <= 2; pass++) {
+      const applied = expectOk(candidate('upgrade', consumer, '--apply'), `same-version upgrade apply ${pass}`);
+      assert.match(applied.stdout, /0 to update\s*·\s*0 diverged/);
+      applyDigests.push(trackedDigest(consumer));
+      applyDiffs.push(gitText(consumer, ['diff', '--no-ext-diff', '--']));
+    }
+    const finalPreview = expectOk(candidate('upgrade', consumer), 'post-apply upgrade preview');
+    assert.match(finalPreview.stdout, /0 to update\s*·\s*0 diverged/);
+
+    const resolvedTemporaryRoot = realpathSync(temporaryRoot);
+    const resolvedConsumer = realpathSync(consumer);
+    assert.ok(isWithin(resolvedTemporaryRoot, resolvedConsumer) && resolvedConsumer !== resolvedTemporaryRoot);
+    expectOk(runGit(resolvedConsumer, ['reset', '--hard', seedCommit]), 'rollback tracked consumer files');
+    expectOk(runGit(resolvedConsumer, ['clean', '-fdx']), 'rollback untracked consumer files');
+    assert.equal(gitText(consumer, ['rev-parse', 'HEAD']), seedCommit);
+    assert.deepEqual(gitFiles(consumer), seedFiles);
+    assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '');
+    assert.deepEqual(gitState(consumer), beforeReadOnlyCommands, 'rollback must restore the original refs and branch');
+    for (const [rel, content] of existing) {
+      assert.equal(readFileSync(join(consumer, rel), 'utf8'), content, `${rel} must be restored by rollback`);
+    }
+    assert.deepEqual(
+      applyDigests,
+      [adoptedDigest, adoptedDigest],
+      `same-version applies must both be byte-idempotent:\n${applyDiffs.filter(Boolean).join('\n---\n')}`,
+    );
+  } finally {
+    const resolvedTemporaryRoot = realpathSync(temporaryRoot);
+    const resolvedSystemTemp = realpathSync(tmpdir());
+    assert.ok(
+      resolvedTemporaryRoot !== resolvedSystemTemp && isWithin(resolvedSystemTemp, resolvedTemporaryRoot),
+      `refusing to remove non-temporary path: ${resolvedTemporaryRoot}`,
+    );
+    rmSync(resolvedTemporaryRoot, { recursive: true, force: true });
+    assert.equal(
+      gitText(root, ['status', '--porcelain=v1', '--untracked-files=all']),
+      producerStatus,
+      'packing and running the consumer journey must not change the producer checkout',
+    );
   }
 });
 
