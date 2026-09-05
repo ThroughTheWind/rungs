@@ -145,3 +145,13 @@ equivalent runner alias on Windows). The assertion now canonicalises the expecte
 is retained as diagnostic evidence and is not landing authority. The subsequent green run on
 `05deacf` is also superseded: it did not exercise the shared-role, hard-link or surrogate blockers
 found in review. A new exact-SHA matrix is required.
+
+Review of `ba00621` found one remaining composition error in the collision key: normalising before
+lowercasing does not suffice when case conversion itself creates a decomposed spelling. The exact
+`J` + caron versus U+01F0 collision, and the same pair in a file/descendant relationship, passed
+preflight. A first post-lowercase NFC correction closed that example but review showed lowercasing
+itself is not Unicode case folding: capital sigma and final sigma still passed both shapes. Collision
+comparison now uses canonical decomposition plus ECMAScript's locale-independent Unicode simple
+case folding, segment by segment for ancestry. All four reproductions remain regressions. Run
+`33959177479` remains useful cross-platform evidence for `ba00621`, but it is superseded as landing
+authority because it predates this repair.

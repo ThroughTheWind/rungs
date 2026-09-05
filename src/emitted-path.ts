@@ -59,6 +59,25 @@ function hasUnpairedUtf16Surrogate(value: string): boolean {
   return false;
 }
 
+function canonicalCaselessEqual(left: string, right: string): boolean {
+  // ECMAScript's Unicode-aware ignore-case matcher uses Unicode simple case
+  // folding rather than locale-sensitive lowercasing. NFD first makes
+  // canonically equivalent spellings comparable too (for example J + caron
+  // and U+01F0), while `/iu` also folds forms lowercasing misses (for example
+  // capital sigma and final sigma).
+  const pattern = left.normalize('NFD').replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+  return new RegExp(`^(?:${pattern})$`, 'iu').test(right.normalize('NFD'));
+}
+
+function canonicalCaselessAncestor(ancestor: string, descendant: string): boolean {
+  const ancestorSegments = ancestor.split(sep);
+  const descendantSegments = descendant.split(sep);
+  return (
+    ancestorSegments.length < descendantSegments.length &&
+    ancestorSegments.every((segment, index) => canonicalCaselessEqual(segment, descendantSegments[index]))
+  );
+}
+
 /**
  * Realpath the deepest existing ancestor, then append the still-missing suffix.
  * `resolve()` alone cannot see an in-repository symlink or junction that points
@@ -218,29 +237,29 @@ export function preflightEmittedPaths(
     }
     return destination;
   });
-  const seen = new Map<string, { candidate: EmittedPathCandidate; resolved: ResolvedEmittedPath }>();
+  const seen: { candidate: EmittedPathCandidate; resolved: ResolvedEmittedPath }[] = [];
 
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i];
     const destination = resolved[i];
     // A module plan is portable: names that coexist only on a case-sensitive
     // checkout are still one destination when that record reaches Windows or a
-    // default case-insensitive macOS volume.
-    const key = destination.absolute.normalize('NFC').toLowerCase();
-    const prior = seen.get(key);
+    // default case-insensitive macOS volume. Lowercasing is not case folding:
+    // final sigma, long s and other simple-fold forms would remain distinct.
+    const prior = seen.find((entry) => canonicalCaselessEqual(entry.resolved.absolute, destination.absolute));
     if (!prior) {
-      const structural = [...seen].find(([priorKey]) =>
-        key.startsWith(`${priorKey}${sep}`) || priorKey.startsWith(`${key}${sep}`),
+      const structural = seen.find((entry) =>
+        canonicalCaselessAncestor(entry.resolved.absolute, destination.absolute) ||
+        canonicalCaselessAncestor(destination.absolute, entry.resolved.absolute),
       );
       if (!structural) {
-        seen.set(key, { candidate, resolved: destination });
+        seen.push({ candidate, resolved: destination });
         continue;
       }
-      const [, conflict] = structural;
       throw new UnsafeEmittedPathError(
         candidate.moduleName,
         candidate.target,
-        `it has a file/descendant collision with module '${conflict.candidate.moduleName}' target '${conflict.candidate.target}' after canonical resolution`,
+        `it has a file/descendant collision with module '${structural.candidate.moduleName}' target '${structural.candidate.target}' after canonical resolution`,
       );
     }
     if (candidate.shared && prior.candidate.shared && destination.target === prior.resolved.target) continue;

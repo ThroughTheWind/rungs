@@ -114,6 +114,39 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
       );
     }
 
+    assert.throws(
+      () => preflightEmittedPaths(root, [
+        { moduleName: 'decomposed-after-case', target: 'safe/J\u030c.md' },
+        { moduleName: 'precomposed', target: 'safe/\u01f0.md' },
+      ]),
+      /collides with module/,
+      'canonical simple case folding catches an exact J+caron/U+01F0 alias',
+    );
+    assert.throws(
+      () => preflightEmittedPaths(root, [
+        { moduleName: 'decomposed-after-case', target: 'safe/J\u030c' },
+        { moduleName: 'precomposed', target: 'safe/\u01f0/child.md' },
+      ]),
+      /file\/descendant collision/,
+      'canonical simple case folding catches a structural J+caron/U+01F0 alias',
+    );
+    assert.throws(
+      () => preflightEmittedPaths(root, [
+        { moduleName: 'ordinary-sigma', target: 'safe/\u03a3.md' },
+        { moduleName: 'final-sigma', target: 'safe/\u03c2.md' },
+      ]),
+      /collides with module/,
+      'Unicode simple case folding catches exact capital-sigma/final-sigma aliases',
+    );
+    assert.throws(
+      () => preflightEmittedPaths(root, [
+        { moduleName: 'ordinary-sigma', target: 'safe/\u03a3' },
+        { moduleName: 'final-sigma', target: 'safe/\u03c2/child.md' },
+      ]),
+      /file\/descendant collision/,
+      'Unicode simple case folding catches structural capital-sigma/final-sigma aliases',
+    );
+
     const valid = resolveEmittedPath(root, 'demo', 'docs\\nested/file.md');
     assert.equal(valid.target, 'docs/nested/file.md');
     assert.equal(relative(realpathSync.native(root), valid.absolute).replace(/\\/g, '/'), 'docs/nested/file.md');
