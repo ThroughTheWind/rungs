@@ -19,6 +19,7 @@ import { hostname } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installedParams } from './check.ts';
+import { canonicalCaselessEqual } from './storage-key.ts';
 
 export interface LoopParams {
   integration: string;
@@ -203,18 +204,6 @@ function symbolicRefTarget(root: string, ref: string): string | null {
 type DirectRefResolution =
   | { value: DirectRef; error?: never }
   | { value?: never; error: string };
-
-function canonicalCaselessKey(value: string): string {
-  // APFS's default case-insensitive storage aliases compatibility and full
-  // case forms that Unicode simple folding misses: ß/ss and ﬁ/fi are measured
-  // examples. The built-in default conversions are locale-independent; the
-  // final NFKD catches decompositions introduced by case conversion itself.
-  return value.normalize('NFKD').toLowerCase().toUpperCase().normalize('NFKD');
-}
-
-function canonicalCaselessEqual(left: string, right: string): boolean {
-  return canonicalCaselessKey(left) === canonicalCaselessKey(right);
-}
 
 function refStorageCollides(left: string, right: string): boolean {
   const leftSegments = left.split('/');

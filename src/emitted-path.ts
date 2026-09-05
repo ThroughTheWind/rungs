@@ -1,5 +1,6 @@
 import { lstatSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
+import { canonicalCaselessEqual } from './storage-key.ts';
 
 /**
  * A module path is repository-relative data, not a host-native path.  Treating
@@ -57,16 +58,6 @@ function hasUnpairedUtf16Surrogate(value: string): boolean {
     if (unit >= 0xdc00 && unit <= 0xdfff) return true;
   }
   return false;
-}
-
-function canonicalCaselessEqual(left: string, right: string): boolean {
-  // ECMAScript's Unicode-aware ignore-case matcher uses Unicode simple case
-  // folding rather than locale-sensitive lowercasing. NFD first makes
-  // canonically equivalent spellings comparable too (for example J + caron
-  // and U+01F0), while `/iu` also folds forms lowercasing misses (for example
-  // capital sigma and final sigma).
-  const pattern = left.normalize('NFD').replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
-  return new RegExp(`^(?:${pattern})$`, 'iu').test(right.normalize('NFD'));
 }
 
 function canonicalCaselessAncestor(ancestor: string, descendant: string): boolean {
@@ -244,8 +235,8 @@ export function preflightEmittedPaths(
     const destination = resolved[i];
     // A module plan is portable: names that coexist only on a case-sensitive
     // checkout are still one destination when that record reaches Windows or a
-    // default case-insensitive macOS volume. Lowercasing is not case folding:
-    // final sigma, long s and other simple-fold forms would remain distinct.
+    // default case-insensitive macOS volume. Use the same conservative storage
+    // relation as managed refs, including compatibility and full case forms.
     const prior = seen.find((entry) => canonicalCaselessEqual(entry.resolved.absolute, destination.absolute));
     if (!prior) {
       const structural = seen.find((entry) =>

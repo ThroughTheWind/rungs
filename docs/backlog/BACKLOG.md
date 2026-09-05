@@ -11,6 +11,7 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
+| [WI-080](items/WI-080-apfs-emitted-path-collisions.md) | Refuse APFS emitted-path storage aliases | feature | `feature/WI-080-apfs-emitted-path-collisions` |
 
 ## Review
 
@@ -26,7 +27,6 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- | --- |
 | [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | — |
 | [WI-078](items/WI-078-branch-local-release-exemptions.md) | Require release exemptions from the current branch | feature | — |
-| [WI-080](items/WI-080-apfs-emitted-path-collisions.md) | Refuse APFS emitted-path storage aliases | feature | `feature/WI-080-apfs-emitted-path-collisions` |
 
 ## Accepted
 

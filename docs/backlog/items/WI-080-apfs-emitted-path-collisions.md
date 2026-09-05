@@ -2,7 +2,7 @@
 id: WI-080
 title: Refuse APFS emitted-path storage aliases
 type: feature
-status: planned
+status: in_progress
 branch: feature/WI-080-apfs-emitted-path-collisions
 created: 2026-09-05
 updated: 2026-09-05
@@ -94,9 +94,38 @@ storage relation.
 ## Execution
 
 Branch `feature/WI-080-apfs-emitted-path-collisions` was created with `rungs session start` from
-exact verified `green/main` commit `6c3b846bbbc21d6255db84323db54facc08ddef2`. Implementation has
-not started; this plan is committed first.
+exact verified `green/main` commit `6c3b846bbbc21d6255db84323db54facc08ddef2`. The plan, finding
+promotion and epic links were committed first as `36121c9`.
+
+Red-first execution reproduced the gap at every intended boundary. The focused file had three
+failures: raw preflight accepted the first sharp-S exact pair, stored upgrade planning accepted the
+same pair, and the real bundled CLI completed the same `session` install instead of refusing it.
+The other nine tests passed and two file-symlink tests skipped for Windows privilege.
+
+`src/storage-key.ts` now owns the dependency-free NFKD/lower/upper/NFKD key previously private to
+the concurrency loop. Both `concurrency.ts` and `emitted-path.ts` use that one comparison, while
+emitted-path ancestry remains segment-based. The regression matrix covers sharp-S and ligature
+forms in both textual orientations and both candidate orders, exact and structural. The operation
+tests exercise eight real `session` CLI installs and eight stored-record cases; planning and a
+forged application each refuse, with every consumer still empty.
+
+Local verification on 2026-09-05:
+
+- focused `test/emitted-path.test.js`: 14 total, 12 pass, 2 expected Windows privilege skips;
+- full `npm test`: 128 total, 125 pass, 3 expected platform/privilege skips, 0 fail;
+- `node src/cli.ts check`: 30 pass, 0 fail; it separately reports the existing 45 fixtures without
+  builders as not-run rather than passes ([F-018](../FINDINGS.md));
+- `npm pack --dry-run --json`: 112 entries, 368,331-byte package, including `src/storage-key.ts`;
+- `git diff --check`: clean.
 
 ## Review
 
-Not started. The item remains `planned` until implementation begins.
+Self-review on 2026-09-05 found the change remains within the accepted comparator and regression
+boundary. Criterion 1 is met locally by the exact/structural unit matrix and the retained J-caron
+and sigma cases. Criterion 2 is met by actual non-dry-run CLI refusal with empty target directories.
+Criterion 3 is met by independent plan and apply assertions across every alias/shape orientation.
+The local half of criterion 4 is met by the focused, full, gate, package and diff evidence above.
+
+Independent source review and the exact pushed six-cell OS/Node plus site CI matrix remain pending.
+The item therefore stays `in_progress`; [F-051](../FINDINGS.md) remains open, and nothing is landed
+or archived from this branch.
