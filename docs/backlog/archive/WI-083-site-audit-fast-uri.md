@@ -2,7 +2,7 @@
 id: WI-083
 title: Clear the site fast-uri security audit finding
 type: chore
-status: in_progress
+status: done
 branch: feature/WI-083-site-audit-fast-uri
 created: 2026-09-05
 updated: 2026-09-05
@@ -107,6 +107,14 @@ Local acceptance evidence on Node `v22.22.3` / npm `10.9.8`:
 
 ## Review
 
-Local acceptance is green and the lockfile delta is limited to three fields for one package.
-Independent review and exact-tip CI remain pending. F-053 deliberately remains open and promoted
-while this item is `in_progress`.
+Independent review first found that the two audit commands were separate from the existing Bash
+`&&` chain, so a later successful command could mask a red audit. Exact commit
+`f763f2400aee0c016152b1e710ca1f52dbe48ea0` fixes that process defect by chaining both audits into
+the fail-fast gate. Git for Windows Bash parses the exact multiline command, and an independent
+re-review approves that commit with no remaining findings.
+
+Exact-tip GitHub Actions run 33979067323 passed the site plus both Node versions on Linux, macOS
+and Windows: 7/7 jobs green. `rungs land` then verified the merged implementation tree at
+`8e96c6f1e1ffec20e62edee9f369597c63371498` with 30/30 gates. A direct check of that exact tree
+failed only `backlog-merged-status`, because this item was intentionally still marked
+`in_progress` until the implementation landing succeeded.

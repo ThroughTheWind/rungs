@@ -10,8 +10,13 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-053 | high | now | The site lock resolves `fast-uri@3.1.5`, which is covered by four high-severity host-confusion and SSRF advisories | `npm audit --prefix site` on exact green `main` `141338c`, 2026-09-05, reports one high-severity vulnerable package and names GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf and GHSA-jqff-g426-hqxp; the release runbook did not require either package audit, so a previously clean site audit could regress unnoticed | Before the 0.4.0 candidate is tagged or published | Promoted to [WI-083](items/WI-083-site-audit-fast-uri.md): refresh only the transitive lock resolution to fixed `fast-uri@3.1.7`, prove both package trees audit clean after fresh installs, and make both audits explicit release gates |
 | F-029 | medium | next | The `concurrency` module documents failure **attribution** — `check` re-running each failing gate against the merge base and reporting it as *inherited* or *INTRODUCED* — and it is not built. `land` blocks on any red gate in the merged tree, which is the safe half and the annoying half | Found while building the four commands for [WI-062](items/WI-062-concurrency-phantom-commands.md), 2026-08-17. Same document, same class as [F-026](#), missed by the audit because it describes behaviour of an *existing* command rather than naming a command that does not exist — `module-commands-exist` cannot see it, and says so in its own header. Marked in the doc as design-not-behaviour rather than left reading as shipped | Before the `concurrency` module is recommended to anyone, or the first time a session is blocked by a gate that was already red on the integration branch | Re-run each failing gate against the merge base in a throwaway worktree — `land` already builds one, so the machinery exists. The rule that matters is the one the doc already states: anything it **cannot** attribute blocks, because we do not land on an unknown. Do not make inherited failures merely quieter; the module's own text says a survivable red gate removes the pressure to fix it, and the ledger's ageing signal is what that trades against |
+
+## Closed — 2026-09-05 by [WI-083](archive/WI-083-site-audit-fast-uri.md)
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-053 | The site lock resolved `fast-uri@3.1.5` under four high-severity host-confusion and SSRF advisories | fixed | WI-083 updates only the transitive version, tarball URL and integrity to `fast-uri@3.1.7`; fresh root and site installs audit at zero, the dependency path and registry integrity are verified, and both audits now fail fast in the concrete release gate before v0.4.0 work proceeds |
 
 ## Closed — 2026-09-05 by [WI-082](archive/WI-082-consumer-crlf-normalization.md)
 
