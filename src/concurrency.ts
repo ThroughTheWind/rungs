@@ -13,7 +13,7 @@
  *   3. Never hold the integration branch. Everything runs from a throwaway
  *      worktree, which the module already gates for.
  */
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { hostname } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
@@ -115,11 +115,63 @@ function gitWorktrees(root: string): GitWorktree[] {
  */
 function gitLocalBranchRefs(root: string): GitBranchRef[] {
   const out = git(root, ['for-each-ref', '--format=%(refname)%09%(objectname)%09%(symref)', 'refs/heads/']);
-  if (!out) return [];
-  return out.split('\n').map((line) => {
-    const [ref, oid, symref] = line.split('\t');
-    return { ref, oid, ...(symref ? { symref } : {}) };
-  });
+  const refs = new Map<string, GitBranchRef>();
+  if (out) {
+    for (const line of out.split('\n')) {
+      const [ref, oid, symref] = line.split('\t');
+      refs.set(ref, { ref, oid, ...(symref ? { symref } : {}) });
+    }
+  }
+
+  // `for-each-ref` deliberately omits a symbolic ref whose target does not
+  // exist. It is still operator-visible state and `update-ref --no-deref
+  // create` would replace it, so include every valid loose branch-ref file.
+  // Loose refs override packed refs with the same exact spelling, just as Git
+  // resolves them. Directory entries are read without following OS aliases.
+  const common = resolve(root, git(root, ['rev-parse', '--git-common-dir']));
+  const heads = join(common, 'refs', 'heads');
+  const visit = (directory: string, prefix: string): void => {
+    if (!existsSync(directory)) return;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const shortName = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(path, shortName);
+        continue;
+      }
+      const ref = `refs/heads/${shortName}`;
+      // A lock is Git's coordination artifact, not a stored ref. Other entries
+      // are inspected conservatively; no per-ref subprocess is needed even in
+      // repositories with hundreds of branches.
+      if (entry.name.endsWith('.lock')) continue;
+      if (!entry.isFile()) throw new Error(`branch ref '${ref}' is not a regular loose-ref file`);
+      const value = readFileSync(path, 'utf8').replace(/[\r\n]+$/, '');
+      if (value.startsWith('ref: ')) {
+        refs.set(ref, { ref, oid: '', symref: value.slice('ref: '.length) });
+      } else {
+        // Git already enumerated every usable direct loose ref. The raw walk
+        // exists only to surface omitted symrefs; synthesizing an OID from an
+        // unenumerated file could report a malformed/unresolvable ref as safe.
+        const enumerated = refs.get(ref);
+        if (
+          !enumerated ||
+          enumerated.symref ||
+          !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value) ||
+          enumerated.oid.toLowerCase() !== value.toLowerCase()
+        ) throw new Error(`branch ref '${ref}' has an unreadable or unresolved loose-ref value`);
+      }
+    }
+  };
+  let refFormat = 'files';
+  try {
+    refFormat = git(root, ['rev-parse', '--show-ref-format']);
+  } catch {
+    // `--show-ref-format` predates reftable support. A Git without the query
+    // only has the files backend this scanner was written for.
+  }
+  if (refFormat === 'files') visit(heads, '');
+  else if (refFormat !== 'reftable') throw new Error(`unsupported Git ref format '${refFormat}'`);
+  return [...refs.values()];
 }
 
 interface DirectRef {
@@ -127,13 +179,28 @@ interface DirectRef {
   oid: string | null;
 }
 
+function symbolicRefTarget(root: string, ref: string): string | null {
+  try {
+    return git(root, ['symbolic-ref', '--quiet', ref]);
+  } catch {
+    return null;
+  }
+}
+
 type DirectRefResolution =
   | { value: DirectRef; error?: never }
   | { value?: never; error: string };
 
+function canonicalCaselessKey(value: string): string {
+  // APFS's default case-insensitive storage aliases compatibility and full
+  // case forms that Unicode simple folding misses: ß/ss and ﬁ/fi are measured
+  // examples. The built-in default conversions are locale-independent; the
+  // final NFKD catches decompositions introduced by case conversion itself.
+  return value.normalize('NFKD').toLowerCase().toUpperCase().normalize('NFKD');
+}
+
 function canonicalCaselessEqual(left: string, right: string): boolean {
-  const pattern = left.normalize('NFD').replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
-  return new RegExp(`^(?:${pattern})$`, 'iu').test(right.normalize('NFD'));
+  return canonicalCaselessKey(left) === canonicalCaselessKey(right);
 }
 
 function refStorageCollides(left: string, right: string): boolean {
@@ -170,6 +237,13 @@ function exactDirectRef(
     : `configured green ref '${shortName}'`;
   if (!gitOk(root, ['check-ref-format', wanted])) {
     return { error: `${label} is not a valid direct local branch ref; land is refused.` };
+  }
+
+  // The files and reftable backends both omit dangling symrefs from
+  // `for-each-ref`; query the exact logical key before calling it creatable.
+  const exactSymbolicTarget = symbolicRefTarget(root, wanted);
+  if (exactSymbolicTarget) {
+    return { error: `${label} is symbolic (${wanted} -> ${exactSymbolicTarget}); land requires a direct local branch ref and is refused.` };
   }
 
   const alias = stored.find((entry) => entry.ref !== wanted && refStorageCollides(entry.ref, wanted));
@@ -240,6 +314,10 @@ interface RecoveryRefResult {
  * when that exact candidate is occupied by distinct work or held by a worktree.
  */
 function createDirectRef(root: string, ref: string, oid: string): void {
+  // `create` is the strongest public Git precondition for an absent ref and
+  // `no-deref` protects a symbolic target. Git still treats a dangling symref
+  // created after our last identity check as absent and replaces its *name*;
+  // that uncooperative raw-Git micro-race is documented as a residual boundary.
   const input = `option no-deref\0create ${ref}\0${oid}\0`;
   execFileSync('git', ['update-ref', '--stdin', '-z', '-m', 'rungs park verified merge'], {
     cwd: root,
@@ -266,7 +344,9 @@ function parkVerifiedMerge(
           ? flat
           : `${flat}-${index - 2}`;
     const wanted = `refs/heads/${candidate}`;
-    if (reserved.has(candidate) || !gitOk(root, ['check-ref-format', wanted])) continue;
+    const reservedCollision = [...reserved]
+      .some((name) => refStorageCollides(wanted, `refs/heads/${name}`));
+    if (reservedCollision || !gitOk(root, ['check-ref-format', wanted])) continue;
 
     // Inspect again after a failed create-only CAS so a concurrent creator of
     // this same merge is reused while distinct work sends us to the next name.
@@ -282,8 +362,9 @@ function parkVerifiedMerge(
 
       const exact = stored.find((entry) => entry.ref === wanted);
       const alias = stored.find((entry) => entry.ref !== wanted && refStorageCollides(entry.ref, wanted));
+      const exactSymbolicTarget = symbolicRefTarget(root, wanted);
       const held = worktrees.some((worktree) => worktree.branch === wanted);
-      if (alias || exact?.symref || held) break;
+      if (alias || exact?.symref || exactSymbolicTarget || held) break;
       if (exact) {
         if (exact.oid === merged) return { name: candidate };
         break;
@@ -568,6 +649,7 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
         // Last-resort preservation: an unenumerable or completely blocked ref
         // namespace must not turn refusal into data loss. The detached scratch
         // stays registered until the operator resolves the condition.
+        git(scratch, ['reset', '--hard', merged]);
         preserveScratch = true;
         return {
           ok: false,
@@ -684,9 +766,11 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
       );
     }
 
-    // Rule 1: one compare-and-swap transaction. If either expected-old value
-    // loses, Git commits neither update. `--no-deref` prevents a symref swap in
-    // the final check-to-transaction interval from redirecting either write.
+    // Rule 1: one compare-and-swap transaction. If either expected-old OID
+    // loses, Git commits neither update. `--no-deref` prevents a last-instant
+    // symref swap from redirecting a write into its target; Git cannot CAS the
+    // direct-vs-symbolic type itself, so that raw-Git micro-race is the explicit
+    // residual boundary documented by the module and WI-079.
     try {
       advanceVerifiedRefs(root, initialIntegration, initialGreen, merged);
     } catch {

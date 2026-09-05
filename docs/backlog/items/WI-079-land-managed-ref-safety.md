@@ -34,6 +34,15 @@ refusal; a parked merge is written only to an unheld, direct ref without overwri
 recoverable merge; and Rungs never deletes a parked branch. Advance the integration and green refs
 in one compare-and-swap transaction so neither can move without the other.
 
+Implementation boundary — 2026-09-05, retained after independent review. “Concurrent change” in
+the transaction guarantee means an OID change caught by expected-old CAS or an identity/holder
+change visible to the final validation. A raw process can still replace a direct ref with a
+same-OID symbolic ref after that validation but before Git takes its locks, or create a dangling
+symbolic recovery candidate after allocator validation but before its create-only write. Git's
+public `update-ref` transaction cannot CAS direct-versus-symbolic type and treats a dangling symref
+as absent; `no-deref` protects the target but may replace the named symref itself. These measured
+micro-races are the explicit raw-Git exception below, not silently claimed as closed.
+
 ## Plan
 
 ### Requirements
@@ -42,8 +51,9 @@ in one compare-and-swap transaction so neither can move without the other.
   case aliases, symbolic refs and any identity that cannot be enumerated safely.
 - Refuse before mutation when an existing integration or green ref is checked out, and revalidate
   both identities and holder sets after arbitrary gate code runs.
-- Advance integration and green atomically with expected-old values. A concurrent change to either
-  ref must leave both unchanged and park the verified merge.
+- Advance integration and green atomically with expected-old values. A concurrent OID change to
+  either ref must prevent Rungs from partially writing the pair and park the verified merge;
+  identity/holder changes visible at the final validation must do the same.
 - Never overwrite or delete a checked-out parked ref, and never discard an existing parked merge.
   Choose and report an unheld collision-free recovery ref when the preferred name is occupied.
 - Use no-dereference ref writes so a symbolic-ref swap cannot redirect a checked operation into a
@@ -65,7 +75,8 @@ Generalize WI-075's canonical direct-ref/holder state helper to distinguish a re
 from a creatable marker. Capture both integration and green old values before verification, then
 repeat identity and holder checks at the final mutation boundary. Use one `git update-ref --stdin`
 transaction with compare-and-swap expectations and no dereferencing for the integration and green
-advance; on any verification or transaction failure, leave both refs untouched.
+advance; on any verification or transaction failure, Rungs writes neither ref. The measured
+same-OID ref-type race in the recorded implementation boundary remains outside that guarantee.
 
 Replace deterministic parked-ref overwrites with a recovery allocator. Reuse the preferred parked
 ref only when it already names the same merge and is safe; otherwise create an unheld direct ref
@@ -91,8 +102,11 @@ recovery ref is no longer needed.
 
 ### Out of scope
 
-- Preventing an uncooperative raw Git process from beginning a checkout in the unavoidable interval
-  inside Git's own ref transaction; WI-075's before-and-after-boundary checks remain the cooperative
+- Preventing an uncooperative raw Git process from beginning a checkout, swapping a direct ref for
+  a same-OID symbolic ref, or creating a dangling symbolic recovery candidate in the unavoidable
+  intervals between final validation and Git's locks. Git's public expected-old/create protocol
+  compares OIDs or absence, not ref type; `no-deref` protects the symbolic target but cannot assert
+  that the named ref stayed direct. The early/late checks and Rungs land lock remain the cooperative
   repository contract.
 - Automatically switching, resetting, removing or deleting an operator's worktree or branch; those
   are deliberately operator-owned under ADR-0009.
@@ -102,9 +116,41 @@ recovery ref is no longer needed.
 ## Execution
 
 Started from exact green `main` commit `65932f3` on
-`feature/WI-079-land-managed-ref-safety`, after WI-075 landed. Implementation and adversarial
-verification are in progress.
+`feature/WI-079-land-managed-ref-safety`, after WI-075 landed. The red-first managed-ref matrix
+produced 15 expected failures: green holders and aliases were ignored, parked refs were overwritten
+or deleted, and a blocked green update occurred after integration had already advanced. The first
+implementation made that matrix green and the pre-integration full suite passed 93 tests with one
+platform-specific skip.
+
+Integrated exact green `main` commit `9d362f8` after the local repair stabilized. The backlog merge
+kept WI-073 archived from `main` and WI-079 in progress here. Independent diagnostic review then
+found three real gaps, all reproduced before correction: dangling symrefs omitted by
+`for-each-ref` (including the reftable backend), malformed loose refs being trusted as OIDs, and a
+last-resort scratch retained at the reset base rather than the verified merge. Exact regressions
+now cover each correction. A GitHub-reviewed APFS advisory also disproved the inherited assumption
+that NFD plus Unicode simple folding covers macOS storage aliases; the ref key now uses NFKD and
+full locale-independent case conversion, with sharp-S and ligature regressions. The same limitation
+in WI-073's emitted-path comparator is recorded separately as release-blocking [F-051](../FINDINGS.md)
+rather than widening this item. Review also measured the public-Git same-OID ref-type race and its
+create-only dangling-symref analogue, both recorded in the Decision and Out of scope; closing them
+would require a new cooperative transaction protocol, so the plan is narrowed explicitly rather
+than overstating `no-deref`.
+
+Final integrated verification passed locally. The broad land/ref-safety slice passed 44/44; full
+`npm test` passed 111 tests with three platform skips (114 total); `npm pack --dry-run` included
+110 files in a 354.6 kB package; and `git diff --check` was clean. The first integrated gate run
+correctly rejected the stale generated site snapshot after `concurrency` moved from 1.3.0 to 1.4.0.
+After the prescribed `npm run claims` regeneration, all 30 registered gates passed, and the
+snapshot was regenerated once more from that green run so it records 30 pass / 0 fail. No land,
+branch deletion or worktree removal is part of this item.
 
 ## Review
 
-Not started.
+Independent review approved the final live diff with no remaining implementable WI-079 blocker.
+It independently reran full `npm test` (111 pass, three platform skips), the narrowed new regression
+slice (15/15), and `git diff --check`, and verified the dangling files/reftable symrefs, malformed
+loose refs, merged scratch preservation, NFKD/full-fold aliases, canonical reserved-name filtering,
+atomic two-ref CAS, recovery preservation, and honest limitation language. Its only non-blocking
+hardening note is that a future tri-state symbolic-ref probe could distinguish an ordinary
+non-symbolic exit from a fatal Git error more precisely. Exact committed-tip CI evidence remains
+pending.

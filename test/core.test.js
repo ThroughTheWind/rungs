@@ -1467,10 +1467,15 @@ test('the shell hook blocks interpreter heredocs and multi-line -e, and nothing 
 // assert the guarantees ADR-0009 makes rather than that the happy path prints something: verify
 // before you advance, refuse rather than destroy, and never leave the integration branch moved by
 // a merge nobody gated.
-function loopRepo() {
+function loopRepo(refFormat) {
   const dir = mkdtempSync(join(tmpdir(), 'rungs-loop-'));
   const g = (...a) => execFileSync('git', a, { cwd: dir, stdio: 'pipe', encoding: 'utf8' }).trim();
-  g('init', '-q', '-b', 'main', '.');
+  try {
+    g('init', '-q', '-b', 'main', ...(refFormat ? [`--ref-format=${refFormat}`] : []), '.');
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true });
+    throw error;
+  }
   g('config', 'user.email', 't@t');
   g('config', 'user.name', 't');
   writeFileSync(join(dir, 'a.txt'), 'base\n');
@@ -2084,6 +2089,78 @@ test('land rejects an existing symbolic green ref before gates or mutation', () 
   }
 });
 
+test('land rejects and preserves a dangling symbolic green ref omitted by for-each-ref', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/dangling-green-symref');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('symbolic-ref', 'refs/heads/green/main', 'refs/heads/missing-green-target');
+    assert.doesNotMatch(
+      g('for-each-ref', '--format=%(refname)', 'refs/heads/'),
+      /refs\/heads\/green\/main/,
+      'the Git enumerator omits the dangling symref in this regression',
+    );
+    const common = resolve(dir, g('rev-parse', '--git-common-dir'));
+    const symrefPath = join(common, 'refs', 'heads', 'green', 'main');
+    const symrefBefore = readFileSync(symrefPath);
+    const before = worktreeSnapshot(dir, ['a.txt']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/dangling-green-symref', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*symbolic.*missing-green-target|direct.*green\/main/i);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(readFileSync(symrefPath), symrefBefore, 'the dangling symref bytes are preserved');
+    assert.equal(g('symbolic-ref', 'refs/heads/green/main'), 'refs/heads/missing-green-target');
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt']), before);
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land detects a dangling green symref in the reftable backend', (t) => {
+  let repo;
+  try {
+    repo = loopRepo('reftable');
+  } catch {
+    t.skip('installed Git does not support the reftable backend');
+    return;
+  }
+  const { dir, g } = repo;
+  try {
+    assert.equal(g('rev-parse', '--show-ref-format'), 'reftable');
+    g('switch', '-q', '-c', 'feature/reftable-dangling-green');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('symbolic-ref', 'refs/heads/green/main', 'refs/heads/missing-green-target');
+    assert.doesNotMatch(g('for-each-ref', '--format=%(refname)', 'refs/heads/'), /refs\/heads\/green\/main/);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/reftable-dangling-green', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /green\/main.*symbolic.*missing-green-target|direct.*green\/main/i);
+    assert.equal(runnerCalls, 0);
+    assert.equal(g('symbolic-ref', 'refs/heads/green/main'), 'refs/heads/missing-green-target');
+    assert.equal(existsSync(landLockPath(dir)), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('land rejects coexisting exact and case-aliased managed refs, including packed exact refs', async (t) => {
   await t.test('integration alias', () => {
     const { dir, g } = loopRepo();
@@ -2179,6 +2256,42 @@ test('land rejects coexisting exact and case-aliased managed refs, including pac
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  for (const [label, integration, alias] of [
+    ['full sharp-S fold', 'ß', 'ss'],
+    ['compatibility ligature fold', 'ﬁ', 'fi'],
+  ]) {
+    await t.test(label, () => {
+      const { dir, g } = loopRepo();
+      try {
+        configureIntegration(dir, integration);
+        g('add', '.ai/rungs.toml');
+        g('commit', '-qm', 'configure portable integration');
+        g('branch', integration, 'main');
+        g('switch', '-q', '-c', `feature/${alias}-portable-alias`, integration);
+        writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+        g('add', '-A');
+        g('commit', '-qm', 'branch');
+        g('switch', '--detach', '-q', integration);
+        g('pack-refs', '--all');
+        g('update-ref', '--no-deref', `refs/heads/${alias}`, integration);
+        const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+        let runnerCalls = 0;
+
+        const result = land(dir, `feature/${alias}-portable-alias`, () => {
+          runnerCalls++;
+          return { pass: 1, failing: [] };
+        });
+
+        assert.equal(result.ok, false);
+        assert.match(result.lines.join('\n'), /case-aliased|directory\/file-conflicting/);
+        assert.equal(runnerCalls, 0);
+        assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
 });
 
 test('land rejects a configuration where integration and green are the same ref', () => {
@@ -2285,6 +2398,68 @@ test('land preserves unsafe preferred parking refs and uses collision-free recov
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  await t.test('dangling symbolic ref', () => {
+    const { dir, g } = loopRepo();
+    try {
+      g('switch', '-q', '-c', 'feature/dangling-park-symbolic');
+      writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+      g('add', '-A');
+      g('commit', '-qm', 'branch');
+      g('switch', '--detach', '-q', 'main');
+      const preferred = 'integ/feature/dangling-park-symbolic';
+      g('symbolic-ref', `refs/heads/${preferred}`, 'refs/heads/missing-park-target');
+      const common = resolve(dir, g('rev-parse', '--git-common-dir'));
+      const symrefPath = join(common, 'refs', 'heads', ...preferred.split('/'));
+      const symrefBefore = readFileSync(symrefPath);
+      let verifiedMerge;
+
+      const result = land(dir, 'feature/dangling-park-symbolic', (scratch, only) => {
+        if (!only) verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+        return introducedFailure(scratch, only);
+      });
+      const recovery = parkedRef(result);
+
+      assert.equal(result.ok, false);
+      assert.notEqual(recovery, preferred);
+      assert.equal(g('rev-parse', recovery), verifiedMerge);
+      assert.deepEqual(readFileSync(symrefPath), symrefBefore, 'the dangling preferred symref is untouched');
+      assert.equal(g('symbolic-ref', `refs/heads/${preferred}`), 'refs/heads/missing-park-target');
+      assert.notEqual(
+        spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/heads/missing-park-target'], { cwd: dir }).status,
+        0,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+test('Git create-only cannot CAS dangling-symref identity in the documented raw-process micro-window', () => {
+  const { dir, g } = loopRepo();
+  try {
+    const oid = g('rev-parse', 'main');
+    const candidate = 'refs/heads/rungs-race-proof';
+    const target = 'refs/heads/missing-race-target';
+    g('symbolic-ref', candidate, target);
+    const input = Buffer.from(`option no-deref\0create ${candidate}\0${oid}\0`, 'utf8');
+
+    execFileSync('git', ['update-ref', '--stdin', '-z'], { cwd: dir, stdio: 'pipe', input });
+
+    assert.notEqual(
+      spawnSync('git', ['symbolic-ref', '--quiet', candidate], { cwd: dir }).status,
+      0,
+      'Git replaced the racing dangling symref name despite no-deref',
+    );
+    assert.equal(g('rev-parse', candidate), oid);
+    assert.notEqual(
+      spawnSync('git', ['show-ref', '--verify', '--quiet', target], { cwd: dir }).status,
+      0,
+      'no-deref still protects the dangling target',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('introduced failure preserves a checked-out preferred parking ref and allocates a distinct recovery ref', () => {
@@ -2605,6 +2780,53 @@ test('atomic ref transaction failure moves neither integration nor green and par
     assert.equal(g('rev-parse', parkedRef(result)), verifiedMerge, 'the verified merge is recoverable');
     assert.equal(readFileSync(greenLock, 'utf8'), 'competing lock\n', 'the competing lock is preserved');
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a recovery-enumeration failure retains the scratch worktree at the verified merge', () => {
+  const { dir, g } = loopRepo();
+  let retained;
+  let malformed;
+  try {
+    g('switch', '-q', '-c', 'feature/retained-scratch');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    const common = resolve(dir, g('rev-parse', '--git-common-dir'));
+    malformed = join(common, 'refs', 'heads', 'malformed-recovery-state');
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/retained-scratch', (scratch, only) => {
+      if (!only) {
+        verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+        writeFileSync(malformed, 'not-an-object-id\n');
+        return { pass: 0, failing: [{ id: 'new-gate', findings: ['new failure'] }] };
+      }
+      return { pass: 1, failing: [] };
+    });
+    const match = result.lines.join('\n').match(/detached scratch worktree is retained at (.+)\. Resolve/);
+    assert.ok(match, result.lines.join('\n'));
+    retained = match[1];
+
+    assert.equal(result.ok, false);
+    assert.equal(gitText(retained, 'rev-parse', 'HEAD'), verifiedMerge, 'the retained worktree points at the merge, not the reset base');
+    assert.equal(readFileSync(join(retained, 'a.txt'), 'utf8'), 'branch work\n');
+    assert.ok(
+      g('worktree', 'list', '--porcelain').replaceAll('\\', '/').includes(`worktree ${retained.replaceAll('\\', '/')}`),
+      'the retained path stays registered as a Git worktree',
+    );
+    assert.equal(existsSync(landLockPath(dir)), false, 'retaining recovery never retains the coordination lock');
+  } finally {
+    if (malformed) rmSync(malformed, { force: true });
+    if (retained) {
+      try {
+        g('worktree', 'remove', '--force', retained);
+      } catch {
+        rmSync(retained, { recursive: true, force: true });
+      }
+    }
     rmSync(dir, { recursive: true, force: true });
   }
 });

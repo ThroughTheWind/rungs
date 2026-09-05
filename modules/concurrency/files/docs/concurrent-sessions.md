@@ -70,6 +70,14 @@ worktree holds either one, then checks exact ref identity and holders again afte
 code and immediately before the transaction. Case-aliased and symbolic configured refs are
 rejected because their spelling can otherwise make checkout discovery and ref mutation disagree.
 
+There is one deliberately narrow raw-Git boundary. After the last identity check but before Git
+takes a lock, another process can replace a validated direct ref with a same-object-ID symbolic ref,
+or create a dangling symbolic ref at the recovery name Rungs is about to create. Git's public ref
+transaction compares object IDs (or absence), not direct-versus-symbolic type. `--no-deref`
+protects the symbolic target, but Git can replace the named symbolic ref itself. Do not mutate
+managed or recovery refs outside the Rungs land protocol; closing these micro-windows requires a
+cooperative repository-wide transaction protocol, not another before/after check.
+
 ## Recovery refs are retained
 
 When a verified merge cannot advance, `land` reports the exact branch that preserves it. The
@@ -77,10 +85,11 @@ preferred name is `{{integ_prefix}}<branch>`. If that branch is checked out or a
 different work, Rungs creates a collision-free name containing the full merge identity instead.
 Creation is compare-and-swap and never follows a symbolic ref.
 
-Rungs never overwrites or deletes a recovery branch, including after a later successful land.
-Cleanup is an explicit operator decision: inspect the reported ref and every worktree holding it,
-then delete it only when its work is no longer needed. Repeating the same refused land reuses an
-unheld recovery ref that already points at the identical merge instead of accumulating duplicates.
+Within that cooperative protocol, Rungs never overwrites or deletes an observed recovery branch,
+including after a later successful land. Cleanup is an explicit operator decision: inspect the
+reported ref and every worktree holding it, then delete it only when its work is no longer needed.
+Repeating the same refused land reuses an unheld recovery ref that already points at the identical
+merge instead of accumulating duplicates.
 
 ## Three things to know when a land refuses
 
