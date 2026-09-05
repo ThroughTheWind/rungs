@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -1042,6 +1042,63 @@ test('change-requires-file rejects inherited exemption evidence through the prod
   }
 });
 
+test('release exemption provenance isolates a reason from unrelated same-line edits', () => {
+  const fixture = releaseDeltaRepo({
+    'src/a.ts': '/* changelog-ok: historical internal rename */ export const value = 1;\n',
+  });
+  try {
+    fixture.write(
+      'src/a.ts',
+      '/* changelog-ok: historical internal rename */ export const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'code suffix only');
+
+    fixture.write(
+      'src/a.ts',
+      '  /* changelog-ok: historical internal rename */ export const value = 1;  \n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'formatting only');
+
+    fixture.write(
+      'src/a.ts',
+      '/* changelog-ok: value now comes from a private cache */ export const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'reason changed');
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('untracked exemption evidence must be contained regular UTF-8 text', (t) => {
+  const fixture = releaseDeltaRepo({ '.gitattributes': '*.dat binary\n' });
+  const outside = mkdtempSync(join(tmpdir(), 'rungs-release-outside-'));
+  try {
+    fixture.write('src/a.ts', 'export const changed = true;\n');
+    fixture.write(
+      'notes/binary.dat',
+      Buffer.from('// changelog-ok: binary evidence is not text\0payload\n'),
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'untracked binary');
+    fixture.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'staged binary');
+    fixture.git('commit', '-q', '-m', 'binary fixture');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'committed binary');
+
+    fixture.write('notes/outside-placeholder.txt', 'placeholder\n');
+    rmSync(join(fixture.root, 'notes', 'outside-placeholder.txt'));
+    writeFileSync(join(outside, 'evidence.txt'), '// changelog-ok: evidence lives outside the repository\n');
+    try {
+      symlinkSync(outside, join(fixture.root, 'notes', 'outside'), process.platform === 'win32' ? 'junction' : 'dir');
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'external alias evidence');
+    } catch (error) {
+      t.diagnostic(`directory alias probe unavailable: ${error instanceof Error ? error.message : error}`);
+    }
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
 test('release exemption provenance rejects moved and copied history but accepts new untracked evidence', () => {
   const historical = '// changelog-ok: historical internal rename\n';
 
@@ -1070,6 +1127,7 @@ test('release exemption provenance rejects moved and copied history but accepts 
   try {
     copied.write('src/change.ts', 'export const changed = true;\n');
     copied.write('src/copied.ts', `${historical}export const source = 1;\n`);
+    assert.equal(changeRequiresFile(releaseChangeTable, copied.root, []).findings.length, 1, 'untracked historical copy');
     copied.git('add', '--all');
     assert.equal(changeRequiresFile(releaseChangeTable, copied.root, []).findings.length, 1, 'staged historical copy');
   } finally {
@@ -1087,6 +1145,24 @@ test('release exemption provenance rejects moved and copied history but accepts 
     assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new committed evidence');
   } finally {
     rmSync(untracked.root, { recursive: true, force: true });
+  }
+
+  const duplicate = releaseDeltaRepo({
+    'docs/history.md': historical,
+  });
+  try {
+    duplicate.write('src/a.ts', 'export const changed = true;\n');
+    duplicate.write(
+      'notes/new-evidence.md',
+      `${historical}This is a new decision.\nIt has independent context.\nIt names the current branch.\n`,
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 0, 'new coincidentally identical reason');
+    duplicate.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 0, 'staged coincidentally identical reason');
+    duplicate.git('commit', '-q', '-m', 'new coincidentally identical reason');
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 0, 'committed coincidentally identical reason');
+  } finally {
+    rmSync(duplicate.root, { recursive: true, force: true });
   }
 });
 

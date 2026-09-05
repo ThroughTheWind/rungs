@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { TextDecoder } from 'node:util';
+import { resolveEmittedPath } from './emitted-path.ts';
 import { matchAny } from './glob.ts';
 import { readVersionSource } from './version-source.ts';
 import type { Engine, Finding } from './engines.ts';
@@ -429,27 +431,62 @@ const patternList = (value: unknown, allowEmpty = false): value is string[] =>
   Array.isArray(value) && (allowEmpty || value.length > 0) &&
   value.every((pattern) => typeof pattern === 'string' && pattern.trim().length > 0);
 
+function lineExemptionEvidence(line: string, marker: string): string[] {
+  const evidence: string[] = [];
+  let cursor = 0;
+
+  for (;;) {
+    const markerAt = line.indexOf(marker, cursor);
+    if (markerAt < 0) break;
+    cursor = markerAt + marker.length;
+
+    const rawTail = line.slice(cursor);
+    const leading = rawTail.match(/^[ \t]*/)?.[0].length ?? 0;
+    if (!/[\p{L}\p{N}]/u.test(rawTail[leading] ?? '')) continue;
+
+    let reason = rawTail.slice(leading);
+    const prefix = line.slice(0, markerAt);
+    const blockOpen = prefix.lastIndexOf('/*');
+    const htmlOpen = prefix.lastIndexOf('<!--');
+    const openers: { at: number; close: string }[] = [];
+    if (blockOpen > prefix.lastIndexOf('*/')) openers.push({ at: blockOpen, close: '*/' });
+    if (htmlOpen > prefix.lastIndexOf('-->')) openers.push({ at: htmlOpen, close: '-->' });
+
+    const immediate = prefix.at(-1);
+    if (immediate === '"' || immediate === "'" || immediate === '`') {
+      openers.push({ at: prefix.length - 1, close: immediate });
+    }
+    const wrapper = openers.sort((left, right) => right.at - left.at)[0];
+    if (wrapper) {
+      const closeAt = reason.indexOf(wrapper.close);
+      if (closeAt >= 0) reason = reason.slice(0, closeAt);
+    }
+
+    reason = reason.trimEnd();
+    if (reason) evidence.push(reason);
+  }
+  return evidence;
+}
+
 const sameLineExemption = (text: string, marker?: string) =>
-  !!marker && text.split(/\r?\n/).some((line) =>
-    line.split(marker).slice(1).some((tail) => /^[ \t]*[\p{L}\p{N}]/u.test(tail)),
-  );
+  !!marker && text.split(/\r?\n/).some((line) => lineExemptionEvidence(line, marker).length > 0);
 
 const stripCarriageReturn = (line: string) => line.endsWith('\r') ? line.slice(0, -1) : line;
 
 /**
  * Return only exemption evidence introduced by the complete current delta.
  *
- * One `git diff <merge-base>` observes committed, staged and unstaged tracked
+ * `git diff <merge-base>` observes committed, staged and unstaged tracked
  * content in its final working-tree state, so staging cannot change the
- * verdict and an intermediate edit that was later reverted cannot count. Git
- * prefixes added content with a control-byte indicator, which keeps diff
- * headers and user-authored `+++` lines out of the parser. Untracked files are
- * wholly branch-local by definition.
+ * verdict and an intermediate edit that was later reverted cannot count. Each
+ * changed file is inspected independently. Git prefixes changed content with
+ * control-byte indicators, which keeps diff headers and user-authored `+++`
+ * lines out of the parser.
  *
- * An unchanged marker line found anywhere in the base tree remains historical
- * even if a rename, copy or line move makes Git present it as an addition. The
- * conservative repository-wide comparison is intentional: copying an old
- * reason is not new evidence; edit the reason to state why this branch is safe.
+ * Added reason text is compared with removed reason text for the same
+ * path/rename/copy record. This rejects an unchanged reason carried through a
+ * same-line code edit, rename, detected copy or line move without making an
+ * unrelated historical sentence reserve those words repository-wide.
  */
 function hasBranchLocalExemption(
   root: string,
@@ -457,51 +494,87 @@ function hasBranchLocalExemption(
   untracked: string[],
   marker: string,
 ): boolean {
-  if (untracked.some((rel) => existsSync(join(root, rel)) && sameLineExemption(read(root, rel), marker))) {
-    return true;
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const baseBlobIds = new Set(execFileSync(
+    'git',
+    ['ls-tree', '-r', '-z', '--full-tree', mergeBase],
+    { cwd: root, stdio: 'pipe' },
+  ).toString().split('\0').flatMap((entry) => {
+    const [metadata = ''] = entry.split('\t', 1);
+    const [mode, type, object] = metadata.split(' ');
+    return type === 'blob' && mode !== '120000' && object ? [object] : [];
+  }));
+  for (const rel of untracked) {
+    try {
+      const resolved = resolveEmittedPath(root, 'release exemption evidence', rel);
+      if (resolved.leafAlias || !lstatSync(resolved.absolute).isFile()) continue;
+      const bytes = readFileSync(resolved.absolute);
+      if (bytes.includes(0)) continue;
+      const object = execFileSync(
+        'git',
+        ['hash-object', `--path=${rel}`, resolved.absolute],
+        { cwd: root, stdio: 'pipe' },
+      ).toString().trim();
+      if (baseBlobIds.has(object)) continue;
+      if (sameLineExemption(decoder.decode(bytes), marker)) return true;
+    } catch {
+      // Unsafe aliases, non-files, binary/invalid UTF-8 and transient reads are
+      // not branch-local textual evidence. A different valid file may still be.
+    }
   }
 
   const newLine = '\x1f';
   const oldLine = '\x1e';
   const contextLine = '\x1d';
-  const diff = execFileSync('git', [
-    'diff',
+  const common = [
     '--no-ext-diff',
     '--no-textconv',
     '--no-color',
-    '--unified=0',
     '--find-renames',
     '--find-copies',
     '--find-copies-harder',
-    `--output-indicator-new=${newLine}`,
-    `--output-indicator-old=${oldLine}`,
-    `--output-indicator-context=${contextLine}`,
+  ];
+  const nameStatus = execFileSync('git', [
+    'diff',
+    ...common,
+    '--name-status',
+    '-z',
     mergeBase,
     '--',
   ], { cwd: root, stdio: 'pipe' }).toString();
+  const fields = nameStatus.split('\0');
+  if (fields.at(-1) === '') fields.pop();
 
-  const added = diff
-    .split('\n')
-    .filter((line) => line.startsWith(newLine))
-    .map((line) => stripCarriageReturn(line.slice(1)))
-    .filter((line) => sameLineExemption(line, marker));
-  if (!added.length) return false;
+  for (let index = 0; index < fields.length;) {
+    const status = fields[index++];
+    const kind = status[0];
+    const paths = kind === 'R' || kind === 'C'
+      ? [fields[index++], fields[index++]]
+      : [fields[index++]];
+    if (kind === 'D') continue;
 
-  let historical = '';
-  try {
-    historical = execFileSync(
-      'git',
-      ['grep', '-I', '-h', '-F', '-e', marker, mergeBase, '--'],
-      { cwd: root, stdio: 'pipe' },
-    ).toString();
-  } catch (error: any) {
-    // `git grep` uses 1 for a valid search with no matches. Every other error
-    // means provenance is unknown and must be surfaced by the caller.
-    if (error?.status !== 1) throw error;
-    historical = error?.stdout?.toString() ?? '';
+    const diff = execFileSync('git', [
+      'diff',
+      ...common,
+      '--unified=0',
+      `--output-indicator-new=${newLine}`,
+      `--output-indicator-old=${oldLine}`,
+      `--output-indicator-context=${contextLine}`,
+      mergeBase,
+      '--',
+      ...paths,
+    ], { cwd: root, stdio: 'pipe' }).toString();
+    const lines = diff.split('\n');
+    const added = lines
+      .filter((line) => line.startsWith(newLine))
+      .flatMap((line) => lineExemptionEvidence(stripCarriageReturn(line.slice(1)), marker));
+    if (!added.length) continue;
+    const removed = new Set(lines
+      .filter((line) => line.startsWith(oldLine))
+      .flatMap((line) => lineExemptionEvidence(stripCarriageReturn(line.slice(1)), marker)));
+    if (added.some((reason) => !removed.has(reason))) return true;
   }
-  const inherited = new Set(historical.split('\n').map(stripCarriageReturn).filter(Boolean));
-  return added.some((line) => !inherited.has(line));
+  return false;
 }
 
 /**
