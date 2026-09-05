@@ -9,7 +9,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, delimiter, dirname, isAbsolute, relative, resolve, join, sep } from 'node:path';
+import { basename, delimiter, dirname, isAbsolute, parse, relative, resolve, join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
@@ -78,14 +78,13 @@ function trackedDigest(repo) {
   return hash.digest('hex');
 }
 
-function canonicalPath(path) {
-  const absolute = resolve(path);
-  let existing = absolute;
+function canonicalizeDeepestExisting(path) {
+  let existing = path;
   const missing = [];
 
   while (!existsSync(existing)) {
     const ancestor = dirname(existing);
-    if (ancestor === existing) return absolute;
+    if (ancestor === existing) return undefined;
     missing.unshift(basename(existing));
     existing = ancestor;
   }
@@ -93,9 +92,65 @@ function canonicalPath(path) {
   try {
     return resolve(realpathSync(existing), ...missing);
   } catch {
-    // PATH entries can be inaccessible; containment stays non-throwing and conservative.
-    return absolute;
+    return undefined;
   }
+}
+
+function windowsPathFrom(path, base) {
+  if (path.startsWith('"') && path.endsWith('"') && path.length >= 2) path = path.slice(1, -1);
+  if (!path || path.includes('"')) return undefined;
+  // Drive-relative paths depend on process-wide per-drive state, so they are not safe to retain.
+  if (/^[a-z]:/i.test(path) && !isAbsolute(path)) return undefined;
+  // A single leading separator is rooted on the consumer's drive or share, which `resolve` retains.
+  return resolve(base, path);
+}
+
+function canonicalPathFrom(path, base) {
+  if (process.platform === 'win32') {
+    // Windows normalises `..` before traversing a junction; resolve against the consumer first.
+    const absolute = windowsPathFrom(path, base);
+    return absolute === undefined ? undefined : canonicalizeDeepestExisting(absolute);
+  }
+
+  const absolute = isAbsolute(path);
+  const root = absolute ? parse(path).root : '';
+  let existing;
+  const missing = [];
+
+  try {
+    existing = realpathSync(absolute ? root : base);
+  } catch {
+    return undefined;
+  }
+
+  const remainder = absolute ? path.slice(root.length) : path;
+  const segments = remainder.split(/\/+/);
+  for (const segment of segments) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      // A missing component makes the runtime path unusable; do not lexically guess past it.
+      if (missing.length > 0) return undefined;
+      existing = dirname(existing);
+      continue;
+    }
+    if (missing.length > 0) {
+      missing.push(segment);
+      continue;
+    }
+
+    const candidate = join(existing, segment);
+    if (!existsSync(candidate)) {
+      missing.push(segment);
+      continue;
+    }
+    try {
+      existing = realpathSync(candidate);
+    } catch {
+      return undefined;
+    }
+  }
+
+  return missing.length > 0 ? join(existing, ...missing) : existing;
 }
 
 function isWithinCanonical(parent, child) {
@@ -103,12 +158,13 @@ function isWithinCanonical(parent, child) {
   return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
 }
 
-function isWithin(parent, child) {
-  return isWithinCanonical(canonicalPath(parent), canonicalPath(child));
-}
-
 function isExistingWithin(parent, child) {
   return isWithinCanonical(realpathSync(parent), realpathSync(child));
+}
+
+function pathEntryIsOutside(canonicalParent, entry, cwd) {
+  const canonicalEntry = canonicalPathFrom(entry, cwd);
+  return canonicalEntry !== undefined && !isWithinCanonical(canonicalParent, canonicalEntry);
 }
 
 function parsePackResult(stdout) {
@@ -135,21 +191,89 @@ test('path containment canonicalizes aliased ancestors and missing descendants',
   const realChild = join(realParent, 'child');
   const outsideParent = join(fixtureRoot, 'outside');
   const escapeAlias = join(realParent, 'escape');
+  const realSubdirectory = join(realParent, 'sub');
+  const realBin = join(realParent, 'bin');
+  const outsideSubdirectory = join(outsideParent, 'sub');
+  const outsideBin = join(outsideParent, 'bin');
+  const producerAlias = join(outsideParent, 'producer-alias');
 
   try {
     mkdirSync(realChild, { recursive: true });
     mkdirSync(outsideParent);
+    mkdirSync(realSubdirectory);
+    mkdirSync(realBin);
+    mkdirSync(outsideSubdirectory);
+    mkdirSync(outsideBin);
     symlinkSync(realParent, aliasParent, process.platform === 'win32' ? 'junction' : 'dir');
-    symlinkSync(outsideParent, escapeAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    symlinkSync(outsideSubdirectory, escapeAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    symlinkSync(realSubdirectory, producerAlias, process.platform === 'win32' ? 'junction' : 'dir');
 
     assert.equal(isExistingWithin(aliasParent, realChild), true);
-    assert.equal(isWithin(aliasParent, join(aliasParent, 'child', 'missing', 'leaf')), true);
+    assert.equal(
+      isWithinCanonical(
+        realpathSync(aliasParent),
+        canonicalPathFrom(join(aliasParent, 'child', 'missing', 'leaf'), fixtureRoot),
+      ),
+      true,
+    );
     assert.equal(isExistingWithin(aliasParent, outsideParent), false);
-    assert.equal(isWithin(aliasParent, join(fixtureRoot, 'sibling')), false);
-    assert.equal(isWithin(aliasParent, join(aliasParent, 'escape', 'missing')), false);
+    assert.equal(
+      isWithinCanonical(
+        realpathSync(aliasParent),
+        canonicalPathFrom(join(fixtureRoot, 'sibling'), fixtureRoot),
+      ),
+      false,
+    );
+    assert.equal(
+      isWithinCanonical(
+        realpathSync(aliasParent),
+        canonicalPathFrom(join(aliasParent, 'escape', 'missing'), fixtureRoot),
+      ),
+      false,
+    );
 
-    const pathEntries = [join(aliasParent, 'missing-bin'), join(fixtureRoot, 'missing-bin')];
-    assert.deepEqual(pathEntries.filter((entry) => !isWithin(realParent, entry)), [pathEntries[1]]);
+    const inwardAliasDotDotEntry = `${producerAlias}${sep}..${sep}bin`;
+    const outwardAliasDotDotEntry = `${escapeAlias}${sep}..${sep}bin`;
+    const unclassifiableEntry = `${outsideParent}${sep}does-not-exist${sep}..${sep}missing-bin`;
+    const pathEntries = [
+      join(aliasParent, 'missing-bin'),
+      inwardAliasDotDotEntry,
+      outwardAliasDotDotEntry,
+      `..${sep}alias${sep}missing-bin`,
+      unclassifiableEntry,
+      join(outsideParent, 'missing-bin'),
+      'missing-bin',
+    ];
+    const retainedEntries = pathEntries.filter((entry) => (
+      pathEntryIsOutside(realpathSync(realParent), entry, outsideParent)
+    ));
+    assert.deepEqual(
+      retainedEntries,
+      process.platform === 'win32'
+        ? [pathEntries[1], pathEntries[4], pathEntries[5], pathEntries[6]]
+        : [pathEntries[2], pathEntries[5], pathEntries[6]],
+    );
+    if (process.platform === 'win32') {
+      assert.equal(windowsPathFrom('\\inside', 'D:\\consumer'), 'D:\\inside');
+      assert.equal(windowsPathFrom('/inside', 'D:\\consumer'), 'D:\\inside');
+      assert.equal(windowsPathFrom('C:inside', 'D:\\consumer'), undefined);
+      assert.equal(
+        pathEntryIsOutside(
+          realpathSync(realParent),
+          `"${join(aliasParent, 'missing-bin')}"`,
+          outsideParent,
+        ),
+        false,
+      );
+      assert.equal(windowsPathFrom(`"${outsideParent}`, outsideParent), undefined);
+      assert.equal(windowsPathFrom(`${outsideParent}"`, outsideParent), undefined);
+      assert.deepEqual(
+        `"${outsideParent}${delimiter}suffix"`
+          .split(delimiter)
+          .filter((entry) => pathEntryIsOutside(realpathSync(realParent), entry, outsideParent)),
+        [],
+      );
+    }
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
@@ -415,9 +539,10 @@ test('a packed candidate retrofits an existing repository without taking over it
     isolatedEnv.npm_config_offline = 'true';
     isolatedEnv.npm_config_audit = 'false';
     isolatedEnv.npm_config_fund = 'false';
+    const resolvedProducerRoot = realpathSync(root);
     isolatedEnv.PATH = (process.env.PATH ?? '')
       .split(delimiter)
-      .filter((entry) => entry && !isWithin(root, entry))
+      .filter((entry) => entry && pathEntryIsOutside(resolvedProducerRoot, entry, consumer))
       .join(delimiter);
     assert.equal(isolatedEnv.PATH.toLowerCase().includes(root.toLowerCase()), false);
 
