@@ -9,7 +9,7 @@ import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
 import { blockedByConflict, blockedByParadigm, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
-import { gitStatusReconcile, selfDeclaredClosure } from '../src/engines2.ts';
+import { gitStatusReconcile, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
 import { applyUpgrade, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { frontmatterSchema, linkIntegrity } from '../src/engines.ts';
@@ -94,6 +94,53 @@ test('self-declared closure catches an open finding declaring itself fixed, but 
 
   writeFileSync(join(root, 'FINDINGS.md'), `${header}### F-001 — stale observation\n\nThis is a citation: F-002 is **Fixed.**\n`);
   assert.deepEqual(selfDeclaredClosure(table, root, ['FINDINGS.md']).findings, []);
+});
+
+test('register schema ignores an explicit no-record row but still validates a real open finding', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-register-empty-'));
+  const table = {
+    file: 'FINDINGS.md',
+    table: 'Closed',
+    required_cols: ['Id', 'What', 'Disposition', 'Reason'],
+    non_empty: ['Reason'],
+    open: {
+      table: 'Open',
+      non_empty: ['Sev', 'Pri', 'What', 'Evidence'],
+      enum: { Sev: ['high', 'medium', 'low'], Pri: ['now', 'next', 'someday'] },
+    },
+  };
+  const document = (openRow) =>
+    [
+      '## Open',
+      '',
+      '| Id | Sev | Pri | What | Evidence | When to act | How to fix |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+      openRow,
+      '',
+      '## Closed',
+      '',
+      '| Id | What | Disposition | Reason |',
+      '| --- | --- | --- | --- |',
+      '| — | | | *nothing closed* |',
+      '',
+    ].join('\n');
+
+  try {
+    writeFileSync(join(root, 'FINDINGS.md'), document('| — | | | *nothing open* | | | |'));
+    const empty = registerSchema(table, root, ['FINDINGS.md']);
+    assert.deepEqual(empty.findings, []);
+    assert.equal(empty.examined, 0, 'a no-record row is not evidence that a finding was checked');
+
+    writeFileSync(join(root, 'FINDINGS.md'), document('| F-001 | | | real observation | | later | investigate |'));
+    const malformed = registerSchema(table, root, ['FINDINGS.md']);
+    assert.deepEqual(
+      malformed.findings.map((finding) => finding.message),
+      ["row F-001: 'Sev' is empty", "row F-001: 'Pri' is empty", "row F-001: 'Evidence' is empty"],
+    );
+    assert.equal(malformed.examined, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 /**

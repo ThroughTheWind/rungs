@@ -159,6 +159,12 @@ export const registerSchema: Engine = (t, root, files) => {
       }
       for (const row of table.rows) {
         if (Object.values(row).every((v) => !v || v === '—')) continue;
+        // An em dash in the identity column is an explicit no-record row. The
+        // generated findings register uses it to keep an empty table legible:
+        // `| — | | | *nothing open* | ... |`. Looking only for an entirely
+        // blank row made that label turn the placeholder into a malformed real
+        // finding on the first `rungs check` in a fresh tracked consumer.
+        if (strip(Object.values(row)[0]) === '—') continue;
         examined++;
         for (const [key, values] of Object.entries<any>(t.enum ?? {})) {
           const v = strip(row[key]);

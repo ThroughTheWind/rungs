@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
-| [WI-065](items/WI-065-fresh-findings-baseline.md) | Make a fresh tracked findings register pass its own gate | feature |
 
 ## Accepted
 
