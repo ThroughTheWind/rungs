@@ -583,7 +583,10 @@ export const computedClaim: Engine = (t, root, files) => {
     // package, correctly, and installing the gate would have failed a healthy
     // layout. So a repo states the exceptions rather than the engine guessing
     // them, and `all-agree` keeps needing no opinion about which file is right.
-    const excluded = (rel: string) => (spec.exclude ?? []).some((p: string) => matchAny([rel], p).length > 0);
+    const excludePatterns = (spec.exclude ?? []).filter((pattern: unknown): pattern is string =>
+      typeof pattern === 'string' && pattern.trim().length > 0,
+    );
+    const excluded = (rel: string) => excludePatterns.some((pattern: string) => matchAny([rel], pattern).length > 0);
     for (const src of spec.sources ?? []) {
       for (const rel of matchAny(files, src.file)) {
         if (excluded(rel)) continue;
@@ -615,7 +618,7 @@ export const computedClaim: Engine = (t, root, files) => {
         message:
           `${spec.id} disagrees across ${values.size} locations: ${where}` +
           (spec.autofix ? ` — run \`${spec.autofix}\`` : '') +
-          (spec.exclude?.length ? '' : '. If one of these is versioned independently, list it in `exclude`.'),
+          (excludePatterns.length ? '' : '. If one of these is versioned independently, set `release.version_exclude`.'),
       });
     }
   }

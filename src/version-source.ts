@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import { SaxesParser } from 'saxes';
 import { parse as parseToml } from 'smol-toml';
 
 /** A version location declared by a gate table. Pattern matching stays with the caller. */
@@ -48,6 +49,52 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function xmlElement(text: string, rel: string, xpath: string): VersionSourceResult {
+  const match = /^\/\/([A-Za-z_][A-Za-z0-9_.:-]*)$/.exec(xpath);
+  if (!match) return { ok: false, reason: `unsupported XML xpath '${xpath}'; expected //Element` };
+
+  const element = match[1];
+  const values: { text: string; nested: boolean }[] = [];
+  const active: number[] = [];
+
+  try {
+    // Saxes validates a complete XML document and does not expand declarations
+    // from a DTD. Refuse the DTD outright so a version is always literal document
+    // evidence rather than an entity whose definition lives elsewhere.
+    const parser = new SaxesParser({ fragment: false, xmlns: false, fileName: rel });
+    parser.on('doctype', () => {
+      throw new Error('DOCTYPE declarations are not supported in version sources');
+    });
+    parser.on('opentag', (tag) => {
+      for (const index of active) values[index].nested = true;
+      if (tag.name === element) {
+        values.push({ text: '', nested: false });
+        active.push(values.length - 1);
+      }
+    });
+    const append = (value: string) => {
+      for (const index of active) values[index].text += value;
+    };
+    parser.on('text', append);
+    parser.on('cdata', append);
+    parser.on('closetag', (tag) => {
+      if (tag.name === element) active.pop();
+    });
+    parser.write(text).close();
+  } catch (error) {
+    return { ok: false, reason: `contains invalid XML: ${errorMessage(error)}` };
+  }
+
+  if (!values.length) return { ok: false, reason: `does not contain configured element '${xpath}'` };
+  if (values.length > 1) {
+    return { ok: false, reason: `configured element '${xpath}' matched ${values.length} values; expected one` };
+  }
+  if (values[0].nested) {
+    return { ok: false, reason: `configured element '${xpath}' contains nested XML; expected scalar text` };
+  }
+  return scalar(values[0].text, `configured element '${xpath}'`);
+}
+
 /**
  * Read one already-matched version source.
  *
@@ -90,23 +137,7 @@ export function readVersionSource(root: string, rel: string, source: VersionSour
   }
 
   if (source.xpath) {
-    const match = /^\/\/([A-Za-z_][A-Za-z0-9_.:-]*)$/.exec(source.xpath);
-    if (!match) {
-      return { ok: false, reason: `unsupported XML xpath '${source.xpath}'; expected //Element` };
-    }
-    const element = match[1];
-    const withoutComments = text.replace(/<!--[\s\S]*?-->/g, '');
-    const elementPattern = new RegExp(
-      `<${element.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^>]*>([\\s\\S]*?)<\\/${element.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*>`,
-      'g',
-    );
-    const matches = [...withoutComments.matchAll(elementPattern)];
-    if (!matches.length) return { ok: false, reason: `does not contain configured element '${source.xpath}'` };
-    if (matches.length > 1) {
-      return { ok: false, reason: `configured element '${source.xpath}' matched ${matches.length} values; expected one` };
-    }
-    if (matches[0][1].includes('<')) return invalidScalar(`configured element '${source.xpath}'`);
-    return scalar(matches[0][1], `configured element '${source.xpath}'`);
+    return xmlElement(text, rel, source.xpath);
   }
 
   return { ok: false, reason: 'declares neither `path` nor `xpath` for its version value' };

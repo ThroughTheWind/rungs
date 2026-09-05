@@ -265,13 +265,6 @@ export function runSelfTests(
           ? spec.map((s: any) => ({ ...s, base_branch: base }))
           : { ...spec, base_branch: base };
       }
-      // And for `exclude`, which is the thing under test in half these fixtures:
-      // the table ships it empty by default, so a fixture proving exclusion works
-      // has to set it, exactly as a repo would.
-      if (Array.isArray(b.fixture?.exclude)) {
-        const ex = b.fixture.exclude;
-        spec = Array.isArray(spec) ? spec.map((s: any) => ({ ...s, exclude: ex })) : { ...spec, exclude: ex };
-      }
       if (!files) {
         out.push({ gate: gateId, expect, outcome: 'unrun', detail: `no builder for fixture ${JSON.stringify(b.fixture).slice(0, 60)}` });
         continue;

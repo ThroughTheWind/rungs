@@ -1130,6 +1130,13 @@ test('the shared version reader parses JSON, TOML and XML and distinguishes inva
     'invalid.json': JSON.stringify({ version: {} }),
     'broken.toml': '[project',
     'version.txt': 'version=1.2.3\n',
+    'unclosed.xml': '<Project><Version>1.2.3</Version>',
+    'garbage.xml': 'garbage <Version>1.2.3</Version>',
+    'comment.xml': '<Project><!-- <Version>9.9.9</Version> --></Project>',
+    'cdata.xml': '<Project><![CDATA[<Version>9.9.9</Version>]]></Project>',
+    'nested.xml': '<Project><Version><Value>1.2.3</Value></Version></Project>',
+    'duplicate.xml': '<Project><Version>1.2.3</Version><Version>1.2.3</Version></Project>',
+    'entity.xml': '<!DOCTYPE Project [<!ENTITY v "1.2.3">]><Project><Version>&v;</Version></Project>',
   });
   try {
     assert.deepEqual(readVersionSource(root, 'package.json', { path: 'version' }), { ok: true, value: '1.2.3' });
@@ -1139,6 +1146,13 @@ test('the shared version reader parses JSON, TOML and XML and distinguishes inva
     assert.match(readVersionSource(root, 'invalid.json', { path: 'version' }).reason, /not a non-empty string or finite number/);
     assert.match(readVersionSource(root, 'broken.toml', { path: 'project.version' }).reason, /invalid TOML/);
     assert.match(readVersionSource(root, 'version.txt', { path: 'version' }).reason, /use JSON or TOML/);
+    assert.match(readVersionSource(root, 'unclosed.xml', { xpath: '//Version' }).reason, /invalid XML/);
+    assert.match(readVersionSource(root, 'garbage.xml', { xpath: '//Version' }).reason, /invalid XML/);
+    assert.match(readVersionSource(root, 'comment.xml', { xpath: '//Version' }).reason, /does not contain configured element/);
+    assert.match(readVersionSource(root, 'cdata.xml', { xpath: '//Version' }).reason, /does not contain configured element/);
+    assert.match(readVersionSource(root, 'nested.xml', { xpath: '//Version' }).reason, /contains nested XML/);
+    assert.match(readVersionSource(root, 'duplicate.xml', { xpath: '//Version' }).reason, /matched 2 values/);
+    assert.match(readVersionSource(root, 'entity.xml', { xpath: '//Version' }).reason, /invalid XML/);
     assert.match(readVersionSource(root, 'package.json', {}).reason, /neither `path` nor `xpath`/);
     assert.match(
       readVersionSource(root, 'package.json', { path: 'version', xpath: '//Version' }).reason,
@@ -1214,6 +1228,42 @@ test('runGates fails the exact F-047 package and pyproject disagreement', () => 
     assert.match(result.findings[0].message, /pyproject\.toml=2\.0\.0/);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('consumer-configured version exclusions reach production runGates and remain narrow', () => {
+  const makeRoot = (versionExclude, packages) =>
+    versionSourceRepo({
+      ...Object.fromEntries(
+        Object.entries(packages).map(([rel, version]) => [rel, JSON.stringify({ version })]),
+      ),
+      '.ai/gates.toml': '[[gates]]\nid = "release-version-consistent"\nkind = "declared"\nengine = "computed-claim"\ntable = "release/release.toml"\n',
+      '.ai/rungs.toml': `[repo]\nharnesses = ["agents-md"]\n\n[modules.release]\nversion = "1.5.0"\nstate = "managed"\nparams = { version_exclude = "${versionExclude}" }\n`,
+    });
+  const excludedRoot = makeRoot('{web,docs}/package.json', {
+    'package.json': '1.2.3',
+    'web/package.json': '0.0.1',
+    'docs/package.json': '0.0.2',
+  });
+  const narrowRoot = makeRoot('web/package.json', {
+    'package.json': '1.2.3',
+    'web/package.json': '0.0.1',
+    'api/package.json': '9.9.9',
+  });
+  try {
+    const [excluded] = runGates(excludedRoot);
+    assert.equal(excluded.status, 'pass');
+    assert.equal(excluded.examined, 1);
+
+    const [narrow] = runGates(narrowRoot);
+    assert.equal(narrow.status, 'fail');
+    assert.equal(narrow.examined, 2);
+    assert.match(narrow.findings[0].message, /package\.json=1\.2\.3/);
+    assert.match(narrow.findings[0].message, /api\/package\.json=9\.9\.9/);
+    assert.doesNotMatch(narrow.findings[0].message, /web\/package\.json/);
+  } finally {
+    rmSync(excludedRoot, { recursive: true, force: true });
+    rmSync(narrowRoot, { recursive: true, force: true });
   }
 });
 
