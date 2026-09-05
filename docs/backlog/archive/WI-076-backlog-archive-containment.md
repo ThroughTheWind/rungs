@@ -2,8 +2,8 @@
 id: WI-076
 title: Contain backlog archival inside the repository
 type: feature
-status: planned
-branch:
+status: done
+branch: feature/WI-076-backlog-archive-containment
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-047, WI-073, F-049]
@@ -89,8 +89,26 @@ after the whole set has passed.
 
 ## Execution
 
-Not started; blocked on WI-073's shared containment primitive landing.
+Started from green `main` at `9d362f860ad0d701d9d1b87ab04d9c13eec756df` after WI-073 landed.
+
+The first implementation at `c0b91e48a0e078d6889239d71300d3fbb5f246ad` closed the original
+outward-junction and writable-leaf cases, but independent review reproduced two adjacent defects:
+a forged source could leave the canonical `items/` tree through an inward alias, and incoming links
+spelled through the canonical side of an inward items alias were not repointed. Both were fixed at
+`d2f2b2b9f23385f16d2af78d0c7471c29498d464` by proving canonical source/destination ancestry,
+indexing moves by lexical and canonical identity, and deduplicating rewrite candidates by canonical
+identity while preserving their recorded spelling.
+
+The final focused suite exercises eight boundary and normal-operation cases. The complete local
+suite reports 87 pass, 0 fail and 3 privilege-aware platform skips; all 30 registered gates pass,
+`git diff --check` is clean, and `npm pack --dry-run --json` reports the expected 110-entry package.
+GitHub Actions run 33969303274 passed all six OS/Node cells and the site job at the exact final code
+SHA.
 
 ## Review
 
-Not started.
+Independent re-review approved `d2f2b2b9f23385f16d2af78d0c7471c29498d464` with no findings after
+re-running the two earlier reproductions, the complete 8/8 containment suite and the broader 90-test
+suite. It confirmed application-time canonical scoping, lexical/canonical link retargeting,
+canonical rewrite deduplication and CLI refusal reporting. The worktree remained clean at the exact
+reviewed SHA.

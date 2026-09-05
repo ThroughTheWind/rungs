@@ -9,7 +9,7 @@ import { resolveParams } from './substitute.ts';
 import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, UnknownTierError } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
-import { applyArchive, planArchive } from './backlog.ts';
+import { applyArchive, planArchive, resolveArchiveTree } from './backlog.ts';
 import { land, preflight, sessionStart, worktrees } from './concurrency.ts';
 import { existsSync } from 'node:fs';
 import type { DetectResult, Manifest } from './types.ts';
@@ -29,7 +29,7 @@ const c = {
 
 function pathRefusal(error: unknown): number {
   if (!(error instanceof UnsafeEmittedPathError)) throw error;
-  console.log(c.red(`\n  refused: ${error.message}\n`) + c.dim('  Nothing was written. Fix the module path parameter or repository alias and retry.\n'));
+  console.log(c.red(`\n  refused: ${error.message}\n`) + c.dim('  Nothing was written. Fix the named path or repository alias and retry.\n'));
   return 1;
 }
 
@@ -765,12 +765,20 @@ function cmdBacklogArchive(root: string, dryRun: boolean) {
   const configured = record?.modules['backlog']?.params?.root;
   const backlogRoot = `docs/${configured ?? 'backlog'}`;
 
-  if (!existsSync(join(root, ...backlogRoot.split('/'), 'items'))) {
+  let tree;
+  let plan;
+  try {
+    tree = resolveArchiveTree(root, backlogRoot);
+    plan = planArchive(root, backlogRoot);
+  } catch (error) {
+    return pathRefusal(error);
+  }
+
+  if (!tree.itemsExists) {
     console.log(c.red(`\n  no backlog at ${backlogRoot}/items\n`));
     return 1;
   }
 
-  const plan = planArchive(root, backlogRoot);
   console.log(c.bold(`\nrungs backlog archive → ${root}${dryRun ? c.yellow('  (dry run)') : ''}\n`));
 
   for (const h of plan.held) console.log(c.yellow(`  held  ${h.file}`) + c.dim(` — ${h.reason}`));
@@ -800,7 +808,11 @@ function cmdBacklogArchive(root: string, dryRun: boolean) {
     return 0;
   }
 
-  applyArchive(root, plan);
+  try {
+    applyArchive(root, plan);
+  } catch (error) {
+    return pathRefusal(error);
+  }
   console.log(c.green(`\n  archived ${plan.moves.length} item(s)`) + c.dim(' — ids stay spent and every citation still resolves.'));
   console.log(c.dim('  Run `rungs check` to confirm.\n'));
   return 0;

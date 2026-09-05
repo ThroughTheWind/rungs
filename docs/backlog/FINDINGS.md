@@ -33,7 +33,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | F-045 | Ejection leaves the normal aggregate launcher dependent on the pinned npm package | promoted | WI-077 switches the same committed launcher used by local instructions and generated CI to the materialized runner, preserving aggregate tier, result, exit and ledger semantics without npm or package access |
 | F-042 | The ejected runner copies an incomplete TypeScript/runtime dependency closure and cannot load | promoted | WI-077 ships one dependency-bundled runner, materializes the raw metadata and substituted tables its gates consume, and proves direct plus aggregate execution in an isolated packed consumer after producer/package access is removed |
 
-## Closed — 2026-09-05 by [WI-076](items/WI-076-backlog-archive-containment.md)
+## Closed — 2026-09-05 by [WI-076](archive/WI-076-backlog-archive-containment.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
