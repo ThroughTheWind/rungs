@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { parse as parseToml } from 'smol-toml';
 import { matchAny } from './glob.ts';
 import type { Engine, Finding } from './engines.ts';
+import { readVersionSource } from './version-source.ts';
 
 const read = (root: string, rel: string) => {
   try {
@@ -15,31 +15,6 @@ const read = (root: string, rel: string) => {
 const expand = (files: string[], p: string[] | undefined, f: string[] = []) =>
   [...new Set((p ?? f).flatMap((x) => matchAny(files, x)))];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/** Read one version source in the same three formats the release module declares. */
-function versionFromSource(root: string, rel: string, source: any): number[] | null {
-  const text = read(root, rel);
-  let raw: unknown;
-  try {
-    if (source.xpath) {
-      const element = String(source.xpath).split('//').pop();
-      if (!element) return null;
-      raw = text.match(new RegExp(`<${escapeRe(element)}(?:\\s[^>]*)?>(.*?)<\\/${escapeRe(element)}\\s*>`, 's'))?.[1];
-    } else if (source.path) {
-      const parsed = rel.endsWith('.json')
-        ? JSON.parse(text)
-        : rel.endsWith('.toml')
-          ? parseToml(text)
-          : null;
-      raw = String(source.path)
-        .split('.')
-        .reduce((value: any, key: string) => value?.[key], parsed as any);
-    }
-  } catch {
-    return null;
-  }
-  return versionParts(String(raw ?? ''));
-}
 
 /** `1.2.3` → [1,2,3]; anything else → null. Deliberately not a semver parser. */
 export function versionParts(s: string): number[] | null {
@@ -81,9 +56,23 @@ export const changelogFreshness: Engine = (t, root, files) => {
       : [spec.version ?? { file: 'package.json', path: 'version' }];
     let current: number[] | null = null;
     let currentSource = '';
+    const versionProblems: Finding[] = [];
     for (const source of sources) {
       for (const rel of matchAny(files, source.file ?? 'package.json')) {
-        current = versionFromSource(root, rel, source);
+        const result = readVersionSource(root, rel, source);
+        if (!result.ok) {
+          versionProblems.push({ file: rel, message: `release version source ${result.reason}` });
+          continue;
+        }
+        const parsed = versionParts(result.value);
+        if (!parsed) {
+          versionProblems.push({
+            file: rel,
+            message: `release version source must contain a three-part numeric version; found ${JSON.stringify(result.value)}`,
+          });
+          continue;
+        }
+        current = parsed;
         if (current) {
           currentSource = rel;
           break;
@@ -134,6 +123,8 @@ export const changelogFreshness: Engine = (t, root, files) => {
       });
       continue;
     }
+
+    findings.push(...versionProblems);
 
     // Without a package version there used to be no claim to make. A concrete
     // consumption boundary changes that: its steady-state equality cannot be

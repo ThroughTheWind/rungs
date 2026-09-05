@@ -10,7 +10,7 @@ import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
 import { addModule, blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { changeRequiresFile, computedClaim, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
-import { boardReconcile } from '../src/engines3.ts';
+import { boardReconcile, changelogFreshness } from '../src/engines3.ts';
 import { applyUpgrade, eject, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { ENGINES, frontmatterSchema, linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
@@ -1281,6 +1281,7 @@ test('consumer-configured version exclusions reach production runGates and remai
 
 test('the production runner rejects the equal-version F-025 shape and eject keeps strict table selection', () => {
   const staleRoot = mkdtempSync(join(tmpdir(), 'rungs-stale-fragment-'));
+  const malformedRoot = mkdtempSync(join(tmpdir(), 'rungs-malformed-release-version-'));
   const ejectRoot = mkdtempSync(join(tmpdir(), 'rungs-ejected-selector-'));
   try {
     mkdirSync(join(staleRoot, '.ai'), { recursive: true });
@@ -1297,6 +1298,18 @@ test('the production runner rejects the equal-version F-025 shape and eject keep
     assert.equal(stale.examined, 2, 'the production path must examine the boundary and equal fragment');
     assert.match(stale.findings[0].message, /already-consumed|consumed-through/i);
 
+    mkdirSync(join(malformedRoot, '.ai'), { recursive: true });
+    mkdirSync(join(malformedRoot, 'changelog.d'), { recursive: true });
+    writeFileSync(join(malformedRoot, 'Directory.Build.props'), '<Project><Version>0.2.0</Version>');
+    writeFileSync(join(malformedRoot, 'changelog.d', 'CONSUMED_THROUGH'), '0.2.0\n');
+    writeFileSync(
+      join(malformedRoot, '.ai', 'gates.toml'),
+      '[[gates]]\nid = "release-fragment-current"\nkind = "declared"\nengine = "changelog-freshness"\ntable = "release/release.toml"\n',
+    );
+    const [malformed] = runGates(malformedRoot);
+    assert.equal(malformed.status, 'fail', 'malformed XML cannot supply the production freshness version');
+    assert.ok(malformed.findings.some((finding) => /invalid XML|unclosed tag/i.test(finding.message)));
+
     mkdirSync(join(ejectRoot, '.ai'), { recursive: true });
     writeFileSync(
       join(ejectRoot, '.ai', 'gates.toml'),
@@ -1310,7 +1323,38 @@ test('the production runner rejects the equal-version F-025 shape and eject keep
     assert.ok(existsSync(join(ejectRoot, '.rungs', 'engine-table.ts')));
   } finally {
     rmSync(staleRoot, { recursive: true, force: true });
+    rmSync(malformedRoot, { recursive: true, force: true });
     rmSync(ejectRoot, { recursive: true, force: true });
+  }
+});
+
+test('changelog freshness rejects invalid shared version-source descriptors', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-release-descriptor-'));
+  try {
+    mkdirSync(join(root, 'changelog.d'), { recursive: true });
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '0.2.0' }));
+    writeFileSync(join(root, 'changelog.d', 'CONSUMED_THROUGH'), '0.2.0\n');
+    const files = ['package.json', 'changelog.d/CONSUMED_THROUGH'];
+    const base = {
+      fragments: ['changelog.d/*.md'],
+      consumed_through: 'changelog.d/CONSUMED_THROUGH',
+    };
+
+    const both = changelogFreshness(
+      { ...base, versions: [{ file: 'package.json', path: 'version', xpath: '//Version' }] },
+      root,
+      files,
+    );
+    assert.ok(both.findings.some((finding) => /both `path` and `xpath`/.test(finding.message)));
+
+    const neither = changelogFreshness(
+      { ...base, versions: [{ file: 'package.json' }] },
+      root,
+      files,
+    );
+    assert.ok(neither.findings.some((finding) => /neither `path` nor `xpath`/.test(finding.message)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
