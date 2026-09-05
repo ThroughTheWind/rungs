@@ -2,7 +2,7 @@
 id: WI-080
 title: Refuse APFS emitted-path storage aliases
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-080-apfs-emitted-path-collisions
 created: 2026-09-05
 updated: 2026-09-05
@@ -131,6 +131,14 @@ Local verification on 2026-09-05:
 - `npm pack --dry-run --json`: 112 entries, 368,708-byte package, including `src/storage-key.ts`;
 - `git diff --check`: clean.
 
+After WI-081 landed, exact `main` `2c897fd5` was merged into the branch as `dca45eb8`.
+Conflicts were documentation-only; production comparator code merged unchanged. The combined tree
+passed the 15 focused cases (13 pass and two expected Windows privilege skips), the full suite
+(131 pass and three expected skips), all 30 gates, a 113-entry 376,758-byte package dry-run and
+`git diff --check`. Exact CI run 33976213033 passed the site job and all six OS/Node cells. `rungs
+land` then verified 30/30 gates in the merged scratch and atomically advanced `main` plus
+`green/main` to implementation merge `e29313c0`.
+
 ## Review
 
 Self-review on 2026-09-05 found the change remains within the accepted comparator and regression
@@ -140,6 +148,9 @@ Criterion 2 is met by actual non-dry-run CLI refusal with empty target directori
 met by independent plan and apply assertions across every alias/shape orientation. The local half
 of criterion 4 is met by the focused, full, gate, package and diff evidence above.
 
-Independent source review and the exact pushed six-cell OS/Node plus site CI matrix remain pending.
-The item therefore stays `in_progress`; [F-051](../FINDINGS.md) remains open, and nothing is landed
-or archived from this branch.
+Independent review rejected the first candidate because whole-path compatibility normalization
+could manufacture separators from U+FF3C and U+FF0F. It approved superseding exact tip `7e1df454`
+after verifying per-segment comparison, both-order separator non-collisions on NTFS, every
+sharp-S/ligature orientation, real CLI and stored-plan atomic refusals, focused/full/gate/package
+evidence, and exact CI run 33974420656. The later main integration had no production-code conflict
+and exact run 33976213033 passed all seven jobs, completing criterion 4.
