@@ -162,3 +162,10 @@ Repair evidence on 2026-09-05, while status remains `in_progress`:
 
 Exact pushed-SHA CI and independent re-review are still pending. The earlier green run remains
 diagnostic, not approval.
+
+GitHub Actions run 33960465443 at exact `c4a2886` is also diagnostic and superseded. The site and
+all four Ubuntu/macOS cells passed; both Windows cells failed only because the late-holder test
+compared its checked-out text to a literal LF string while Actions correctly materialized CRLF
+under its Git configuration. The test already preserves the stronger byte-for-byte before/after
+snapshot and empty porcelain-status assertions, so the redundant line-ending-dependent literal was
+removed. Production behavior and its invariants were not normalized or weakened.

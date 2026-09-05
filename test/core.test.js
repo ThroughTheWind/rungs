@@ -1696,7 +1696,6 @@ test('land revalidates integration holders after gates, parks the merge, and lea
     const { refs: _afterRefs, ...holderAfterLocal } = holderAfter;
     assert.deepEqual(holderAfterLocal, holderBeforeLocal, 'holder HEAD, index, status and files stay byte-identical');
     assert.equal(holderAfter.status.length, 0, 'the concurrent checkout remains clean');
-    assert.equal(readFileSync(join(holder, 'a.txt'), 'utf8'), 'base\n', 'the holder files still match its HEAD');
     assert.equal(existsSync(landLockPath(dir)), false, 'the land lock is released');
   } finally {
     try {
