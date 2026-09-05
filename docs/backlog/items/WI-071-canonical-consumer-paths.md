@@ -2,7 +2,7 @@
 id: WI-071
 title: Canonicalize packed-consumer containment checks
 type: chore
-status: in_progress
+status: review
 branch: chore/WI-071-canonical-consumer-paths
 created: 2026-09-05
 updated: 2026-09-05
@@ -38,6 +38,11 @@ updated `main` into WI-070 and rerun that candidate's complete matrix.
   an aliased ancestor and its real descendant compare as one tree.
 - Preserve non-throwing behavior for arbitrary nonexistent PATH entries by canonicalising their
   deepest existing ancestor and reattaching the missing suffix without looping at a filesystem root.
+- Preserve each platform's filesystem lookup order across aliases and `..`: POSIX follows an
+  existing symlink before applying the next component, while Windows lexically normalises `..`
+  before traversing a junction. Interpret relative entries from the consumer directory.
+- Match Windows executable lookup for rooted, drive-absolute and exactly whole-entry-quoted paths;
+  reject drive-relative, unmatched-quote and interior-quote forms that cannot be classified safely.
 - Canonicalise existing tool, producer and cleanup roots strictly; a tolerant fallback used for PATH
   probing must never make a critical isolation or recursive-delete guard pass.
 - Keep every candidate/dependency integrity, producer-exclusion and guarded-cleanup assertion at
@@ -54,9 +59,13 @@ updated `main` into WI-070 and rerun that candidate's complete matrix.
 ### Approach
 
 Separate the relative-path boundary predicate from path canonicalisation. Critical existing paths
-use `realpathSync` directly before the predicate. Tolerant PATH probing resolves an input to an
-absolute path, walks upward until an existing ancestor is found, canonicalises that ancestor, then
-appends the missing suffix; an unusable entry remains non-throwing and conservatively lexical.
+use `realpathSync` directly before the predicate. POSIX PATH probing starts at the canonical root or
+consumer directory and walks components in filesystem order, resolving existing aliases before a
+following `..`; after the first missing component it appends a safe unresolved suffix. Windows PATH
+probing first applies Windows lexical resolution relative to the consumer, then canonicalises the
+deepest existing ancestor, matching the platform's junction semantics. Strip exactly one matching
+whole-entry quote pair on Windows. Any canonicalisation error, ambiguous drive-relative path,
+unmatched/interior quote or `..` after a missing POSIX component is unclassifiable and is dropped.
 
 Create a temporary real directory plus a directory alias, using a POSIX symlink or Windows junction.
 Prove an existing canonical child and a missing alias descendant are inside, while existing and
@@ -70,8 +79,11 @@ end-to-end regression because it is the exact failure that motivated the helper.
    descendant; existing and missing outside siblings remain outside without throwing.
 2. An alias from inside the parent to an outside sibling, including a missing descendant below that
    alias, remains outside.
-3. PATH filtering tolerates nonexistent entries and removes an aliased entry that resolves inside
-   the producer checkout.
+3. PATH filtering tolerates nonexistent entries, removes an aliased entry that resolves inside the
+   producer checkout, honours the platform's alias/junction-plus-`..` semantics, and interprets
+   relative entries from the consumer directory. Windows coverage includes root-relative,
+   drive-relative and quoted entries, including delimiter-containing quoted input that splits into
+   unsafe unmatched fragments and must fail closed.
 4. The packed journey still proves exact candidate and dependency integrity, resolution inside the
    canonical isolated prefix and outside the canonical producer, preservation of producer bytes and
    Git state, byte-idempotent upgrades, and guarded removal of only the temporary child.
@@ -90,8 +102,56 @@ end-to-end regression because it is the exact failure that motivated the helper.
 
 ## Execution
 
-Not started.
+The first implementation was deliberately exercised as a provisional branch stacked on WI-070 so
+the macOS hypothesis could be tested quickly. It produced two all-green seven-job matrices, but an
+independent process review found that topology violated this repository's requirement that planning
+ride `main` and code branches start there. The WI-070/WI-071 and F-043/F-044 reservations were first
+landed on `main` in `bf76c3a` through `5d3acae`; this branch was then rebased onto that exact main tip
+and its remote replaced with `--force-with-lease`. The provisional history remains recoverable from
+WI-070 and the recorded Actions runs, but it is not landing authority.
+
+On the corrected branch, `0bb085e` adds deepest-existing-ancestor canonicalisation and a
+symlink/junction regression; `deed319` adds the outbound escape case. `033be92` separates the pure
+canonical boundary predicate, tolerant PATH probing and strict existing-path containment. Candidate,
+dependency and producer assertions now use strict `realpathSync` on both operands; rollback and
+recursive-delete guards compare paths that were already strictly canonicalised. Tolerant fallback is
+confined to arbitrary PATH entries.
+
+Successive independent reviews then found that one algorithm could not model both operating-system
+families. POSIX follows a symlink before a subsequent `..`; Windows resolves `..` lexically before it
+traverses a junction, and root-relative entries inherit the consumer's drive or share. Windows also
+accepts a matching quote pair around a whole PATH entry. Final code commit `3c68dfb` therefore walks
+POSIX components in filesystem order, uses Windows lexical resolution before deepest-existing
+canonicalisation, resolves relative entries from the consumer, handles both junction-plus-`..`
+directions, strips exactly one Windows whole-entry quote pair and drops every unclassifiable form.
+The regression includes absolute, relative, missing, root-relative, drive-relative, symmetric
+alias/junction-plus-`..`, matching-quote, unmatched-quote and delimiter-split quoted cases.
 
 ## Review
 
-Not started.
+An initial code review approved `033be92`, but separate final reviews found the POSIX
+alias-plus-`..`, relative-PATH, Windows root-relative, Windows junction-order and quoted-Windows-PATH
+false greens described in Execution and requested changes despite earlier all-green matrices. Those
+matrices are deliberately not landing authority. An independent final review approves exact code
+SHA `3c68dfb` with no remaining containment or assertion blocker after reproducing Windows quoted
+lookup and both junction-plus-`..` directions. Its pushed exact-SHA matrix remains pending. Local
+acceptance evidence on 2026-09-05:
+
+1. The cross-platform alias regression passes with a POSIX symlink or Windows junction. It proves a
+   canonical existing child and alias-spelled missing child are inside; existing and missing siblings
+   are outside.
+2. A link from inside the parent to an outside sibling, including a missing descendant, remains
+   outside.
+3. The same regression proves PATH filtering removes absolute, relative and platform-specific
+   alias/junction-plus-`..` entries resolving under the producer while retaining classifiable outside
+   entries. Windows assertions cover root-relative drive inheritance, drive-relative rejection and
+   matching/unmatched/interior quote behavior; uncertain inputs fail closed without throwing.
+4. The full packed journey passes without deleting or skipping any integrity, isolation,
+   producer-state, idempotence, rollback or guarded-cleanup assertion.
+5. At final code SHA `3c68dfb`, the focused regression and full suite pass 1/1 and 47/47. The
+   registry passes 29/29, `npm publish --dry-run --json` succeeds with 107 files and
+   `git diff --check` passes.
+6. GitHub Actions run 33952621863 at superseded code SHA `033be92` passes Node 22.18 and Node 22 on
+   Ubuntu, macOS and Windows plus the site job, but did not cover the review-found false greens.
+   Final code SHA `3c68dfb` and its lifecycle evidence must repeat that complete matrix before
+   landing.
