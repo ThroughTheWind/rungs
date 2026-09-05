@@ -688,6 +688,120 @@ test('merged-status ignores a branch that landed nothing, and still catches one 
   rmSync(root, { recursive: true, force: true });
 });
 
+test('merged-status resolves origin and a sole other remote when no local integration ref exists', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-wi067-remote-'));
+  const git = (cmd) => execSync(`git ${cmd}`, { cwd: root, stdio: 'pipe' }).toString().trim();
+  const item = 'docs/backlog/items/WI-067-x.md';
+
+  git('init -q -b main .');
+  git('config user.email t@t.t');
+  git('config user.name t');
+  mkdirSync(join(root, 'docs', 'backlog', 'items'), { recursive: true });
+  writeFileSync(
+    join(root, item),
+    '---\nid: WI-067\nbranch: feature/WI-067-x\nstatus: in_progress\n---\n\nbody\n',
+  );
+  git('add -A');
+  git('commit -qm base');
+  git('switch -q -c feature/WI-067-x');
+  writeFileSync(join(root, 'work.txt'), 'landed\n');
+  git('add -A');
+  git('commit -qm work');
+  git('switch -q main');
+  git('merge --no-ff -q feature/WI-067-x -m merge');
+  const mergedTip = git('rev-parse main');
+  git('switch -q -c release-checkout');
+  git('remote add origin https://example.invalid/origin.git');
+  git('remote add upstream https://example.invalid/upstream.git');
+  git(`update-ref refs/remotes/origin/main ${mergedTip}`);
+  git('branch -D main');
+
+  const table = { integration_branch: 'main', pre_review_statuses: ['planned', 'in_progress'] };
+  const againstOrigin = gitStatusReconcile(table, root, [item]);
+  assert.equal(againstOrigin.findings.length, 1, 'origin/main is a usable integration ref');
+  assert.match(againstOrigin.findings[0].message, /branch feature\/WI-067-x is merged/);
+
+  git(`update-ref refs/remotes/upstream/main ${mergedTip}`);
+  git('update-ref -d refs/remotes/origin/main');
+  const againstSoleRemote = gitStatusReconcile(table, root, [item]);
+  assert.equal(againstSoleRemote.findings.length, 1, 'one non-origin remote is a usable integration ref');
+  assert.match(againstSoleRemote.findings[0].message, /branch feature\/WI-067-x is merged/);
+
+  git('branch -D feature/WI-067-x');
+  const withoutItemBranch = gitStatusReconcile(table, root, [item]);
+  assert.equal(withoutItemBranch.examined, 1, 'the item is still examined when its branch ref is absent');
+  assert.equal(withoutItemBranch.findings.length, 0, 'integration fallback does not invent a missing item branch');
+
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('merged-status uses deterministic ref precedence and refuses an ambiguous or absent base', () => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-wi067-precedence-'));
+  const git = (cmd) => execSync(`git ${cmd}`, { cwd: root, stdio: 'pipe' }).toString().trim();
+  const item = 'docs/backlog/items/WI-067-x.md';
+
+  git('init -q -b main .');
+  git('config user.email t@t.t');
+  git('config user.name t');
+  mkdirSync(join(root, 'docs', 'backlog', 'items'), { recursive: true });
+  writeFileSync(
+    join(root, item),
+    '---\nid: WI-067\nbranch: feature/WI-067-x\nstatus: in_progress\n---\n\nbody\n',
+  );
+  git('add -A');
+  git('commit -qm base');
+  const unmergedBase = git('rev-parse main');
+  git('switch -q -c feature/WI-067-x');
+  writeFileSync(join(root, 'work.txt'), 'landed\n');
+  git('add -A');
+  git('commit -qm work');
+  git('switch -q main');
+  git('merge --no-ff -q feature/WI-067-x -m merge');
+  const mergedTip = git('rev-parse main');
+  git(`update-ref refs/remotes/origin/main ${unmergedBase}`);
+  git('remote add origin https://example.invalid/origin.git');
+  git('remote add upstream https://example.invalid/upstream.git');
+  git(`update-ref refs/remotes/upstream/main ${mergedTip}`);
+
+  const table = { integration_branch: 'main', pre_review_statuses: ['planned', 'in_progress'] };
+  const againstLocal = gitStatusReconcile(table, root, [item]);
+  assert.equal(againstLocal.findings.length, 1, 'the merged local ref wins over a stale origin ref');
+  assert.match(againstLocal.findings[0].message, /branch feature\/WI-067-x is merged/);
+
+  git('switch -q -c release-checkout');
+  git('branch -D main');
+  assert.equal(
+    gitStatusReconcile(table, root, [item]).findings.length,
+    0,
+    'origin wins over a different non-origin remote when local main is absent',
+  );
+
+  git('update-ref -d refs/remotes/origin/main');
+  git('remote add fork https://example.invalid/fork.git');
+  git(`update-ref refs/remotes/fork/main ${unmergedBase}`);
+  const ambiguous = gitStatusReconcile(table, root, [item]);
+  assert.equal(ambiguous.examined, 0);
+  assert.equal(ambiguous.findings.length, 1);
+  assert.match(ambiguous.findings[0].message, /ambiguous across refs\/remotes\/fork\/main, refs\/remotes\/upstream\/main/);
+
+  git('update-ref -d refs/remotes/fork/main');
+  git('remote remove fork');
+  git('update-ref -d refs/remotes/upstream/main');
+  git(`update-ref refs/remotes/upstream/release/main ${mergedTip}`);
+  const nestedOnly = gitStatusReconcile(table, root, [item]);
+  assert.equal(nestedOnly.examined, 0);
+  assert.equal(nestedOnly.findings.length, 1);
+  assert.match(nestedOnly.findings[0].message, /has no local or remote-tracking ref/);
+
+  git('update-ref -d refs/remotes/upstream/release/main');
+  const absent = gitStatusReconcile(table, root, [item]);
+  assert.equal(absent.examined, 0);
+  assert.equal(absent.findings.length, 1);
+  assert.match(absent.findings[0].message, /has no local or remote-tracking ref/);
+
+  rmSync(root, { recursive: true, force: true });
+});
+
 /**
  * WI-043. ADR-0004 state 5 says `add` prints the comparison and stops. A
  * refusal has to travel *up* the dependency edges: `audit → findings → backlog`
