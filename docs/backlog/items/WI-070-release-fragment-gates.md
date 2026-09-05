@@ -186,9 +186,10 @@ Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
 6. The production stale-fragment regression fails with one examined fragment. Every implemented
    engine has an explicit shared mapping, and the generated runner contains no private key map or
    whole-table fallback.
-7. The real registry runs 30/30 with `release-changelog-fragment` examining 21 changed paths and
+7. The real registry runs 30/30 with `release-changelog-fragment` examining 19 changed paths and
    `release-fragment-current` examining the reconstructed `0.4.0` fragment.
-8. Final combined `npm test`: 55 pass, 0 fail, one expected Windows-only skip for the POSIX filename
-   integration case. Module audit: 52 command spans, 15 dispatched. Site: 143 pages built; Astro
-   reports 0 errors/warnings/hints and 2,276 internal links with 0 broken. `npm publish --dry-run`
-   succeeds with 108 files (including `engine-table.ts`); `git diff --check` is clean.
+8. On the WI-071-integrated tree at `bdffd8c`, combined `npm test` reports 56 pass, 0 fail and one
+   expected Windows-only skip for the POSIX filename integration case. The module audit resolves all
+   52 command spans across 15 dispatched commands. The site builds 144 pages; Astro reports 0
+   errors/warnings/hints and 2,285 internal links with 0 broken. `npm publish --dry-run --json`
+   succeeds with 108 files (including `engine-table.ts`), and `git diff --check` is clean.
