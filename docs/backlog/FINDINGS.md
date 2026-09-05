@@ -4,7 +4,7 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-052 -->
+<!-- NEXT-ID: F-053 -->
 
 ## Open
 
@@ -25,6 +25,12 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
 | F-050 | `rungs land` can advance a checked-out green or parked branch behind that worktree's index, and can delete a checked-out parked recovery branch | promoted | WI-079 applies canonical direct-ref and holder checks to every branch `land` mutates, advances integration plus green atomically, allocates recovery refs without overwriting prior work and removes automatic parked-branch deletion |
+
+## Closed — 2026-09-05 by [WI-081](archive/WI-081-land-scratch-verification-control.md)
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-052 | `rungs land` could call an environment-only detached-scratch command failure inherited and advance an unverified merge | promoted | WI-081 requires a clean detached exact-integration control to reproduce each inherited finding, refuses and parks unavailable or mismatched verification, preserves complete normalized command diagnostics, and removes Rungs' own ignored-dependency requirement from both command-claim gates |
 
 ## Closed — 2026-09-05 by [WI-078](items/WI-078-branch-local-release-exemptions.md)
 
