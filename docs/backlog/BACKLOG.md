@@ -26,7 +26,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | — |
 | [WI-076](items/WI-076-backlog-archive-containment.md) | Contain backlog archival inside the repository | feature | — |
 | [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | — |
 | [WI-078](items/WI-078-branch-local-release-exemptions.md) | Require release exemptions from the current branch | feature | — |
