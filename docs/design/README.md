@@ -4,6 +4,8 @@ What the CLI is, and how it is specified.
 
 | Document | Status |
 | --- | --- |
+| [`tool-evaluation-2026-09-05.md`](tool-evaluation-2026-09-05.md) | **Assessed 2026-09-05 for [WI-084](../backlog/items/WI-084-tool-evaluation.md).** Implementation maturity, reproduced consumer gaps, prioritized improvements, repeated-pattern candidates and the case for a local inspector; recommendations, not implementation approval |
+| [`existing-promises-remediation-prompt.md`](existing-promises-remediation-prompt.md) | **Prepared 2026-09-05 at WI-084 closeout.** Copy-ready implementation handoff for completing existing promises, with acceptance evidence and explicit separation from the assessment's new-feature proposals |
 | [`product-brief.md`](product-brief.md) | **Written 2026-08-14.** What it is · scaffold model · module boundary · output contract · CLI surface · upgrade story · non-goals · decisions |
 | [`module-catalog.md`](module-catalog.md) | **Written 2026-08-14.** The 15-module set: rung · deps · params · what each ships · install profiles · **the corpus expectation matrix** (Phase 6's acceptance criterion) |
 | `cli-surface.md` | **Never written.** Planned for Phase 5 as detailed command behaviour beyond the brief's summary; Phase 5 closed without it. The nine commands are specified in [`product-brief.md`](product-brief.md) §6 and their current behaviour is `rungs --help`. Recorded rather than deleted — a planned document that was not needed is a finding about the plan |
