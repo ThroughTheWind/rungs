@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -1092,6 +1104,359 @@ test('change-requires-file ignores non-shipping work and requires an exemption r
   }
 });
 
+test('change-requires-file rejects inherited exemption evidence through the production runner', () => {
+  const registry = [
+    '[[gates]]',
+    'id = "release-changelog-fragment"',
+    'kind = "declared"',
+    'engine = "change-requires-file"',
+    'table = "release/release.toml"',
+    '',
+  ].join('\n');
+  const fixture = releaseDeltaRepo({
+    '.ai/gates.toml': registry,
+    'src/a.ts': '// changelog-ok: historical internal rename\nexport const value = 1;\n',
+  });
+  try {
+    fixture.write(
+      'src/a.ts',
+      '// changelog-ok: historical internal rename\nexport const value = 2;\n',
+    );
+
+    assert.equal(
+      changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length,
+      1,
+      'an unchanged reason inherited from main is not evidence for this branch',
+    );
+    fixture.write(
+      'src/a.ts',
+      '// changelog-ok: historical internal rename\n// changelog-ok: historical internal rename\nexport const value = 2;\n',
+    );
+    assert.equal(
+      changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length,
+      1,
+      'duplicating an inherited reason in the same file is still reuse',
+    );
+    const production = runGates(fixture.root).find((run) => run.id === 'release-changelog-fragment');
+    assert.equal(production?.status, 'fail', 'the F-043 shape must fail through production runGates');
+
+    fixture.write(
+      'src/a.ts',
+      '// changelog-ok: value is now cached internally; output is unchanged\nexport const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'unstaged reason edit');
+    fixture.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'staged reason edit');
+    fixture.git('commit', '-q', '-m', 'change reason with implementation');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'committed reason edit');
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+
+  const quoted = releaseDeltaRepo({
+    'src/a.ts': 'const note = "prefix changelog-ok: historical internal rename"; export const value = 1;\n',
+  });
+  try {
+    quoted.write(
+      'src/a.ts',
+      'const note = "prefix changelog-ok: historical internal rename"; export const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, quoted.root, []).findings.length, 1, 'quoted code suffix only');
+    quoted.write(
+      'src/a.ts',
+      'const note = "prefix changelog-ok: private cache only"; export const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, quoted.root, []).findings.length, 0, 'quoted reason changed');
+  } finally {
+    rmSync(quoted.root, { recursive: true, force: true });
+  }
+});
+
+test('release exemption provenance isolates a reason from unrelated same-line edits', () => {
+  const fixture = releaseDeltaRepo({
+    'src/a.ts': '/* changelog-ok: historical internal rename */ export const value = 1;\n',
+  });
+  try {
+    fixture.write(
+      'src/a.ts',
+      '/* changelog-ok: historical internal rename */ export const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'code suffix only');
+
+    fixture.write(
+      'src/a.ts',
+      '  /* changelog-ok: historical internal rename */ export const value = 1;  \n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'formatting only');
+
+    fixture.write(
+      'src/a.ts',
+      '/* changelog-ok: value now comes from a private cache */ export const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, 'reason changed');
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('release exemption provenance carries multiline wrapper state across the document', () => {
+  const wrappers = [
+    ['block comment', (reason, value) => `/*\n * changelog-ok: ${reason} */ export const value = ${value};\n`],
+    ['HTML comment', (reason, value) => `<!--\nchangelog-ok: ${reason} --><div>${value}</div>\n`],
+    ['quoted string', (reason, value) => `const note = \`prefix\nchangelog-ok: ${reason}\`; export const value = ${value};\n`],
+  ];
+
+  for (const [label, source] of wrappers) {
+    const fixture = releaseDeltaRepo({
+      'src/a.ts': source('historical internal rename', 1),
+    });
+    try {
+      fixture.write('src/a.ts', source('historical internal rename', 2));
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, `${label} code-only unstaged`);
+      fixture.git('add', '--all');
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, `${label} code-only staged`);
+      fixture.git('commit', '-q', '-m', `${label} code-only edit`);
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, `${label} code-only committed`);
+
+      fixture.write('src/a.ts', source('this branch now uses a private cache', 2));
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, `${label} novel reason unstaged`);
+      fixture.git('add', '--all');
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, `${label} novel reason staged`);
+      fixture.git('commit', '-q', '-m', `${label} novel reason`);
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 0, `${label} novel reason committed`);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('untracked exemption evidence must be contained regular UTF-8 text', (t) => {
+  for (const [label, baseFiles, rel, body] of [
+    ['NUL binary', {}, 'notes/zero-byte.txt', Buffer.from('// changelog-ok: NUL binary\0payload\n')],
+    [
+      'invalid UTF-8',
+      {},
+      'notes/invalid.txt',
+      Buffer.concat([Buffer.from('// changelog-ok: invalid UTF-8 '), Buffer.from([0xff]), Buffer.from('\n')]),
+    ],
+    ['binary attribute', { '.gitattributes': '*.dat binary\n' }, 'notes/attribute.dat', '// changelog-ok: attributes declare this binary\n'],
+  ]) {
+    const binary = releaseDeltaRepo(baseFiles);
+    try {
+      binary.write('src/a.ts', 'export const changed = true;\n');
+      binary.write(rel, body);
+      assert.equal(changeRequiresFile(releaseChangeTable, binary.root, []).findings.length, 1, `${label} untracked`);
+      binary.git('add', '--all');
+      assert.equal(changeRequiresFile(releaseChangeTable, binary.root, []).findings.length, 1, `${label} staged`);
+      binary.git('commit', '-q', '-m', `${label} fixture`);
+      assert.equal(changeRequiresFile(releaseChangeTable, binary.root, []).findings.length, 1, `${label} committed`);
+    } finally {
+      rmSync(binary.root, { recursive: true, force: true });
+    }
+  }
+
+  const fixture = releaseDeltaRepo();
+  const outside = mkdtempSync(join(tmpdir(), 'rungs-release-outside-'));
+  try {
+    fixture.write('src/a.ts', 'export const changed = true;\n');
+    fixture.write('notes/outside-placeholder.txt', 'placeholder\n');
+    rmSync(join(fixture.root, 'notes', 'outside-placeholder.txt'));
+    writeFileSync(join(outside, 'evidence.txt'), '// changelog-ok: evidence lives outside the repository\n');
+    try {
+      symlinkSync(outside, join(fixture.root, 'notes', 'outside'), process.platform === 'win32' ? 'junction' : 'dir');
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'external alias evidence');
+      rmSync(join(fixture.root, 'notes', 'outside'));
+    } catch (error) {
+      t.diagnostic(`directory alias probe unavailable: ${error instanceof Error ? error.message : error}`);
+    }
+
+    if (process.platform !== 'win32') {
+      symlinkSync('changelog-ok: symlink target text', join(fixture.root, 'notes', 'link-evidence'));
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'untracked symlink');
+      fixture.git('add', '--all');
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'staged symlink');
+      fixture.git('commit', '-q', '-m', 'symlink fixture');
+      assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1, 'committed symlink');
+    }
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('Git object modes reject symlink evidence even when checkout materializes a regular file', () => {
+  const ordinary = releaseDeltaRepo();
+  try {
+    ordinary.write('src/a.ts', 'export const changed = true;\n');
+    ordinary.write('notes/evidence.txt', 'changelog-ok: ordinary tracked evidence is valid\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, ordinary.root, []).findings.length, 0, 'ordinary untracked file');
+    ordinary.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, ordinary.root, []).findings.length, 0, 'ordinary staged blob');
+    ordinary.git('commit', '-q', '-m', 'ordinary evidence');
+    assert.equal(changeRequiresFile(releaseChangeTable, ordinary.root, []).findings.length, 0, 'ordinary committed blob');
+  } finally {
+    rmSync(ordinary.root, { recursive: true, force: true });
+  }
+
+  const linked = releaseDeltaRepo();
+  try {
+    linked.write('src/a.ts', 'export const changed = true;\n');
+    linked.git('add', 'src/a.ts');
+    linked.git('config', 'core.symlinks', 'false');
+    mkdirSync(join(linked.root, 'notes'), { recursive: true });
+    const target = 'changelog-ok: a tracked link is not release evidence\n';
+    const oid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: linked.root,
+      encoding: 'utf8',
+      input: target,
+    }).trim();
+    linked.git('update-index', '--add', '--cacheinfo', '120000', oid, 'notes/link-evidence');
+    linked.git('checkout-index', '--force', '--', 'notes/link-evidence');
+    assert.equal(lstatSync(join(linked.root, 'notes', 'link-evidence')).isFile(), true, 'probe uses no OS symlink privilege');
+    assert.match(linked.git('ls-files', '--stage', '--', 'notes/link-evidence'), /^120000 /, 'the index retains Git symlink mode');
+    assert.equal(changeRequiresFile(releaseChangeTable, linked.root, []).findings.length, 1, 'staged symlink mode');
+
+    linked.git('commit', '-q', '-m', 'tracked symlink evidence');
+    assert.match(linked.git('ls-tree', 'HEAD', '--', 'notes/link-evidence'), /^120000 /, 'the tree retains Git symlink mode');
+    assert.equal(changeRequiresFile(releaseChangeTable, linked.root, []).findings.length, 1, 'committed symlink mode');
+  } finally {
+    rmSync(linked.root, { recursive: true, force: true });
+  }
+
+  const linkToFile = releaseDeltaRepo();
+  try {
+    linkToFile.write('src/a.ts', 'export const changed = true;\n');
+    linkToFile.git('add', 'src/a.ts');
+    linkToFile.git('config', 'core.symlinks', 'false');
+    mkdirSync(join(linkToFile.root, 'notes'), { recursive: true });
+    const linkTarget = 'changelog-ok: initial tracked link is not release evidence\n';
+    const linkOid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: linkToFile.root,
+      encoding: 'utf8',
+      input: linkTarget,
+    }).trim();
+    linkToFile.git('update-index', '--add', '--cacheinfo', '120000', linkOid, 'notes/mode-change');
+    linkToFile.git('checkout-index', '--force', '--', 'notes/mode-change');
+    linkToFile.git('commit', '-q', '-m', 'commit link before conversion');
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 1, 'committed link before conversion');
+
+    const fileText = 'changelog-ok: converted ordinary file is branch-local evidence\n';
+    linkToFile.write('notes/mode-change', fileText);
+    assert.equal(lstatSync(join(linkToFile.root, 'notes', 'mode-change')).isFile(), true);
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 1, 'unstaged conversion still has a symlink index entry');
+    const fileOid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: linkToFile.root,
+      encoding: 'utf8',
+      input: fileText,
+    }).trim();
+    linkToFile.git('update-index', '--cacheinfo', '100644', fileOid, 'notes/mode-change');
+    assert.match(linkToFile.git('ls-files', '--stage', '--', 'notes/mode-change'), /^100644 /);
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 0, 'staged ordinary mode overrides historical HEAD link mode');
+    linkToFile.git('commit', '-q', '-m', 'convert link to file');
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 0, 'committed ordinary conversion');
+  } finally {
+    rmSync(linkToFile.root, { recursive: true, force: true });
+  }
+
+  const fileToLink = releaseDeltaRepo();
+  try {
+    fileToLink.write('src/a.ts', 'export const changed = true;\n');
+    fileToLink.write('notes/mode-change', 'changelog-ok: initial ordinary evidence\n');
+    fileToLink.git('add', '--all');
+    fileToLink.git('commit', '-q', '-m', 'commit ordinary evidence before conversion');
+    fileToLink.git('config', 'core.symlinks', 'false');
+
+    const target = 'changelog-ok: proposed link target is not release evidence\n';
+    fileToLink.write('notes/mode-change', target);
+    assert.equal(changeRequiresFile(releaseChangeTable, fileToLink.root, []).findings.length, 0, 'unstaged regular leaf retains ordinary index mode');
+    const targetOid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: fileToLink.root,
+      encoding: 'utf8',
+      input: target,
+    }).trim();
+    fileToLink.git('update-index', '--cacheinfo', '120000', targetOid, 'notes/mode-change');
+    assert.equal(lstatSync(join(fileToLink.root, 'notes', 'mode-change')).isFile(), true, 'staged link remains a regular Windows working leaf');
+    assert.match(fileToLink.git('ls-files', '--stage', '--', 'notes/mode-change'), /^120000 /);
+    assert.equal(changeRequiresFile(releaseChangeTable, fileToLink.root, []).findings.length, 1, 'staged conversion to link');
+    fileToLink.git('commit', '-q', '-m', 'convert file to link');
+    assert.equal(changeRequiresFile(releaseChangeTable, fileToLink.root, []).findings.length, 1, 'committed conversion to link');
+  } finally {
+    rmSync(fileToLink.root, { recursive: true, force: true });
+  }
+});
+
+test('release exemption provenance rejects moved and copied history but accepts new untracked evidence', () => {
+  const historical = '// changelog-ok: historical internal rename\n';
+
+  const moved = releaseDeltaRepo({
+    'src/a.ts': `${historical}export const value = 1;\n`,
+  });
+  try {
+    moved.write('src/a.ts', `export const value = 2;\n${historical}`);
+    assert.equal(changeRequiresFile(releaseChangeTable, moved.root, []).findings.length, 1, 'line move');
+
+    moved.git('mv', 'src/a.ts', 'src/renamed.ts');
+    assert.equal(changeRequiresFile(releaseChangeTable, moved.root, []).findings.length, 1, 'pure rename');
+
+    moved.write(
+      'src/renamed.ts',
+      '// changelog-ok: renamed to align the private module boundary\nexport const value = 2;\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, moved.root, []).findings.length, 0, 'reason edit during rename');
+  } finally {
+    rmSync(moved.root, { recursive: true, force: true });
+  }
+
+  const copied = releaseDeltaRepo({
+    'src/source.ts': `${historical}export const source = 1;\n`,
+  });
+  try {
+    copied.write('src/change.ts', 'export const changed = true;\n');
+    copied.write('src/copied.ts', `${historical}export const source = 1;\n`);
+    assert.equal(changeRequiresFile(releaseChangeTable, copied.root, []).findings.length, 1, 'untracked historical copy');
+    copied.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, copied.root, []).findings.length, 1, 'staged historical copy');
+  } finally {
+    rmSync(copied.root, { recursive: true, force: true });
+  }
+
+  const untracked = releaseDeltaRepo();
+  try {
+    untracked.write('src/a.ts', 'export const changed = true;\n');
+    untracked.write('notes/exemption.txt', '// changelog-ok: internal cache only; output is unchanged\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new untracked evidence');
+    untracked.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new staged evidence');
+    untracked.git('commit', '-q', '-m', 'branch-local exemption');
+    assert.equal(changeRequiresFile(releaseChangeTable, untracked.root, []).findings.length, 0, 'new committed evidence');
+  } finally {
+    rmSync(untracked.root, { recursive: true, force: true });
+  }
+
+  const duplicate = releaseDeltaRepo({
+    'docs/history.md': historical,
+  });
+  try {
+    duplicate.write('src/a.ts', 'export const changed = true;\n');
+    duplicate.write(
+      'notes/new-evidence.md',
+      `${historical}This is a new decision.\nIt has independent context.\nIt names the current branch.\n`,
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 1, 'globally reused reason while untracked');
+    duplicate.git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 1, 'globally reused reason while staged');
+    duplicate.git('commit', '-q', '-m', 'new coincidentally identical reason');
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 1, 'globally reused reason while committed');
+    duplicate.write(
+      'notes/new-evidence.md',
+      '// changelog-ok: this branch has distinct independent context\n',
+    );
+    assert.equal(changeRequiresFile(releaseChangeTable, duplicate.root, []).findings.length, 0, 'reworded branch-local reason');
+  } finally {
+    rmSync(duplicate.root, { recursive: true, force: true });
+  }
+});
+
 test('change-requires-file refuses missing or malformed pattern configuration', () => {
   const { root } = releaseDeltaRepo();
   try {
@@ -1127,6 +1492,13 @@ test('change-requires-file resolves remote-only bases and refuses ambiguous or a
     assert.equal(origin.findings.length, 1, 'exact origin/main is evaluated');
     assert.ok(origin.examined > 0);
 
+    write('src/a.ts', '// changelog-ok: internal cache only; output is unchanged\n');
+    assert.equal(
+      changeRequiresFile(releaseChangeTable, root, []).findings.length,
+      0,
+      'exact origin/main preserves branch-local exemption provenance',
+    );
+
     git('update-ref', '-d', 'refs/remotes/origin/main');
     git('remote', 'add', 'upstream', 'https://example.invalid/upstream.git');
     git('remote', 'add', 'fork', 'https://example.invalid/fork.git');
@@ -1138,7 +1510,7 @@ test('change-requires-file resolves remote-only bases and refuses ambiguous or a
 
     git('update-ref', '-d', 'refs/remotes/fork/main');
     const soleRemote = changeRequiresFile(releaseChangeTable, root, []);
-    assert.equal(soleRemote.findings.length, 1, 'a sole non-origin remote is evaluated');
+    assert.equal(soleRemote.findings.length, 0, 'a sole non-origin remote preserves branch-local exemption provenance');
     assert.ok(soleRemote.examined > 0);
 
     git('update-ref', '-d', 'refs/remotes/upstream/main');
@@ -1175,8 +1547,8 @@ test('release fixtures execute and every engine uses the strict shared table sel
     selectEngineTable(table, 'change-requires-file', 'release-changelog-fragment'),
     blocks,
   );
-  assert.equal(results.length, 6);
-  assert.deepEqual(results.map((result) => result.outcome), Array(6).fill('ok'));
+  assert.equal(results.length, 8);
+  assert.deepEqual(results.map((result) => result.outcome), Array(8).fill('ok'));
 
   const freshnessBlocks = table.self_test
     .filter((block) => block.gate === 'release-fragment-current')
@@ -1341,7 +1713,7 @@ test('consumer-configured version exclusions reach production runGates and remai
         Object.entries(packages).map(([rel, version]) => [rel, JSON.stringify({ version })]),
       ),
       '.ai/gates.toml': '[[gates]]\nid = "release-version-consistent"\nkind = "declared"\nengine = "computed-claim"\ntable = "release/release.toml"\n',
-      '.ai/rungs.toml': `[repo]\nharnesses = ["agents-md"]\n\n[modules.release]\nversion = "1.5.0"\nstate = "managed"\nparams = { version_exclude = "${versionExclude}" }\n`,
+      '.ai/rungs.toml': `[repo]\nharnesses = ["agents-md"]\n\n[modules.release]\nversion = "1.6.0"\nstate = "managed"\nparams = { version_exclude = "${versionExclude}" }\n`,
     });
   const excludedRoot = makeRoot('{web,docs}/package.json', {
     'package.json': '1.2.3',

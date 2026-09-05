@@ -1,6 +1,6 @@
 [module]
 name    = "release"
-version = "1.5.0"
+version = "1.6.0"
 rung    = 3
 summary = "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file."
 

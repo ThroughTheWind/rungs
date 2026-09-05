@@ -124,6 +124,16 @@ expect  = "fail"
 fixture = { changed = ["src/a.ts"], fragments = ["{{changelog_dir}}/CONSUMED_THROUGH"] }
 
 [[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "fail"
+fixture = { changed = ["src/a.ts"], fragments = [], inherited_exempt = "changelog-ok: historical internal rename" }
+
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "pass"
+fixture = { changed = ["src/a.ts"], fragments = [], inherited_exempt = "changelog-ok: historical internal rename", exempt = "changelog-ok: new cache path; output is unchanged" }
+
+[[self_test]]
 gate    = "release-fragment-current"
 expect  = "fail"
 fixture = { dir = "changelog.d", version = "0.2.0", fragments = [] }
