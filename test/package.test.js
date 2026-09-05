@@ -98,9 +98,17 @@ function canonicalPath(path) {
   }
 }
 
-function isWithin(parent, child) {
-  const rel = relative(canonicalPath(parent), canonicalPath(child));
+function isWithinCanonical(parent, child) {
+  const rel = relative(parent, child);
   return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
+}
+
+function isWithin(parent, child) {
+  return isWithinCanonical(canonicalPath(parent), canonicalPath(child));
+}
+
+function isExistingWithin(parent, child) {
+  return isWithinCanonical(realpathSync(parent), realpathSync(child));
 }
 
 function parsePackResult(stdout) {
@@ -134,10 +142,14 @@ test('path containment canonicalizes aliased ancestors and missing descendants',
     symlinkSync(realParent, aliasParent, process.platform === 'win32' ? 'junction' : 'dir');
     symlinkSync(outsideParent, escapeAlias, process.platform === 'win32' ? 'junction' : 'dir');
 
-    assert.equal(isWithin(aliasParent, realChild), true);
+    assert.equal(isExistingWithin(aliasParent, realChild), true);
     assert.equal(isWithin(aliasParent, join(aliasParent, 'child', 'missing', 'leaf')), true);
+    assert.equal(isExistingWithin(aliasParent, outsideParent), false);
     assert.equal(isWithin(aliasParent, join(fixtureRoot, 'sibling')), false);
     assert.equal(isWithin(aliasParent, join(aliasParent, 'escape', 'missing')), false);
+
+    const pathEntries = [join(aliasParent, 'missing-bin'), join(fixtureRoot, 'missing-bin')];
+    assert.deepEqual(pathEntries.filter((entry) => !isWithin(realParent, entry)), [pathEntries[1]]);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
@@ -362,10 +374,24 @@ test('a packed candidate retrofits an existing repository without taking over it
 
     const installedPackageRoot = realpathSync(join(toolRoot, 'node_modules', '@rungs', 'cli'));
     const installedDependencyRoot = realpathSync(join(toolRoot, 'node_modules', 'smol-toml'));
-    assert.ok(isWithin(toolRoot, installedPackageRoot), 'the candidate must resolve inside the isolated tool prefix');
-    assert.ok(isWithin(toolRoot, installedDependencyRoot), 'the dependency must resolve inside the isolated tool prefix');
-    assert.equal(isWithin(root, installedPackageRoot), false, 'the candidate must not resolve from the producer');
-    assert.equal(isWithin(root, installedDependencyRoot), false, 'the dependency must not resolve from the producer');
+    assert.ok(
+      isExistingWithin(toolRoot, installedPackageRoot),
+      'the candidate must resolve inside the isolated tool prefix',
+    );
+    assert.ok(
+      isExistingWithin(toolRoot, installedDependencyRoot),
+      'the dependency must resolve inside the isolated tool prefix',
+    );
+    assert.equal(
+      isExistingWithin(root, installedPackageRoot),
+      false,
+      'the candidate must not resolve from the producer',
+    );
+    assert.equal(
+      isExistingWithin(root, installedDependencyRoot),
+      false,
+      'the dependency must not resolve from the producer',
+    );
     const installedManifest = JSON.parse(readFileSync(join(installedPackageRoot, 'package.json'), 'utf8'));
     const installedDependency = JSON.parse(readFileSync(join(installedDependencyRoot, 'package.json'), 'utf8'));
     assert.equal(installedManifest.name, '@rungs/cli');
@@ -609,7 +635,9 @@ test('a packed candidate retrofits an existing repository without taking over it
 
     const resolvedTemporaryRoot = realpathSync(temporaryRoot);
     const resolvedConsumer = realpathSync(consumer);
-    assert.ok(isWithin(resolvedTemporaryRoot, resolvedConsumer) && resolvedConsumer !== resolvedTemporaryRoot);
+    assert.ok(
+      isWithinCanonical(resolvedTemporaryRoot, resolvedConsumer) && resolvedConsumer !== resolvedTemporaryRoot,
+    );
     expectOk(runGit(resolvedConsumer, ['reset', '--hard', seedCommit]), 'rollback tracked consumer files');
     expectOk(runGit(resolvedConsumer, ['clean', '-fdx']), 'rollback untracked consumer files');
     assert.equal(gitText(consumer, ['rev-parse', 'HEAD']), seedCommit);
@@ -628,7 +656,8 @@ test('a packed candidate retrofits an existing repository without taking over it
     const resolvedTemporaryRoot = realpathSync(temporaryRoot);
     const resolvedSystemTemp = realpathSync(tmpdir());
     assert.ok(
-      resolvedTemporaryRoot !== resolvedSystemTemp && isWithin(resolvedSystemTemp, resolvedTemporaryRoot),
+      resolvedTemporaryRoot !== resolvedSystemTemp
+        && isWithinCanonical(resolvedSystemTemp, resolvedTemporaryRoot),
       `refusing to remove non-temporary path: ${resolvedTemporaryRoot}`,
     );
     rmSync(resolvedTemporaryRoot, { recursive: true, force: true });
