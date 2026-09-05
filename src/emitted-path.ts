@@ -1,6 +1,6 @@
 import { lstatSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
-import { canonicalCaselessEqual } from './storage-key.ts';
+import { canonicalCaselessSegmentEqual } from './storage-key.ts';
 
 /**
  * A module path is repository-relative data, not a host-native path.  Treating
@@ -65,7 +65,16 @@ function canonicalCaselessAncestor(ancestor: string, descendant: string): boolea
   const descendantSegments = descendant.split(sep);
   return (
     ancestorSegments.length < descendantSegments.length &&
-    ancestorSegments.every((segment, index) => canonicalCaselessEqual(segment, descendantSegments[index]))
+    ancestorSegments.every((segment, index) => canonicalCaselessSegmentEqual(segment, descendantSegments[index]))
+  );
+}
+
+function canonicalCaselessPathEqual(left: string, right: string): boolean {
+  const leftSegments = left.split(sep);
+  const rightSegments = right.split(sep);
+  return (
+    leftSegments.length === rightSegments.length &&
+    leftSegments.every((segment, index) => canonicalCaselessSegmentEqual(segment, rightSegments[index]))
   );
 }
 
@@ -237,7 +246,7 @@ export function preflightEmittedPaths(
     // checkout are still one destination when that record reaches Windows or a
     // default case-insensitive macOS volume. Use the same conservative storage
     // relation as managed refs, including compatibility and full case forms.
-    const prior = seen.find((entry) => canonicalCaselessEqual(entry.resolved.absolute, destination.absolute));
+    const prior = seen.find((entry) => canonicalCaselessPathEqual(entry.resolved.absolute, destination.absolute));
     if (!prior) {
       const structural = seen.find((entry) =>
         canonicalCaselessAncestor(entry.resolved.absolute, destination.absolute) ||

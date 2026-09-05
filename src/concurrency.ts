@@ -19,7 +19,7 @@ import { hostname } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installedParams } from './check.ts';
-import { canonicalCaselessEqual } from './storage-key.ts';
+import { canonicalCaselessSegmentEqual } from './storage-key.ts';
 
 export interface LoopParams {
   integration: string;
@@ -210,7 +210,7 @@ function refStorageCollides(left: string, right: string): boolean {
   const rightSegments = right.split('/');
   const shared = Math.min(leftSegments.length, rightSegments.length);
   for (let index = 0; index < shared; index++) {
-    if (!canonicalCaselessEqual(leftSegments[index], rightSegments[index])) return false;
+    if (!canonicalCaselessSegmentEqual(leftSegments[index], rightSegments[index])) return false;
     // A spelling difference in a directory shared by two otherwise different
     // refs is itself a Windows/APFS alias. The later leaf difference does not
     // make the filesystem path unambiguous.

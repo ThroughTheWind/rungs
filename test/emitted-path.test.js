@@ -53,6 +53,11 @@ const portableStorageAliases = [
   { label: 'ligature', left: 'ﬁ', right: 'fi' },
 ];
 
+const compatibilitySeparators = [
+  { label: 'fullwidth-reverse-solidus', character: '\uff3c' },
+  { label: 'fullwidth-solidus', character: '\uff0f' },
+];
+
 const bundledSession = () => loadManifest(resolve(import.meta.dirname, '..', 'modules', 'session'));
 
 test('emitted paths reject either platform\'s escape syntax and non-portable aliases', () => {
@@ -207,6 +212,63 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
     }
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('compatibility folds cannot manufacture emitted-path structure', (t) => {
+  const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-compat-separator-'));
+
+  try {
+    for (const { label, character } of compatibilitySeparators) {
+      const root = join(base, label);
+      const flatTarget = `safe${character}file.md`;
+      const nestedTarget = 'safe/file.md';
+      mkdirSync(root);
+
+      for (const targets of [
+        [flatTarget, nestedTarget],
+        [nestedTarget, flatTarget],
+      ]) {
+        const resolved = preflightEmittedPaths(
+          root,
+          targets.map((target, index) => ({ moduleName: `${label}-${index}`, target })),
+        );
+        assert.deepEqual(
+          resolved.map((entry) => entry.target),
+          targets,
+          `${label} remains a filename character in either candidate order`,
+        );
+      }
+
+      const [flat, nested] = preflightEmittedPaths(root, [
+        { moduleName: `${label}-flat`, target: flatTarget },
+        { moduleName: `${label}-nested`, target: nestedTarget },
+      ]);
+
+      try {
+        mkdirSync(dirname(nested.absolute), { recursive: true });
+        writeFileSync(flat.absolute, 'flat\n');
+        writeFileSync(nested.absolute, 'nested\n');
+
+        const flatReal = realpathSync.native(flat.absolute);
+        const nestedReal = realpathSync.native(nested.absolute);
+        if (flatReal === nestedReal) {
+          t.diagnostic(`${label} does not coexist as a distinct filename on this filesystem`);
+          continue;
+        }
+
+        assert.equal(readFileSync(flat.absolute, 'utf8'), 'flat\n');
+        assert.equal(readFileSync(nested.absolute, 'utf8'), 'nested\n');
+      } catch (error) {
+        if (['EEXIST', 'EINVAL', 'ENOENT', 'ENOTDIR', 'EPERM'].includes(error?.code)) {
+          t.diagnostic(`${label} coexistence is unavailable on this filesystem: ${error.code}`);
+          continue;
+        }
+        throw error;
+      }
+    }
+  } finally {
+    rmSync(base, { recursive: true, force: true });
   }
 });
 
