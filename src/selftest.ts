@@ -139,7 +139,19 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
     // `changelog.d/*.md` does not match. The gate then reports "did not fire"
     // about the harness rather than the fixture.
     const written = fx.fragments.map((n: string) => write(`${dir}/${n}`, `# ${n}\n`));
-    written.push(write('package.json', JSON.stringify({ version: fx.version })));
+    if (fx.version_file === 'Directory.Build.props') {
+      written.push(write('Directory.Build.props', `<Project><PropertyGroup><Version>${fx.version}</Version></PropertyGroup></Project>\n`));
+    } else if (fx.version_file === 'pyproject.toml') {
+      written.push(write('pyproject.toml', `[project]\nversion = "${fx.version}"\n`));
+    } else {
+      written.push(write('package.json', JSON.stringify({ version: fx.version })));
+    }
+    // `consumed_through` is intentionally presence-sensitive: omitting it builds
+    // the missing-marker failure, while an empty string builds the blank-marker
+    // failure. Truthiness would collapse both into the same fixture.
+    if ('consumed_through' in fx) {
+      written.push(write(`${dir}/CONSUMED_THROUGH`, `${fx.consumed_through}\n`));
+    }
     return written;
   }
 

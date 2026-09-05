@@ -64,6 +64,11 @@ note = "A green check means these files agree, not that the version is correct e
 # The other half of the fragment discipline. `release-changelog-fragment` catches a release-worthy
 # change that added no fragment; this catches a fragment that was consumed and never deleted.
 #
+# `CONSUMED_THROUGH` is the offline assertion that separates a fragment being prepared from an
+# equal-version fragment already assembled into a release. It is consumer-maintained state: the
+# module emits `UNINITIALIZED`, and the owner explicitly chooses `none` or the last consumed
+# version. A concrete value equals the package version in a steady tree.
+#
 # Only filenames that parse as a version are judged. A repo whose fragments are named per-change
 # (`42.feature.md`) states no version, so there is nothing to compare and nothing is claimed — a
 # gate that refused a naming convention it was not asked about is one people turn off.
@@ -71,11 +76,17 @@ note = "A green check means these files agree, not that the version is correct e
 [[changelog_freshness]]
 id        = "release-fragment-current"
 fragments = ["{{changelog_dir}}/*.md"]
-version   = { file = "package.json", path = "version" }
+versions = [
+  { file = "package.json", path = "version" },
+  { file = "Directory.Build.props", xpath = "//Version" },
+  { file = "pyproject.toml", path = "project.version" },
+  { file = "*/package.json", path = "version" },
+]
+consumed_through = "{{changelog_dir}}/CONSUMED_THROUGH"
 message = """
-This fragment names a version below the one being prepared, so it belongs to a release that already
-shipped. Delete it — fragments are consumed, not archived, and one left behind is republished as
-though it were new work.
+This fragment names an already-consumed version or falls below the package version being prepared.
+Delete it — fragments are consumed, not archived, and one left behind is republished as though it
+were new work.
 """
 
 # ── self-tests ────────────────────────────────────────────────────────────────
@@ -105,29 +116,107 @@ gate    = "release-changelog-fragment"
 expect  = "fail"
 fixture = { changed = ["src/a.ts"], fragments = [], exempt = "changelog-ok:" }
 
+# The tracked consumption marker is state, not release-note content. Its extensionless name must
+# not satisfy the changed-fragment obligation.
+[[self_test]]
+gate    = "release-changelog-fragment"
+expect  = "fail"
+fixture = { changed = ["src/a.ts"], fragments = ["{{changelog_dir}}/CONSUMED_THROUGH"] }
+
 [[self_test]]
 gate    = "release-fragment-current"
 expect  = "fail"
-fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["0.1.1.md"] }
+fixture = { dir = "changelog.d", version = "0.2.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "UNINITIALIZED", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "v0.2.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = " 0.2.0 ", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "\uFEFF0.2.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0\n", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.1.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.3.0", fragments = [] }
+
+# `none` is the explicit first-release exception. The equal fragment is still being prepared.
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "none", fragments = ["0.2.0.md"] }
 
 [[self_test]]
 gate    = "release-fragment-current"
 expect  = "pass"
-fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["0.2.0.md"] }
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", fragments = [] }
+
+# F-025: after a cut, the forgotten fragment and package version are equal. The concrete
+# consumption boundary is what makes that shape fail rather than look like preparation.
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", fragments = ["0.2.0.md"] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "fail"
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", fragments = ["0.1.1.md"] }
 
 # A fragment for a version *above* the one being prepared is not stale — it is a branch that
 # already decided it is a minor while the package has not been bumped yet.
 [[self_test]]
 gate    = "release-fragment-current"
 expect  = "pass"
-fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["0.3.0.md"] }
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", fragments = ["0.3.0.md"] }
 
 # Per-change fragment naming states no version, so there is nothing to compare and nothing is
 # claimed. The gate must stay silent rather than refuse a convention it was not asked about.
 [[self_test]]
 gate    = "release-fragment-current"
 expect  = "pass"
-fixture = { dir = "changelog.d", version = "0.2.0", fragments = ["42.feature.md"] }
+fixture = { dir = "changelog.d", version = "0.2.0", consumed_through = "0.2.0", fragments = ["42.feature.md"] }
+
+# The release module's version gate supports Node, .NET and Python repositories. The consumption
+# boundary must use the same ecosystem-neutral source set rather than making the latter two
+# permanently red after their first release.
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", version_file = "Directory.Build.props", consumed_through = "0.2.0", fragments = [] }
+
+[[self_test]]
+gate    = "release-fragment-current"
+expect  = "pass"
+fixture = { dir = "changelog.d", version = "0.2.0", version_file = "pyproject.toml", consumed_through = "0.2.0", fragments = [] }
 
 [[self_test]]
 gate    = "release-version-consistent"

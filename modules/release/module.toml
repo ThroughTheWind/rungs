@@ -63,13 +63,13 @@ the change.
 id     = "release-fragment-current"
 kind   = "declared"
 engine = "changelog-freshness"
-applicability = "repo-content"
+applicability = "our-schema"
 table  = "gates/release.toml"
 tier   = "fast"
 why    = """
 Fragments are consumed at release time, not archived — one left behind appears in the next release
-too, where it reads as unreleased work. `cut-release` §3 has said so in prose since it was written,
-and prose did not hold it: this repo's own `0.1.1` fragment survived two releases (F-022).
+too, where it reads as unreleased work. The tracked consumption boundary distinguishes a fragment
+being prepared from the equal-version fragment this repo left behind after v0.2.0 (F-025).
 """
 
 [[gates]]
