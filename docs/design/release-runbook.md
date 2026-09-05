@@ -48,8 +48,17 @@ not a promise, and renaming a branch is free. Republishing a version number is i
 ## 2. Gate
 
 ```bash
+npm audit
+npm audit --prefix site
 npm test && node --experimental-strip-types src/cli.ts check && node scripts/check-doc-claims.mjs
 ```
+
+Both audits must report zero vulnerabilities from their committed lockfiles. The root and site are
+separate package trees, so a clean result from either one says nothing about the other. This check
+was made explicit after the site silently resolved vulnerable `fast-uri@3.1.5` while the root audit
+remained clean (F-053). Treat a new advisory like any other red release gate: record its exact
+dependency path and split remediation into a bounded item rather than applying an unrelated forced
+upgrade during the cut.
 
 Plain `check` runs every registered gate, which is what a release wants; since
 [ADR-0008](../decisions/ADR-0008-gate-tiers-are-levels.md) a named tier is an ordered level rather
