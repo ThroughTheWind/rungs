@@ -37,7 +37,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | --- | --- | --- | --- |
 | F-051 | Emitted-path comparison missed APFS aliases such as `ß`/`ss` and `ﬁ`/`fi`, allowing two targets to address one inode | promoted | WI-080 centralizes the NFKD/full-case storage key, compares native paths per segment so compatibility characters cannot manufacture structure, and proves both-order exact/structural add and stored-upgrade refusal before mutation across the full OS/Node matrix |
 
-## Closed — 2026-09-05 by [WI-078](items/WI-078-branch-local-release-exemptions.md)
+## Closed — 2026-09-05 by [WI-078](archive/WI-078-branch-local-release-exemptions.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
