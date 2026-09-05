@@ -2,8 +2,8 @@
 id: WI-076
 title: Contain backlog archival inside the repository
 type: feature
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-076-backlog-archive-containment
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-047, WI-073, F-049]
@@ -89,7 +89,7 @@ after the whole set has passed.
 
 ## Execution
 
-Not started; blocked on WI-073's shared containment primitive landing.
+Started from green `main` at `9d362f860ad0d701d9d1b87ab04d9c13eec756df` after WI-073 landed.
 
 ## Review
 
