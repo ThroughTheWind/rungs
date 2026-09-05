@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-077 -->
+<!-- NEXT-ID: WI-078 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -28,6 +28,7 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- | --- |
 | [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | — |
 | [WI-076](items/WI-076-backlog-archive-containment.md) | Contain backlog archival inside the repository | feature | — |
+| [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | — |
 
 ## Accepted
 

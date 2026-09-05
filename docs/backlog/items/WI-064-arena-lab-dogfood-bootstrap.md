@@ -6,9 +6,9 @@ status: accepted
 branch:
 created: 2026-09-05
 updated: 2026-09-05
-related: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070, WI-071, WI-072, WI-073, WI-074, WI-075, WI-076]
+related: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070, WI-071, WI-072, WI-073, WI-074, WI-075, WI-076, WI-077]
 epic:
-children: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070, WI-071, WI-072, WI-073, WI-074, WI-075, WI-076]
+children: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070, WI-071, WI-072, WI-073, WI-074, WI-075, WI-076, WI-077]
 ---
 
 ## Proposal (rationale)
@@ -44,7 +44,7 @@ checkout.
 
 ### Impacts
 
-- Child items WI-065 through WI-076 own the Rungs changes identified so far; later independently
+- Child items WI-065 through WI-077 own the Rungs changes identified so far; later independently
   scoped children close any remaining release blockers before the immutable candidate is cut.
 - Arena owns its separate tracked adoption, document migration and exact-version update.
 - A later release item packages the children only after the downstream canary passes.
