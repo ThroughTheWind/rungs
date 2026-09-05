@@ -66,8 +66,9 @@ nobody verifies is the one that goes stale."""
 # *which sentence* is the claim — a scan for version-shaped strings would fire on "first published
 # 2026-08-14 at v0.1.0", which is history and correct. A pattern that stops matching fails too:
 # a claim reworded out of existence must not silently become unverified (F-021).
-# Both sides derived — the command list from the `switch (cmd)` in src/cli.ts, the subcommands from
-# the guards inside it — so this gate cannot drift the way the hand-kept list it replaces would.
+# Both sides derived and reconciled — dispatch and subcommands from `src/cli.ts`, help claims from
+# the dependency-free `COMMANDS` authority — so neither implementation nor documentation can drift
+# the way the hand-kept list this gate replaced did.
 [[gates]]
 id      = "module-commands-exist"
 kind    = "command"

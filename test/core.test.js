@@ -19,6 +19,7 @@ import { runSelfTests } from '../src/selftest.ts';
 import { loadTable, runGates } from '../src/check.ts';
 import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
 import { readVersionSource } from '../src/version-source.ts';
+import { COMMANDS } from '../src/help.ts';
 
 test('substitute resolves local and cross-module values without touching passthrough expressions', () => {
   const params = {
@@ -1702,6 +1703,72 @@ function parkedRef(result) {
   return match[1];
 }
 
+test('command gate failures retain stable normalized diagnostics and exit status', () => {
+  const roots = [
+    mkdtempSync(join(tmpdir(), 'rungs-command-diagnostic-a-')),
+    mkdtempSync(join(tmpdir(), 'rungs-command-diagnostic-b-')),
+  ];
+  try {
+    const runs = roots.map((root) => {
+      mkdirSync(join(root, '.ai'), { recursive: true });
+      writeFileSync(
+        join(root, '.ai', 'gates.toml'),
+        [
+          '[[gates]]',
+          'id = "diagnostic"',
+          'kind = "command"',
+          'tier = "fast"',
+          'command = "node fail.mjs"',
+          '',
+        ].join('\n'),
+      );
+      writeFileSync(
+        join(root, 'fail.mjs'),
+        'process.stderr.write("first " + process.cwd() + "\\r\\nsecond detail\\r\\n"); process.exit(7);\n',
+      );
+      return runGates(root)[0];
+    });
+
+    for (const [index, run] of runs.entries()) {
+      assert.equal(run.status, 'fail');
+      assert.match(run.findings[0].message, /command exited with status 7/);
+      assert.match(run.findings[0].message, /first <repo>/);
+      assert.match(run.findings[0].message, /second detail/);
+      assert.doesNotMatch(run.findings[0].message, /\r/);
+      assert.equal(
+        run.findings[0].message.includes(realpathSync.native(roots[index])),
+        false,
+        'a physical root alias such as macOS /private/var is normalized in full',
+      );
+      assert.ok(run.findings[0].identity, 'land receives a comparison identity separate from display text');
+    }
+    assert.equal(runs[0].findings[0].identity, runs[1].findings[0].identity, 'root paths do not destabilize identity');
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('docs command claims read the dependency-free authority that renders help', () => {
+  const checker = readFileSync(resolve('scripts/check-doc-claims.mjs'), 'utf8');
+  const moduleChecker = readFileSync(resolve('scripts/check-module-commands.mjs'), 'utf8');
+  const authority = readFileSync(resolve('src/help.ts'), 'utf8');
+  const cli = readFileSync(resolve('src/cli.ts'), 'utf8');
+  assert.match(checker, /import \{ COMMANDS \} from '\.\.\/src\/help\.ts'/);
+  assert.match(checker, /COMMANDS\.map\(\(\[usage\]\) => usage\.split\(' '\)\[0\]\)/);
+  assert.doesNotMatch(checker, /child_process|src\/cli\.ts/);
+  assert.doesNotMatch(authority, /^\s*import\s/m, 'the help authority remains runnable without installed packages');
+  assert.match(cli, /import \{ COMMANDS, FLAGS \} from '\.\/help\.ts'/);
+  assert.match(cli, /COMMANDS\.map\(\(\[u\]\) => u\.length\)/, 'renderHelp consumes the counted authority');
+  assert.match(moduleChecker, /import \{ COMMANDS, FLAGS \} from '\.\.\/src\/help\.ts'/);
+  assert.match(moduleChecker, /helpCommands = new Set\(COMMANDS\.map/);
+  assert.match(moduleChecker, /COMMANDS omits dispatched command/);
+  assert.match(moduleChecker, /COMMANDS claims/);
+  assert.match(moduleChecker, /for \(const \[entry\] of FLAGS\)/, 'module command validation consumes the flag authority');
+  assert.ok(COMMANDS.length > 0, 'the help authority is structurally present');
+  const names = COMMANDS.map(([usage]) => usage.split(' ')[0]);
+  assert.equal(new Set(names).size, names.length, 'each rendered top-level command is counted once');
+});
+
 const introducedFailure = (_dir, only) =>
   only
     ? { pass: 1, failing: [] }
@@ -2547,7 +2614,7 @@ test('land preserves unsafe preferred parking refs and uses collision-free recov
       const recovery = parkedRef(result);
 
       assert.equal(result.ok, false);
-      assert.equal(runnerCalls, 2);
+      assert.equal(runnerCalls, 3, 'merged scratch, base scratch and exact control each run once');
       assert.notEqual(recovery, 'INTEG/feature/park-case');
       assert.equal(g('rev-parse', recovery), verifiedMerge);
       assert.equal(g('rev-parse', 'integ/feature/park-case'), preferredBefore);
@@ -2584,7 +2651,7 @@ test('land preserves unsafe preferred parking refs and uses collision-free recov
       const recovery = parkedRef(result);
 
       assert.equal(result.ok, false);
-      assert.equal(runnerCalls, 2);
+      assert.equal(runnerCalls, 3, 'merged scratch, base scratch and exact control each run once');
       assert.notEqual(recovery, 'integ/feature/park-symbolic');
       assert.equal(g('rev-parse', recovery), verifiedMerge);
       assert.equal(g('symbolic-ref', 'refs/heads/integ/feature/park-symbolic'), 'refs/heads/park-target');
@@ -3147,6 +3214,165 @@ test('land refuses a red merged tree, leaves the integration branch untouched, a
   }
 });
 
+test('land refuses when an ignored invoking-worktree dependency is absent from both scratch states', () => {
+  const { dir, g } = loopRepo();
+  try {
+    mkdirSync(join(dir, '.ai'), { recursive: true });
+    writeFileSync(join(dir, '.gitignore'), 'runtime.ok\n');
+    writeFileSync(
+      join(dir, '.ai', 'gates.toml'),
+      [
+        '[[gates]]',
+        'id = "needs-runtime"',
+        'kind = "command"',
+        'tier = "fast"',
+        'command = "node requires-runtime.mjs"',
+        '',
+      ].join('\n'),
+    );
+    writeFileSync(
+      join(dir, 'requires-runtime.mjs'),
+      [
+        "import { existsSync } from 'node:fs';",
+        "if (!existsSync('runtime.ok')) {",
+        "  process.stderr.write('missing ignored runtime\\r\\ninstall dependencies in this checkout\\r\\n');",
+        '  process.exit(7);',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    g('add', '.gitignore', '.ai/gates.toml', 'requires-runtime.mjs');
+    g('commit', '-qm', 'configure ignored command runtime');
+    g('switch', '-q', '-c', 'feature/scratch-runtime');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', 'a.txt');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+    writeFileSync(join(dir, 'runtime.ok'), 'installed only in the invoking worktree\n');
+    assert.equal(g('status', '--porcelain'), '', 'the ignored runtime does not dirty the control');
+
+    const integrationBefore = g('rev-parse', 'main');
+    const greenBefore = g('rev-parse', 'green/main');
+    let merged;
+    let controlCalls = 0;
+    const result = land(dir, 'feature/scratch-runtime', (candidate, only) => {
+      if (resolve(candidate) === resolve(dir)) controlCalls++;
+      const runs = runGates(candidate, undefined, undefined, only);
+      const failing = runs.filter((run) => run.status === 'fail' || run.status === 'error');
+      if (failing.length && resolve(candidate) !== resolve(dir)) {
+        merged ??= gitText(candidate, 'rev-parse', 'HEAD');
+      }
+      return {
+        pass: runs.filter((run) => run.status === 'pass').length,
+        failing: failing.map((run) => ({
+          id: run.id,
+          findings: run.findings.map((finding) => ({
+            identity: finding.identity ?? finding.message,
+            diagnostic: finding.message,
+          })),
+        })),
+      };
+    });
+
+    assert.equal(result.ok, false, 'two identical failures in one incomplete scratch are not inherited evidence');
+    assert.equal(controlCalls, 1, 'the clean detached exact-integration worktree is checked once as the control');
+    assert.match(result.lines.join('\n'), /needs-runtime.*scratch.*control|control.*pass.*scratch.*fail/i);
+    assert.match(result.lines.join('\n'), /status 7|install dependencies in this checkout/);
+    assert.equal(g('rev-parse', 'main'), integrationBefore);
+    assert.equal(g('rev-parse', 'green/main'), greenBefore);
+    assert.equal(g('rev-parse', parkedRef(result)), merged, 'the unverified merge remains recoverable');
+    assert.equal(g('status', '--porcelain'), '', 'the ignored dependency and invoking checkout are untouched');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land attributes inherited and unverified findings independently within one gate', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/per-finding-control');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', 'a.txt');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+    g('branch', 'green/main', 'main');
+
+    const integrationBefore = g('rev-parse', 'main');
+    const old = { identity: 'old', diagnostic: 'already red everywhere' };
+    const scratchOnly = { identity: 'scratch-only', diagnostic: 'missing ignored runtime' };
+    const result = land(dir, 'feature/per-finding-control', (candidate, only) => {
+      if (!only || resolve(candidate) !== resolve(dir)) {
+        return { pass: 0, failing: [{ id: 'mixed-gate', findings: [old, scratchOnly] }] };
+      }
+      return { pass: 0, failing: [{ id: 'mixed-gate', findings: [old] }] };
+    });
+
+    const output = result.lines.join('\n');
+    assert.equal(result.ok, false);
+    assert.match(output, /inherited\s+mixed-gate — already red everywhere/);
+    assert.match(output, /UNVERIFIED mixed-gate/);
+    assert.match(output, /missing ignored runtime/);
+    assert.doesNotMatch(output, /INTRODUCED/);
+    assert.equal(g('rev-parse', 'main'), integrationBefore);
+    assert.equal(g('rev-parse', 'green/main'), integrationBefore);
+    assert.ok(g('rev-parse', parkedRef(result)), 'the partially attributed merge remains recoverable');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses scratch failures when no clean detached exact-integration control exists', () => {
+  for (const mode of ['attached', 'dirty', 'different-oid']) {
+    const { dir, g } = loopRepo();
+    try {
+      g('switch', '-q', '-c', `feature/no-control-${mode}`);
+      writeFileSync(join(dir, 'a.txt'), `branch work ${mode}\n`);
+      g('add', 'a.txt');
+      g('commit', '-qm', 'branch');
+      g('branch', 'green/main', 'main');
+
+      if (mode === 'attached') {
+        g('switch', '-q', '-c', 'coordinator', 'main');
+      } else if (mode === 'dirty') {
+        g('switch', '--detach', '-q', 'main');
+        writeFileSync(join(dir, 'a.txt'), 'local dirty control\n');
+      } else {
+        g('switch', '-q', '-c', 'coordinator', 'main');
+        writeFileSync(join(dir, 'coordinator.txt'), 'different control commit\n');
+        g('add', 'coordinator.txt');
+        g('commit', '-qm', 'different coordinator');
+        g('switch', '--detach', '-q', 'HEAD');
+      }
+
+      const integrationBefore = g('rev-parse', 'main');
+      const greenBefore = g('rev-parse', 'green/main');
+      const localBefore = worktreeSnapshot(dir, ['a.txt']);
+      let merged;
+      let controlCalls = 0;
+      const result = land(dir, `feature/no-control-${mode}`, (candidate) => {
+        if (resolve(candidate) === resolve(dir)) controlCalls++;
+        merged ??= gitText(candidate, 'rev-parse', 'HEAD');
+        return { pass: 0, failing: [{ id: 'old-gate', findings: ['same scratch failure'] }] };
+      });
+
+      assert.equal(result.ok, false, `${mode}: unavailable control cannot establish inherited red`);
+      assert.equal(controlCalls, 0, `${mode}: an ineligible invoking checkout is never run as the control`);
+      assert.match(result.lines.join('\n'), /control unavailable|cannot establish inherited/i);
+      assert.equal(g('rev-parse', 'main'), integrationBefore);
+      assert.equal(g('rev-parse', 'green/main'), greenBefore);
+      assert.equal(g('rev-parse', parkedRef(result)), merged);
+      assert.deepEqual(
+        withoutSharedRefs(worktreeSnapshot(dir, ['a.txt'])),
+        withoutSharedRefs(localBefore),
+        `${mode}: the invoking checkout, index and local bytes are unchanged`,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
 // F-029. A gate that is red for reasons you did not cause and cannot fix is a gate you learn to
 // bypass, and a bypassed gate reports nothing. So `land` re-runs each failing gate against the
 // merge base and only blocks on what this branch caused — and an unattributable failure blocks,
@@ -3164,10 +3390,15 @@ test('land distinguishes an inherited failure from an introduced one, and blocks
 
     // Red after the merge *and* red at the base: not this branch's doing.
     const red = { id: 'old-gate', findings: ['a.txt: already broken'] };
-    const inherited = (_d, only) => (only ? { pass: 0, failing: [red] } : { pass: 2, failing: [red] });
+    let exactControlRuns = 0;
+    const inherited = (candidate, only) => {
+      if (only && resolve(candidate) === resolve(dir)) exactControlRuns++;
+      return only ? { pass: 0, failing: [red] } : { pass: 2, failing: [red] };
+    };
     const landed = land(dir, 'feature/x', inherited);
 
     assert.equal(landed.ok, true, 'a failure that predates the branch must not block it');
+    assert.equal(exactControlRuns, 1, 'inherited red is established against the exact invoking control');
     assert.match(landed.lines.join('\n'), /inherited\s+old-gate/);
     assert.doesNotMatch(landed.lines.join('\n'), /INTRODUCED/);
     assert.notEqual(g('rev-parse', 'main'), before, 'the branch landed');

@@ -210,7 +210,7 @@ Two `check:ids` rules aimed at a failure mode no other repo addresses: stale boo
 future agent reads as a live constraint.
 
 - **A document may not say it is waiting for work that has finished.** A spec saying a mechanic is
-  "blocked on WI-081" reads as a live wall, and the next session plans around it. Measured:
+  "blocked on a finished work item" reads as a live wall, and the next session plans around it. Measured:
   **95% of 474 rows** in one triage named a finished item as next owner — and those routes were then
   quoted in a code comment as evidence that an open item owned them. **The vocabulary was
   deliberately narrowed after measurement**: the first draft matched `until WI-###` and hit 29 lines
