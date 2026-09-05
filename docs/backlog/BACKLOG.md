@@ -22,15 +22,15 @@ The board. One row per live work item, grouped by status. Items live in
 
 ## Planned
 
-| Id | Title | Type |
-| --- | --- | --- |
+| Id | Title | Type | Branch |
+| --- | --- | --- | --- |
+| [WI-068](items/WI-068-existing-repo-consumer-journey.md) | Gate the packaged existing-repository consumer journey | feature | `feature/WI-068-existing-repo-consumer-journey` |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-064](items/WI-064-arena-lab-dogfood-bootstrap.md) | Bootstrap Arena Lab as the first direct Rungs consumer | epic |
-| [WI-068](items/WI-068-existing-repo-consumer-journey.md) | Gate the packaged existing-repository consumer journey | feature |
 
 ## Proposed
 

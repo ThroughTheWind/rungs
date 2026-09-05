@@ -2,8 +2,8 @@
 id: WI-068
 title: Gate the packaged existing-repository consumer journey
 type: feature
-status: accepted
-branch:
+status: planned
+branch: feature/WI-068-existing-repo-consumer-journey
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-064, WI-065, WI-066, WI-067]
@@ -26,28 +26,87 @@ the downstream release canary.
 
 ## Plan
 
-Accepted but not yet planned. Reduce the Arena topology to the minimum files that reproduce each
-boundary before specifying the fixture and promotion command.
-
 ### Requirements
 
-- To be completed before status becomes `planned`.
+- Exercise the candidate from a package tarball, not the producer checkout, source tree, build
+  output or `node_modules`, and verify the tarball's bytes against npm's reported SHA-512 integrity.
+- Build a temporary existing repository with committed history and the minimum independent
+  authorities Arena exposed: existing `AGENTS.md` and `CLAUDE.md`, a flat backlog, a flat decisions
+  register, a historical session log and an existing repository-owned validator.
+- Prove `doctor` and `init --dry-run` leave that repository byte-for-byte and ref-for-ref unchanged.
+- Install the tracked profile with `NEXT` work-item ids, `AF` finding ids and the existing validator
+  adopted as a command gate, without rewriting the repository's pre-existing authorities or adding
+  a product `package.json`, lockfile or `node_modules`.
+- Prove the emitted launcher carries the candidate's one exact `@rungs/cli` version authority, its
+  managed hash is recorded, and no mutable selector, tarball path or second version source leaks
+  into the consumer.
+- Validate the installed repository twice from a non-integration branch that has `origin/main` but
+  no local `main`, then preview and apply a same-version upgrade twice without producing stale,
+  diverged or non-idempotent managed state.
+- Restore the fixture to its seed commit and prove both the consumer and producer finish clean.
 
 ### Impacts
 
-- To be completed before status becomes `planned`.
+- `test/package.test.js`, with one package-level integration test and local helpers kept inside the
+  test file unless reuse is demonstrated elsewhere.
+- Temporary package, tool-prefix, consumer and npm-cache directories outside the producer checkout.
+- No production source, module template, manifest, public documentation or release behavior unless
+  the journey exposes a defect; a defect becomes a finding rather than widening this item.
 
 ### Approach
 
-- To be completed before status becomes `planned`.
+Create one temporary root with sibling `pack`, `tool`, `consumer` and `npm-cache` directories. Pack
+the candidate with npm, parse the JSON result, recompute the tarball SHA-512 digest and compare it to
+the reported integrity. Seed the consumer on `main`, commit its authorities, create
+`refs/remotes/origin/main`, switch to `consumer/canary`, then delete local `main`; this reproduces a
+detached-CI-shaped integration ref while retaining a writable branch.
+
+Install the absolute candidate tarball into the isolated tool prefix using npm's argv interface,
+with lifecycle scripts, audit, funding output and package-lock generation disabled. Invoke only the
+installed `rungs` binary via `npm exec --offline --prefix <tool> -- rungs`, with `PATH` and
+`NODE_PATH` sanitised so the producer checkout cannot satisfy imports. The generated registry
+launcher is inspected but deliberately not executed before publication, because its exact registry
+version may still name the previous immutable release.
+
+Snapshot the seed commit, refs, status and pre-existing file bytes before running `doctor` and a
+tracked `init --dry-run`. Perform the real tracked init with explicit backlog and findings prefixes,
+then assert preservation at the byte or managed-block boundary appropriate to each file. Commit the
+adoption, verify a second init refuses without changing the tree, run the complete generated gate
+set twice, and compare all tracked bytes while allowing the append-only ignored gate ledger to grow.
+Preview and apply the same candidate version twice through the packed binary and require identical
+tracked output with no stale or diverged managed files. Finally, run path-validated `git reset` and
+`git clean` only inside the temporary consumer, prove its seed tree is restored, remove the temporary
+root in `finally`, and assert the producer's status is unchanged.
 
 ### Acceptance criteria / tests
 
-- To be completed before status becomes `planned`.
+1. The packed artifact's recomputed SHA-512 digest equals npm's integrity, and every candidate CLI
+   invocation resolves through the isolated installed prefix rather than producer files.
+2. The fixture contains committed existing authorities plus an existing validator; `doctor` and
+   tracked `init --dry-run` return successfully and leave its tracked tree, untracked files and refs
+   unchanged.
+3. Tracked init with `backlog.id_prefix=NEXT` and `findings.id_prefix=AF` preserves the original
+   authority bytes, appends only declared managed blocks where applicable, registers the existing
+   validator and emits no consumer product dependency files.
+4. `.ai/rungs.mjs` contains exactly one `@rungs/cli@<candidate-version>` package spec, its hash is in
+   `.ai/rungs.toml`, and the installed tree contains no mutable Rungs selector, package tarball path
+   or duplicate CLI version authority.
+5. After adoption is committed, a repeated init refuses without a diff; two complete checks pass on
+   `consumer/canary` with only `origin/main` available, including merged-status reconciliation and
+   the adopted validator, and the tracked tree remains clean after both runs.
+6. Same-version upgrade preview is read-only; two applies leave every tracked byte identical with no
+   stale or diverged module state, and a second preview reports no work.
+7. Rollback operates only inside the validated temporary fixture, restores the seed commit's tracked
+   tree, and leaves the producer checkout exactly as clean as it began; the focused package test,
+   full `npm test` and `node .ai/rungs.mjs check` pass.
 
 ### Out of scope
 
-- To be completed before status becomes `planned`.
+- Running the generated registry launcher before the candidate version is published.
+- Publishing a release, changing npm distribution tags or testing external CI infrastructure.
+- Importing Arena Lab content or its ids; the fixture reproduces only the generic topology.
+- Migrating a consumer's legacy backlog, decisions or session history into Rungs-owned files.
+- Fixing production behavior uncovered by the journey; record the defect as a separate finding.
 
 ## Execution
 
