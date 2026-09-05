@@ -11,7 +11,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
-| [WI-079](items/WI-079-land-managed-ref-safety.md) | Protect every land-managed ref from checked-out worktrees | feature | `feature/WI-079-land-managed-ref-safety` |
 
 ## Review
 

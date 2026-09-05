@@ -2,7 +2,7 @@
 id: WI-079
 title: Protect every land-managed ref from checked-out worktrees
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-079-land-managed-ref-safety
 created: 2026-09-05
 updated: 2026-09-05
@@ -198,6 +198,6 @@ known backends remain accepted, and every genuinely unknown backend still fails 
 On the combined corrected worktree, the two holder-alias regressions and the legacy-format parser
 regression passed 3/3; full `npm test` passed 124 tests with three platform skips (127 total); all
 30 registered Rungs gates passed; `npm pack --dry-run` included 111 files in a 368.7 kB package;
-and `git diff --check` was clean. The reviewer froze the source audit with no additional
-implementable WI-079 blockers, but exact-tip approval and exact-SHA CI remain pending until this
-repair is committed and pushed.
+and `git diff --check` was clean. Independent review approved exact tip `58d6bd4` with no remaining
+blocker, and Actions run 33972167916 passed all six OS/Node jobs plus the site job. The reviewed
+implementation landed on `main` at `9b993503`; F-051 remains a separate open release blocker.
