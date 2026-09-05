@@ -11,7 +11,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
-| [WI-078](items/WI-078-branch-local-release-exemptions.md) | Require release exemptions from the current branch | feature | `feature/WI-078-branch-local-release-exemptions` |
 
 ## Review
 

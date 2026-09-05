@@ -2,7 +2,7 @@
 id: WI-078
 title: Require release exemptions from the current branch
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-078-branch-local-release-exemptions
 created: 2026-09-05
 updated: 2026-09-05
@@ -129,10 +129,23 @@ the full suite passed 93 of 96 tests with the three expected platform skips; all
 passed; and `npm pack --dry-run --json` produced 110 entries (360,302-byte archive, 1,227,099 bytes
 unpacked). `git diff --check` was clean.
 
+Exact implementation tip `169553a1` passed CI run 33974024054 across the site job and all six
+OS/Node cells. After WI-081, exact `main` `2c897fd5` merged as `e8b1b270`; the only code-adjacent
+resolution combined independent test fixtures and corrected their aggregate count from seven to
+eight. After WI-080, exact `main` `f8089cb1` merged conflict-free as final branch tip `afb8cefc`.
+That tree passed all 11 focused groups, the full suite (137 pass and three expected skips), all 30
+gates, a 113-entry 384,448-byte package dry-run, and `git diff --check`. Exact CI run 33976880904
+passed every matrix cell plus site. `rungs land` then verified 30/30 gates in the merged scratch and
+atomically advanced `main` plus `green/main` to implementation merge `96f03e99`.
+
 ## Review
 
 Independent final review of `fb81f76` found the line-local multiline-wrapper bypass and the missing
 Git-object-mode check. Follow-up review of `e984004` found that also consulting historical `HEAD`
 incorrectly rejected a currently staged ordinary conversion. The current implementation makes the
-index proposal authoritative when present and keeps the canonical untracked-leaf fallback;
-exact-tip CI and independent re-review remain pending.
+index proposal authoritative when present and keeps the canonical untracked-leaf fallback.
+Independent final review approved exact tip `169553a1` with no findings after reproducing both
+object-mode transitions and verifying conflicted-index, unreadable Git evidence, multiline
+wrappers, UTF-8/binary/alias boundaries, global wording reuse, all focused tests, 30 gates, package
+contents and exact CI. Both later main integrations changed no production semantics and passed
+their own seven-job exact CI runs, completing the acceptance evidence.
