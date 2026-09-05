@@ -6,9 +6,9 @@ status: accepted
 branch:
 created: 2026-09-05
 updated: 2026-09-05
-related: [WI-065, WI-066, WI-067, WI-068, WI-069]
+related: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070]
 epic:
-children: [WI-065, WI-066, WI-067, WI-068, WI-069]
+children: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070]
 ---
 
 ## Proposal (rationale)
