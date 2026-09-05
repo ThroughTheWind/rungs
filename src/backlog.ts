@@ -1,5 +1,14 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   preflightEmittedPaths,
   resolveEmittedPath,
@@ -232,7 +241,16 @@ function retargets(
   source = readFileSync(join(repoRoot, ...rel.split('/')), 'utf8'),
 ): { href: string; to: string }[] {
   const oldDir = dirname(resolve(repoRoot, rel));
-  const selfMoved = moved.get(resolve(repoRoot, rel));
+  const movedDestination = (path: string) => {
+    const lexical = moved.get(path);
+    if (lexical) return lexical;
+    try {
+      return moved.get(realpathSync.native(path));
+    } catch {
+      return undefined;
+    }
+  };
+  const selfMoved = movedDestination(resolve(repoRoot, rel));
   const newDir = dirname(resolve(repoRoot, selfMoved ?? rel));
   const out: { href: string; to: string }[] = [];
 
@@ -240,7 +258,7 @@ function retargets(
     const href = m[1];
     if (href.includes('{{')) continue; // a template link, resolved at install
     const target = resolve(oldDir, decodeURIComponent(href));
-    const targetMoved = moved.get(target);
+    const targetMoved = movedDestination(target);
     if (!targetMoved && !selfMoved) continue;
     if (!targetMoved && !existsSync(target)) continue; // already broken; not this command's to fix
     const targetNew = targetMoved ? resolve(repoRoot, targetMoved) : target;
@@ -293,6 +311,26 @@ function requireMissingDestination(path: ResolvedEmittedPath): void {
   }
 }
 
+function requireCanonicalDescendant(
+  directory: ResolvedEmittedPath,
+  path: ResolvedEmittedPath,
+  purpose: string,
+): void {
+  const fromDirectory = relative(directory.absolute, path.absolute);
+  if (
+    !fromDirectory ||
+    fromDirectory === '..' ||
+    fromDirectory.startsWith(`..${sep}`) ||
+    isAbsolute(fromDirectory)
+  ) {
+    throw new UnsafeEmittedPathError(
+      ARCHIVE_OPERATION,
+      path.target,
+      `the ${purpose} resolves outside the canonical '${directory.target}' tree`,
+    );
+  }
+}
+
 function prepareMoves(repoRoot: string, plan: ArchivePlan, tree: ResolvedArchiveTree): PreparedArchiveMove[] {
   if (plan.root !== tree.root) {
     throw new UnsafeEmittedPathError(
@@ -333,6 +371,8 @@ function prepareMoves(repoRoot: string, plan: ArchivePlan, tree: ResolvedArchive
   return plan.moves.map((move, index) => {
     const from = resolved[index * 2];
     const to = resolved[index * 2 + 1];
+    requireCanonicalDescendant(tree.items, from, 'archive source');
+    requireCanonicalDescendant(tree.archive, to, 'archive destination');
     requireRegularFile(from, 'archive source');
     requireMissingDestination(to);
 
@@ -382,15 +422,31 @@ function prepareArchive(repoRoot: string, plan: ArchivePlan, verifyRecordedRewri
   // Where each moved file ends up, keyed by its lexical old path, so a link is
   // selected by what its written spelling resolves to. Actual I/O below uses
   // the canonical paths that were validated for this operation.
-  const moved = new Map(moves.map(({ move }) => [resolve(repoRoot, ...move.from.split('/')), move.to]));
-  const candidates = new Set([...walk(repoRoot), ...moves.map(({ move }) => move.from)]);
-  if (verifyRecordedRewrites) for (const rewrite of plan.rewrites) candidates.add(rewrite.file);
+  const moved = new Map<string, string>();
+  for (const { move, from } of moves) {
+    moved.set(resolve(repoRoot, ...move.from.split('/')), move.to);
+    moved.set(from.absolute, move.to);
+  }
 
-  const drafts = [...candidates]
-    .filter(isRewritable)
-    .sort()
-    .flatMap((file) => {
-      const path = resolveEmittedPath(repoRoot, ARCHIVE_OPERATION, file);
+  // Prefer the archive plan's lexical spelling for a moved source, then the
+  // previously recorded rewrite spelling. The general walker can also see the
+  // canonical side of an inward directory alias; deduplicating by canonical
+  // identity prevents one physical file from being prepared twice.
+  const candidatePaths: { file: string; path: ResolvedEmittedPath }[] = [];
+  const seenCanonical = new Set<string>();
+  const addCandidate = (file: string) => {
+    if (!isRewritable(file)) return;
+    const path = resolveEmittedPath(repoRoot, ARCHIVE_OPERATION, file);
+    if (seenCanonical.has(path.absolute)) return;
+    seenCanonical.add(path.absolute);
+    candidatePaths.push({ file, path });
+  };
+  moves.forEach(({ move }) => addCandidate(move.from));
+  if (verifyRecordedRewrites) plan.rewrites.forEach(({ file }) => addCandidate(file));
+  walk(repoRoot).sort().forEach(addCandidate);
+
+  const drafts = candidatePaths
+    .flatMap(({ file, path }) => {
       const original = readFileSync(path.absolute, 'utf8');
       const edits = retargets(repoRoot, file, moved, original);
       if (!edits.length) return [];

@@ -246,6 +246,48 @@ test('apply revalidates forged and stale plans before the first rewrite or move'
   }
 });
 
+test('a forged plan cannot escape the canonical items tree through an inward repository alias', (t) => {
+  const root = fixture('rungs-archive-forged-source-');
+  const unrelated = join(root, 'unrelated');
+  const alias = join(root, 'docs', 'backlog', 'items', 'alias');
+  const victim = join(unrelated, 'VICTIM.md');
+
+  try {
+    write(root, 'unrelated/VICTIM.md', '---\nid: VICTIM\nstatus: done\ntype: feature\n---\n');
+    try {
+      symlinkSync(unrelated, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+      if (process.platform === 'win32' && error && ['EPERM', 'EACCES'].includes(error.code)) {
+        t.skip('this host does not permit a directory junction');
+        return;
+      }
+      throw error;
+    }
+    const forged = {
+      root: 'docs/backlog',
+      moves: [
+        {
+          id: 'VICTIM',
+          status: 'done',
+          from: 'docs/backlog/items/alias/VICTIM.md',
+          to: 'docs/backlog/archive/VICTIM.md',
+        },
+      ],
+      rewrites: [],
+      held: [],
+    };
+
+    assert.throws(
+      () => applyArchive(root, forged),
+      (error) => error instanceof UnsafeEmittedPathError && /canonical.*items.*tree/i.test(error.reason),
+    );
+    assert.equal(existsSync(victim), true);
+    assert.equal(existsSync(join(root, 'docs', 'backlog', 'archive', 'VICTIM.md')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('an inward archive alias remains contained and archives normally', (t) => {
   const root = fixture();
   const realArchive = join(root, 'docs', 'archive-store');
@@ -268,6 +310,41 @@ test('an inward archive alias remains contained and archives normally', (t) => {
 
     assert.equal(existsSync(join(realArchive, 'WI-001-done.md')), true);
     assert.match(readFileSync(join(root, 'docs', 'backlog', 'BACKLOG.md'), 'utf8'), /archive\/WI-001-done\.md/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('canonical-side links to an item behind an inward alias are repointed', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-archive-inward-items-'));
+  const realItems = join(root, 'docs', 'store', 'items');
+  const alias = join(root, 'docs', 'backlog', 'items');
+
+  try {
+    write(
+      root,
+      'docs/store/items/WI-001-done.md',
+      '---\nid: WI-001\nstatus: done\ntype: feature\n---\n\nDone.\n',
+    );
+    write(root, 'README.md', '[Done](docs/store/items/WI-001-done.md)\n');
+    mkdirSync(dirname(alias), { recursive: true });
+    try {
+      symlinkSync(realItems, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+      if (process.platform === 'win32' && error && ['EPERM', 'EACCES'].includes(error.code)) {
+        t.skip('this host does not permit a directory junction');
+        return;
+      }
+      throw error;
+    }
+
+    const plan = planArchive(root);
+    assert.deepEqual(plan.rewrites, [{ file: 'README.md', links: 1 }]);
+    applyArchive(root, plan);
+
+    assert.equal(existsSync(join(realItems, 'WI-001-done.md')), false);
+    assert.equal(existsSync(join(root, 'docs', 'backlog', 'archive', 'WI-001-done.md')), true);
+    assert.match(readFileSync(join(root, 'README.md'), 'utf8'), /docs\/backlog\/archive\/WI-001-done\.md/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
