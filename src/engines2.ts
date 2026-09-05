@@ -431,6 +431,69 @@ const patternList = (value: unknown, allowEmpty = false): value is string[] =>
   Array.isArray(value) && (allowEmpty || value.length > 0) &&
   value.every((pattern) => typeof pattern === 'string' && pattern.trim().length > 0);
 
+type ExemptionWrapper = { kind: 'plain' | 'line' | 'block' | 'html' | 'quote'; close?: string };
+
+function exemptionWrapperAt(line: string, markerAt: number): ExemptionWrapper {
+  let wrapper: ExemptionWrapper = { kind: 'plain' };
+  for (let index = 0; index < markerAt; index++) {
+    if (wrapper.kind === 'line') break;
+    if (wrapper.kind === 'block') {
+      if (line.startsWith('*/', index)) {
+        wrapper = { kind: 'plain' };
+        index++;
+      }
+      continue;
+    }
+    if (wrapper.kind === 'html') {
+      if (line.startsWith('-->', index)) {
+        wrapper = { kind: 'plain' };
+        index += 2;
+      }
+      continue;
+    }
+    if (wrapper.kind === 'quote') {
+      if (line[index] === '\\') {
+        index++;
+      } else if (line[index] === wrapper.close) {
+        wrapper = { kind: 'plain' };
+      }
+      continue;
+    }
+
+    if (line.startsWith('//', index)) {
+      wrapper = { kind: 'line' };
+      break;
+    }
+    if (line.startsWith('/*', index)) {
+      wrapper = { kind: 'block', close: '*/' };
+      index++;
+      continue;
+    }
+    if (line.startsWith('<!--', index)) {
+      wrapper = { kind: 'html', close: '-->' };
+      index += 3;
+      continue;
+    }
+    if (line[index] === '"' || line[index] === "'" || line[index] === '`') {
+      wrapper = { kind: 'quote', close: line[index] };
+    }
+  }
+  return wrapper;
+}
+
+function wrapperCloseAt(reason: string, wrapper: ExemptionWrapper): number {
+  if (!wrapper.close) return -1;
+  if (wrapper.kind !== 'quote') return reason.indexOf(wrapper.close);
+  for (let index = 0; index < reason.length; index++) {
+    if (reason[index] === '\\') {
+      index++;
+    } else if (reason[index] === wrapper.close) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 function lineExemptionEvidence(line: string, marker: string): string[] {
   const evidence: string[] = [];
   let cursor = 0;
@@ -445,22 +508,8 @@ function lineExemptionEvidence(line: string, marker: string): string[] {
     if (!/[\p{L}\p{N}]/u.test(rawTail[leading] ?? '')) continue;
 
     let reason = rawTail.slice(leading);
-    const prefix = line.slice(0, markerAt);
-    const blockOpen = prefix.lastIndexOf('/*');
-    const htmlOpen = prefix.lastIndexOf('<!--');
-    const openers: { at: number; close: string }[] = [];
-    if (blockOpen > prefix.lastIndexOf('*/')) openers.push({ at: blockOpen, close: '*/' });
-    if (htmlOpen > prefix.lastIndexOf('-->')) openers.push({ at: htmlOpen, close: '-->' });
-
-    const immediate = prefix.at(-1);
-    if (immediate === '"' || immediate === "'" || immediate === '`') {
-      openers.push({ at: prefix.length - 1, close: immediate });
-    }
-    const wrapper = openers.sort((left, right) => right.at - left.at)[0];
-    if (wrapper) {
-      const closeAt = reason.indexOf(wrapper.close);
-      if (closeAt >= 0) reason = reason.slice(0, closeAt);
-    }
+    const closeAt = wrapperCloseAt(reason, exemptionWrapperAt(line, markerAt));
+    if (closeAt >= 0) reason = reason.slice(0, closeAt);
 
     reason = reason.trimEnd();
     if (reason) evidence.push(reason);
@@ -471,110 +520,79 @@ function lineExemptionEvidence(line: string, marker: string): string[] {
 const sameLineExemption = (text: string, marker?: string) =>
   !!marker && text.split(/\r?\n/).some((line) => lineExemptionEvidence(line, marker).length > 0);
 
-const stripCarriageReturn = (line: string) => line.endsWith('\r') ? line.slice(0, -1) : line;
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+function candidateExemptionText(root: string, rel: string): string | undefined {
+  let resolved;
+  try {
+    resolved = resolveEmittedPath(root, 'release exemption evidence', rel);
+    if (resolved.leafAlias || !lstatSync(resolved.absolute).isFile()) return undefined;
+  } catch {
+    return undefined;
+  }
+
+  const attributes = execFileSync(
+    'git',
+    ['check-attr', '-z', 'diff', 'text', 'binary', '--', rel],
+    { cwd: root, stdio: 'pipe' },
+  ).toString().split('\0');
+  for (let index = 0; index + 2 < attributes.length; index += 3) {
+    const attribute = attributes[index + 1];
+    const value = attributes[index + 2];
+    if ((attribute === 'diff' && value === 'unset') || (attribute === 'binary' && value === 'set')) {
+      return undefined;
+    }
+  }
+
+  try {
+    const bytes = readFileSync(resolved.absolute);
+    if (bytes.includes(0)) return undefined;
+    return utf8.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Return only exemption evidence introduced by the complete current delta.
  *
- * `git diff <merge-base>` observes committed, staged and unstaged tracked
- * content in its final working-tree state, so staging cannot change the
- * verdict and an intermediate edit that was later reverted cannot count. Each
- * changed file is inspected independently. Git prefixes changed content with
- * control-byte indicators, which keeps diff headers and user-authored `+++`
- * lines out of the parser.
+ * Current files are read only through a canonical, regular-file, UTF-8 text
+ * boundary. The caller's complete changed-path set already spans committed,
+ * staged, unstaged and non-ignored untracked work, so staging does not select a
+ * different evidence path.
  *
- * Added reason text is compared with removed reason text for the same
- * path/rename/copy record. This rejects an unchanged reason carried through a
- * same-line code edit, rename, detected copy or line move without making an
- * unrelated historical sentence reserve those words repository-wide.
+ * A reason must be novel relative to every marker/reason line in the merge-base
+ * tree. That conservative rule makes the otherwise unknowable copy-vs-coincidence
+ * case deterministic in every Git state: reuse or relocation requires rewording
+ * the reason to explain why this branch is safe.
  */
 function hasBranchLocalExemption(
   root: string,
   mergeBase: string,
-  untracked: string[],
+  changed: string[],
   marker: string,
 ): boolean {
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  const baseBlobIds = new Set(execFileSync(
-    'git',
-    ['ls-tree', '-r', '-z', '--full-tree', mergeBase],
-    { cwd: root, stdio: 'pipe' },
-  ).toString().split('\0').flatMap((entry) => {
-    const [metadata = ''] = entry.split('\t', 1);
-    const [mode, type, object] = metadata.split(' ');
-    return type === 'blob' && mode !== '120000' && object ? [object] : [];
-  }));
-  for (const rel of untracked) {
-    try {
-      const resolved = resolveEmittedPath(root, 'release exemption evidence', rel);
-      if (resolved.leafAlias || !lstatSync(resolved.absolute).isFile()) continue;
-      const bytes = readFileSync(resolved.absolute);
-      if (bytes.includes(0)) continue;
-      const object = execFileSync(
-        'git',
-        ['hash-object', '--no-filters', resolved.absolute],
-        { cwd: root, stdio: 'pipe' },
-      ).toString().trim();
-      if (baseBlobIds.has(object)) continue;
-      if (sameLineExemption(decoder.decode(bytes), marker)) return true;
-    } catch {
-      // Unsafe aliases, non-files, binary/invalid UTF-8 and transient reads are
-      // not branch-local textual evidence. A different valid file may still be.
-    }
+  let historical = Buffer.alloc(0);
+  try {
+    historical = execFileSync(
+      'git',
+      ['grep', '-I', '-h', '-F', '-e', marker, mergeBase, '--'],
+      { cwd: root, stdio: 'pipe' },
+    );
+  } catch (error: any) {
+    if (error?.status !== 1) throw error;
+    historical = Buffer.isBuffer(error?.stdout) ? error.stdout : Buffer.from(error?.stdout ?? '');
   }
+  const inherited = new Set(utf8.decode(historical)
+    .split(/\r?\n/)
+    .flatMap((line) => lineExemptionEvidence(line, marker)));
 
-  const newLine = '\x1f';
-  const oldLine = '\x1e';
-  const contextLine = '\x1d';
-  const common = [
-    '--no-ext-diff',
-    '--no-textconv',
-    '--no-color',
-    '--find-renames',
-    '--find-copies',
-    '--find-copies-harder',
-  ];
-  const nameStatus = execFileSync('git', [
-    'diff',
-    ...common,
-    '--name-status',
-    '-z',
-    mergeBase,
-    '--',
-  ], { cwd: root, stdio: 'pipe' }).toString();
-  const fields = nameStatus.split('\0');
-  if (fields.at(-1) === '') fields.pop();
-
-  for (let index = 0; index < fields.length;) {
-    const status = fields[index++];
-    const kind = status[0];
-    const paths = kind === 'R' || kind === 'C'
-      ? [fields[index++], fields[index++]]
-      : [fields[index++]];
-    if (kind === 'D') continue;
-
-    const diff = execFileSync('git', [
-      'diff',
-      ...common,
-      '--unified=0',
-      `--output-indicator-new=${newLine}`,
-      `--output-indicator-old=${oldLine}`,
-      `--output-indicator-context=${contextLine}`,
-      mergeBase,
-      '--',
-      ...paths,
-    ], { cwd: root, stdio: 'pipe' }).toString();
-    const lines = diff.split('\n');
-    const added = lines
-      .filter((line) => line.startsWith(newLine))
-      .flatMap((line) => lineExemptionEvidence(stripCarriageReturn(line.slice(1)), marker));
-    if (!added.length) continue;
-    const removed = new Set(lines
-      .filter((line) => line.startsWith(oldLine))
-      .flatMap((line) => lineExemptionEvidence(stripCarriageReturn(line.slice(1)), marker)));
-    if (added.some((reason) => !removed.has(reason))) return true;
-  }
-  return false;
+  return changed.some((rel) => {
+    const text = candidateExemptionText(root, rel);
+    return text !== undefined && text.split(/\r?\n/)
+      .flatMap((line) => lineExemptionEvidence(line, marker))
+      .some((reason) => !inherited.has(reason));
+  });
 }
 
 /**
@@ -652,7 +670,7 @@ export const changeRequiresFile: Engine = (t, root) => {
 
   if (t.exempt_marker) {
     try {
-      if (hasBranchLocalExemption(root, mergeBase, untracked, t.exempt_marker)) {
+      if (hasBranchLocalExemption(root, mergeBase, changed, t.exempt_marker)) {
         return { findings: [], examined };
       }
     } catch {

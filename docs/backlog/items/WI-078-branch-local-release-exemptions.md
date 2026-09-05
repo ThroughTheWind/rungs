@@ -26,10 +26,10 @@ into a permanent off switch on a hot file.
 ## Decision
 
 `accepted` — 2026-09-05, during the user-authorised Arena Lab bootstrap. An exemption satisfies
-`change-requires-file` only when the marker and substantive same-line reason are added or modified by
-the complete current branch/worktree delta against the resolved integration ref. Existing markers
-may remain as history, but unchanged, moved or copied historical text supplies no evidence for new
-shipping work.
+`change-requires-file` only when the marker has a substantive same-line reason whose wording is new
+to the complete current branch/worktree delta against the resolved integration ref. Existing
+markers may remain as history, but reusing, duplicating, moving or copying any reason already present
+in the merge-base tree supplies no evidence for new shipping work; rewording is the explicit proof.
 
 ## Plan
 
@@ -41,8 +41,10 @@ shipping work.
   before and after staging/committing.
 - Preserve the substantive same-line reason rule; bare markers, wrapper punctuation, next-line text,
   deleted markers and binary/unreadable evidence remain refusals.
-- Reject an unchanged marker inherited from the integration branch, including one carried through a
-  pure rename, copy or line move while unrelated shipping content changes.
+- Reject reason wording inherited anywhere from the integration branch, including duplicates and
+  text carried through a pure rename, copy or line move while unrelated shipping content changes.
+- Read candidate evidence only from canonically contained regular UTF-8 text that Git attributes do
+  not declare binary; aliases, symlinks, invalid text and binary files cannot waive a fragment.
 - Preserve NUL-safe path handling, deterministic local/origin/sole-remote integration resolution,
   no-renames changed-path semantics and explicit failure when Git cannot establish provenance.
 
@@ -55,11 +57,13 @@ shipping work.
 
 ### Approach
 
-Collect the current branch/worktree view once against the resolved merge base, then evaluate only
-lines Git can attribute as additions or modifications in that delta. Use argv-based Git calls and
-NUL-delimited path discovery; never interpolate a path or ref into a shell command. Untracked text is
-entirely branch-local. For tracked files, follow rename/copy provenance or otherwise compare against
-the base so merely relocating an identical historical marker cannot make it new evidence.
+Collect the complete changed-path view against the resolved merge base with argv-based Git calls and
+NUL-delimited path discovery; never interpolate a path or ref into a shell command. Extract the
+reason text inside common comment/string wrappers so adjacent code or formatting is not mistaken for
+a reason edit. Build one conservative set of all substantive reason strings present in the
+merge-base tree, then accept only contained regular UTF-8 text whose reason is absent from that set.
+This deliberately resolves an unknowable copied-versus-coincidentally-identical sentence the same
+way before and after staging: historical wording must be reworded for the current branch.
 
 Keep the existing path-level changed set for deciding whether shipping work and a companion fragment
 participate. Line provenance narrows only the exemption branch; failure to parse textual provenance
@@ -70,10 +74,12 @@ means no exemption, not a guessed pass.
 1. A base-branch file already containing a substantive marker fails when a later branch changes an
    unrelated line and supplies no fragment; the exact F-043 reproduction fails in production
    `runGates` as well as the direct engine.
-2. Adding a new reasoned marker or modifying the marker's reason passes in committed, staged,
-   unstaged and untracked files, with the verdict unchanged across those state transitions.
-3. A pure rename/copy or line move carrying the inherited marker fails; changing the reason during
-   the move passes. Deleted files/markers and binary or unreadable diffs cannot exempt.
+2. Adding a marker with new reason wording or modifying inherited reason wording passes in
+   committed, staged, unstaged and untracked files, with the verdict unchanged across those state
+   transitions. Reusing merge-base wording fails consistently in all four states.
+3. A duplicate, pure rename/copy or line move carrying inherited wording fails; changing the reason
+   during the move passes. Deleted files/markers, aliases, symlinks and binary or unreadable text
+   cannot exempt.
 4. Bare, next-line, quoted and comment-wrapper-only reasons retain their current failures, and a
    valid branch-local reason still satisfies only a branch that also changes a configured shipping
    path.
