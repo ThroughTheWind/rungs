@@ -48,8 +48,8 @@ not a promise, and renaming a branch is free. Republishing a version number is i
 ## 2. Gate
 
 ```bash
-npm audit
-npm audit --prefix site
+npm audit &&
+npm audit --prefix site &&
 npm test && node --experimental-strip-types src/cli.ts check && node scripts/check-doc-claims.mjs
 ```
 
