@@ -2,7 +2,7 @@
 id: WI-070
 title: Make both release fragment gates executable and non-vacuous
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-070-release-fragment-gates
 created: 2026-09-05
 updated: 2026-09-05
@@ -125,8 +125,52 @@ and fragment make the real repository pass.
 
 ## Execution
 
-Not started.
+Implemented in five bounded layers:
+
+- Added dependency-free `engine-table.ts` as the single table-section inventory for production,
+  explain, module self-tests and the generated runner. Unknown engines and missing sections throw;
+  only `id-integrity` explicitly receives a whole table.
+- Added `change-requires-file`, sharing WI-067's deterministic ref resolver and observing the union
+  of merge-base-to-HEAD, staged, unstaged and non-ignored untracked paths through Git argv calls.
+  Required configuration fails closed; inherited, deleted and ignored companions do not satisfy.
+- Added a real Git self-test builder for the five existing release fixtures, registered the gate in
+  Rungs, advanced `release` 1.3.0 → 1.4.0 and reconstructed `changelog.d/0.4.0.md` from all
+  post-v0.3.1 shipping changes.
+- Added focused regressions for local/remote/ambiguous refs, every Git state, table dispatch,
+  stale production fragments, malformed configuration, comment-only exemptions, ignored files and
+  preservation of literal POSIX backslashes in Git path names.
+- Updated the generated site claims and public prose to 30 registered gates, the current source
+  size and the repaired release-module behavior. F-039 and F-041 are closed; the independently
+  observed eject dependency defect remains F-042, and stale inherited exemptions are recorded as
+  F-043 rather than folded into this item.
 
 ## Review
 
-Not started.
+Independent review initially found four false-green edges: empty required patterns disabled the
+engine, comment closers could count as reasons, ignored companions lacked an explicit regression,
+and unconditional backslash replacement could alias two distinct POSIX filenames. Follow-up review
+at `a23f489` confirmed every blocker fixed and found no remaining code blocker. The POSIX filename
+integration test is intentionally skipped on Windows and awaits the required CI matrix; its pure
+Git-path parser regression runs on every platform.
+
+Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
+
+1. Source, staged, committed and untracked shipping changes engage; only a changed existing
+   companion satisfies. Inherited, deleted and ignored fragments fail, while a modified one passes.
+2. Documentation/test-only changes pass and a mixed shipping delta still engages.
+3. Same-line substantive exemptions pass. Bare, next-line, quoted and HTML/C-wrapper-only markers,
+   including wrappers followed by ordinary code on the same line, fail.
+4. Local, exact `origin` and sole-other-remote bases evaluate; absent and ambiguous refs return a
+   finding with `examined: 0`. Literal POSIX backslashes are preserved rather than normalised into
+   another path.
+5. All five module fixtures report `ok`; the global warning remains 45 known unbuilt fixtures
+   rather than rising by five, and still explicitly says they are not passes.
+6. The production stale-fragment regression fails with one examined fragment. Every implemented
+   engine has an explicit shared mapping, and the generated runner contains no private key map or
+   whole-table fallback.
+7. The real registry runs 30/30 with `release-changelog-fragment` examining 21 changed paths and
+   `release-fragment-current` examining the reconstructed `0.4.0` fragment.
+8. Final combined `npm test`: 54 pass, 0 fail, one expected Windows-only skip for the POSIX filename
+   integration case. Module audit: 52 command spans, 15 dispatched. Site: 143 pages built; Astro
+   reports 0 errors/warnings/hints and 2,275 internal links with 0 broken. `npm publish --dry-run`
+   succeeds with 108 files (including `engine-table.ts`); `git diff --check` is clean.
