@@ -167,10 +167,11 @@ passed in those jobs; the failure instead compares macOS's lexical `/var` tempor
 installed child canonicalised through `/private/var`. That independent harness defect is F-044 and
 WI-071. WI-071 subsequently landed on `main` at `6790cac`; its branch and merged-main matrices both
 passed all six OS/Node cells plus the site, and two independent reviews approved its platform-aware
-containment fix. This branch now integrates that exact main commit. The complete combined WI-070
-matrix remains the final acceptance evidence.
+containment fix. This branch integrates that exact main commit. An independent final acceptance
+audit approves integrated tip `79d04c7` with no remaining code or criterion blocker, and GitHub
+Actions run 33954188859 passes all six OS/Node cells plus the site at that exact tip.
 
-Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
+Acceptance evidence on final WI-071-integrated tip `79d04c7`, measured 2026-09-05:
 
 1. Source, staged, committed and untracked shipping changes engage; only a changed existing
    companion satisfies. Inherited, deleted and ignored fragments fail, while a modified one passes.
@@ -188,7 +189,7 @@ Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
    whole-table fallback.
 7. The real registry runs 30/30 with `release-changelog-fragment` examining 19 changed paths and
    `release-fragment-current` examining the reconstructed `0.4.0` fragment.
-8. On the WI-071-integrated tree at `bdffd8c`, combined `npm test` reports 56 pass, 0 fail and one
+8. On the WI-071-integrated tree, combined `npm test` reports 56 pass, 0 fail and one
    expected Windows-only skip for the POSIX filename integration case. The module audit resolves all
    52 command spans across 15 dispatched commands. The site builds 144 pages; Astro reports 0
    errors/warnings/hints and 2,285 internal links with 0 broken. `npm publish --dry-run --json`
