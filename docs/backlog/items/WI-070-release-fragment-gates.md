@@ -80,9 +80,8 @@ fragment already accumulated on a candidate would satisfy every child feature. C
 NUL-delimited path output from explicit Git argv calls, keep each entry as
 Git's canonical repository-relative name, and de-duplicate it before applying the table's path
 sets. Git already uses `/` as its index separator; a literal POSIX backslash remains a filename byte
-rather than being aliased to a different path.
-Use the merge base rather than comparing branch tips directly, so unrelated movement on the stable
-line is not attributed to the working branch.
+rather than being aliased to a different path. Use the merge base rather than comparing branch tips
+directly, so unrelated movement on the integration line is not attributed to the working branch.
 
 Teach the self-test builder to initialise a tiny repository, commit a base on `main`, switch to a
 fixture branch and materialise the declared changed files, fragments and optional exemption. The
@@ -153,10 +152,13 @@ Implemented in five bounded layers:
 
 Independent review initially found four false-green edges: empty required patterns disabled the
 engine, comment closers could count as reasons, ignored companions lacked an explicit regression,
-and unconditional backslash replacement could alias two distinct POSIX filenames. Follow-up review
-at `a23f489` confirmed every blocker fixed and found no remaining code blocker. The POSIX filename
-integration test is intentionally skipped on Windows and awaits the required CI matrix; its pure
-Git-path parser regression runs on every platform.
+and unconditional backslash replacement could alias two distinct POSIX filenames. Those four were
+fixed by `a23f489`. A second independent review then found that the table compared work to the
+released line rather than backlog's configured integration line, allowing an older candidate
+fragment to satisfy a child feature; `3e083d8` corrected the boundary and added a regression that
+proves both verdicts. The final sweep approved the implementation with no remaining code blocker.
+The POSIX filename integration test is intentionally skipped on Windows and awaits the required CI
+matrix; its pure Git-path parser regression runs on every platform.
 
 Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
 
@@ -176,7 +178,7 @@ Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
    whole-table fallback.
 7. The real registry runs 30/30 with `release-changelog-fragment` examining 21 changed paths and
    `release-fragment-current` examining the reconstructed `0.4.0` fragment.
-8. Final combined `npm test`: 54 pass, 0 fail, one expected Windows-only skip for the POSIX filename
+8. Final combined `npm test`: 55 pass, 0 fail, one expected Windows-only skip for the POSIX filename
    integration case. Module audit: 52 command spans, 15 dispatched. Site: 143 pages built; Astro
    reports 0 errors/warnings/hints and 2,276 internal links with 0 broken. `npm publish --dry-run`
    succeeds with 108 files (including `engine-table.ts`); `git diff --check` is clean.
