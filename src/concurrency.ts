@@ -61,6 +61,43 @@ function revParse(root: string, ref: string): string | null {
   }
 }
 
+interface GitWorktree {
+  path: string;
+  branch?: string;
+}
+
+/**
+ * Read worktree paths without line parsing.
+ *
+ * A worktree path may contain whitespace or a newline. `--porcelain -z` makes
+ * NUL the only record delimiter, while branch refs cannot contain NUL, so the
+ * two fields can be associated without quoting or shell interpretation.
+ */
+function gitWorktrees(root: string): GitWorktree[] {
+  const out = execFileSync('git', ['worktree', 'list', '--porcelain', '-z'], {
+    cwd: root,
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  const rows: GitWorktree[] = [];
+  let row: GitWorktree | undefined;
+
+  for (const field of out.split('\0')) {
+    if (!field) {
+      if (row) rows.push(row);
+      row = undefined;
+    } else if (field.startsWith('worktree ')) {
+      // Be defensive about malformed output missing its blank record separator.
+      if (row) rows.push(row);
+      row = { path: field.slice('worktree '.length) };
+    } else if (row && field.startsWith('branch ')) {
+      row.branch = field.slice('branch '.length);
+    }
+  }
+  if (row) rows.push(row);
+  return rows;
+}
+
 export interface Result {
   ok: boolean;
   lines: string[];
@@ -214,6 +251,32 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
   if (!head) return { ok: false, lines: [`branch '${branch}' does not exist`] };
   const before = revParse(root, `refs/heads/${integration}`);
   if (!before) return { ok: false, lines: [`'${integration}' does not resolve`] };
+
+  // ADR-0009 rule 3 is a mutation precondition, not merely a gate installed in
+  // some consumers. Keep this before even inspecting the coordination lock: a
+  // known-invalid land must not replace a stale lock or create any artifact.
+  let integrationHolders: string[];
+  try {
+    const integrationRef = `refs/heads/${integration}`;
+    integrationHolders = gitWorktrees(root)
+      .filter((worktree) => worktree.branch === integrationRef)
+      .map((worktree) => worktree.path);
+  } catch {
+    return {
+      ok: false,
+      lines: [`cannot read git worktrees for '${integration}'; checkout state is unknown, so land is refused.`],
+    };
+  }
+  if (integrationHolders.length) {
+    return {
+      ok: false,
+      lines: [
+        `'${integration}' is checked out in ${integrationHolders.length} worktree(s), so land is refused:`,
+        ...integrationHolders.map((path) => `  ${path}`),
+        'Switch each listed worktree to another branch or detach it (`git switch --detach`), then retry.',
+      ],
+    };
+  }
 
   // A real lock: it names its holder and start time, and is taken over if that
   // holder is gone. A lock nobody can break is a lock somebody deletes.

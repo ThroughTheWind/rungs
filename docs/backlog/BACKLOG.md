@@ -13,6 +13,7 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 | [WI-072](items/WI-072-release-consumption-boundary.md) | Track the consumed release boundary | feature | `feature/WI-072-release-consumption-boundary` |
 | [WI-073](items/WI-073-emitted-path-containment.md) | Contain every emitted module path inside the consumer repository | feature | `feature/WI-073-emitted-path-containment` |
+| [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | `feature/WI-075-land-checked-out-integration` |
 
 ## Review
 
@@ -26,7 +27,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | — |
 
 ## Accepted
 

@@ -2,8 +2,8 @@
 id: WI-075
 title: Refuse landing while the integration branch is checked out
 type: feature
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-075-land-checked-out-integration
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-062, WI-074, F-048, ADR-0009]
@@ -92,8 +92,38 @@ separate gate that refuses an integration checkout.
 
 ## Execution
 
-Not started.
+Implemented on `feature/WI-075-land-checked-out-integration`. `land` now reads
+`git worktree list --porcelain -z` directly, associates NUL-delimited `worktree` and `branch`
+fields without shell or line parsing, and matches the exact configured integration ref. Discovery
+fails closed, and every matching path is reported with switch/detach remediation before the land
+lock is inspected, a scratch worktree is created, a gate runner is called or a ref can move.
+
+The three refusal regressions snapshot raw `HEAD` and index bytes, complete ref output, porcelain
+status and selected file bytes. They cover a clean holder with an existing lock sentinel, a dirty
+holder with staged, unstaged and untracked work, and invocation from another worktree while two
+linked worktrees forcibly hold `main`. The linked path contains whitespace on Windows and a newline
+on POSIX, so the test exercises the reason for the `-z` contract as well as the ordinary case.
+
+Existing merge-behavior tests now detach from `main` before a valid land. An explicit concurrent
+ref-advance regression also covers the existing compare-and-swap/parking behavior. No module text
+or version changed: the concurrency guide, gate message and ADR-0009 already state the same
+no-integration-checkout rule; this item adds the missing enforcement at the command boundary.
+The user-visible refusal is recorded explicitly in `changelog.d/0.4.0.md`; relying on an inherited
+`changelog-ok:` test fixture would have repeated F-043's known false-green.
 
 ## Review
 
-Not started.
+Local acceptance evidence on 2026-09-05:
+
+1. The clean-holder test refuses before its runner, preserves a pre-existing lock byte-for-byte,
+   and keeps `HEAD`, index, status, file and all ref bytes unchanged with no staged reversion.
+2. The dirty-holder test preserves distinct staged, unstaged and untracked changes byte-for-byte,
+   names the holder and creates no lock.
+3. The linked-holder test names both forced holders and preserves the invoking worktree, both
+   holders, every ref and the shared lock. The exact POSIX newline-path execution awaits CI.
+4. All existing introduced, inherited, unattributable, conflict, live-lock and green outcomes pass
+   with `main` unheld; the new compare-and-swap regression preserves the competing advance and
+   parks the verified merge.
+5. Focused `land` tests pass 8/8. `npm test` passes 64 tests with one intentional Windows platform
+   skip; all 30 registered Rungs gates pass; package dry-run succeeds with 109 entries; and
+   `git diff --check` is clean. Exact pushed-SHA matrix and site evidence are pending.

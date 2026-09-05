@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { execSync, spawnSync } from 'node:child_process';
+import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { land, sessionStart, worktrees } from '../src/concurrency.ts';
@@ -1469,7 +1469,7 @@ test('the shell hook blocks interpreter heredocs and multi-line -e, and nothing 
 // a merge nobody gated.
 function loopRepo() {
   const dir = mkdtempSync(join(tmpdir(), 'rungs-loop-'));
-  const g = (...a) => execSync(`git ${a.join(' ')}`, { cwd: dir, stdio: 'pipe' }).toString().trim();
+  const g = (...a) => execFileSync('git', a, { cwd: dir, stdio: 'pipe', encoding: 'utf8' }).trim();
   g('init', '-q', '-b', 'main', '.');
   g('config', 'user.email', 't@t');
   g('config', 'user.name', 't');
@@ -1477,6 +1477,28 @@ function loopRepo() {
   g('add', '-A');
   g('commit', '-qm', 'init');
   return { dir, g };
+}
+
+function gitText(dir, ...args) {
+  return execFileSync('git', args, { cwd: dir, stdio: 'pipe', encoding: 'utf8' }).trim();
+}
+
+function landLockPath(dir) {
+  return resolve(dir, gitText(dir, 'rev-parse', '--git-common-dir'), 'rungs-land.lock');
+}
+
+function worktreeSnapshot(dir, files) {
+  const gitDir = resolve(dir, gitText(dir, 'rev-parse', '--git-dir'));
+  return {
+    status: execFileSync('git', ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], {
+      cwd: dir,
+      stdio: 'pipe',
+    }),
+    refs: execFileSync('git', ['show-ref', '--head'], { cwd: dir, stdio: 'pipe' }),
+    head: readFileSync(join(gitDir, 'HEAD')),
+    index: readFileSync(join(gitDir, 'index')),
+    files: Object.fromEntries(files.map((file) => [file, readFileSync(join(dir, file))])),
+  };
 }
 
 test('session start states a fallback to the tip instead of silently cutting from an unverified merge', () => {
@@ -1501,6 +1523,134 @@ test('session start states a fallback to the tip instead of silently cutting fro
   }
 });
 
+test('land refuses a clean integration holder before the runner, lock, refs, index or files change', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/clean');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'work');
+    g('switch', '-q', 'main');
+    g('update-ref', 'refs/heads/green/main', 'main');
+    g('update-ref', 'refs/heads/integ/feature/clean', 'feature/clean');
+
+    const lp = landLockPath(dir);
+    const lock = 'existing coordination artifact\n';
+    writeFileSync(lp, lock);
+    const before = worktreeSnapshot(dir, ['a.txt']);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/clean', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+    const after = worktreeSnapshot(dir, ['a.txt']);
+    const holder = gitText(dir, 'rev-parse', '--show-toplevel');
+    const output = result.lines.join('\n');
+
+    assert.equal(result.ok, false);
+    assert.match(output, /'main' is checked out/);
+    assert.ok(output.includes(`  ${holder}`), 'the refusal names the exact holding worktree');
+    assert.match(output, /Switch each listed worktree|detach it/);
+    assert.equal(runnerCalls, 0, 'the gate runner is unreachable');
+    assert.deepEqual(after, before, 'HEAD, index, files, status and every ref remain byte-identical');
+    assert.equal(after.status.length, 0, 'no staged reversion is created');
+    assert.equal(readFileSync(lp, 'utf8'), lock, 'even a pre-existing land lock is untouched');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land refuses a dirty integration holder without hiding staged, unstaged or untracked work', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/dirty');
+    writeFileSync(join(dir, 'branch.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'work');
+    g('switch', '-q', 'main');
+
+    writeFileSync(join(dir, 'staged.txt'), 'staged work\n');
+    g('add', 'staged.txt');
+    writeFileSync(join(dir, 'a.txt'), 'unstaged work\n');
+    writeFileSync(join(dir, 'untracked.txt'), 'untracked work\n');
+    const lp = landLockPath(dir);
+    const before = worktreeSnapshot(dir, ['a.txt', 'staged.txt', 'untracked.txt']);
+    const beforeStatus = before.status.toString('utf8');
+    assert.match(beforeStatus, / M a\.txt\0/);
+    assert.match(beforeStatus, /A  staged\.txt\0/);
+    assert.match(beforeStatus, /\?\? untracked\.txt\0/);
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/dirty', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+    const after = worktreeSnapshot(dir, ['a.txt', 'staged.txt', 'untracked.txt']);
+    const holder = gitText(dir, 'rev-parse', '--show-toplevel');
+    const output = result.lines.join('\n');
+
+    assert.equal(result.ok, false);
+    assert.ok(output.includes(`  ${holder}`), 'the refusal names the dirty holder');
+    assert.match(output, /Switch each listed worktree|detach it/);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(after, before, 'dirty HEAD, index, file bytes, status and refs are all unchanged');
+    assert.equal(existsSync(lp), false, 'refusal creates no land lock');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land invoked elsewhere refuses a linked integration holder and preserves both worktrees', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-linked${process.platform === 'win32' ? ' holder' : '\nholder'}`);
+  const secondHolder = join(dirname(dir), `${basename(dir)}-second holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/linked');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'work');
+    g('switch', '--detach', '-q', 'main');
+    g('worktree', 'add', '-q', holder, 'main');
+    g('worktree', 'add', '--force', '-q', secondHolder, 'main');
+
+    const lp = landLockPath(dir);
+    const lock = 'linked-holder sentinel\n';
+    writeFileSync(lp, lock);
+    const invokingBefore = worktreeSnapshot(dir, ['a.txt']);
+    const holderBefore = worktreeSnapshot(holder, ['a.txt']);
+    const secondHolderBefore = worktreeSnapshot(secondHolder, ['a.txt']);
+    const reportedHolder = gitText(holder, 'rev-parse', '--show-toplevel');
+    const reportedSecondHolder = gitText(secondHolder, 'rev-parse', '--show-toplevel');
+    let runnerCalls = 0;
+
+    const result = land(dir, 'feature/linked', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+    const output = result.lines.join('\n');
+
+    assert.equal(result.ok, false);
+    assert.ok(output.includes(`  ${reportedHolder}`), 'NUL-delimited parsing preserves the exact linked path');
+    assert.ok(output.includes(`  ${reportedSecondHolder}`), 'every worktree holding the integration branch is named');
+    assert.match(output, /Switch each listed worktree|detach it/);
+    assert.equal(runnerCalls, 0);
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt']), invokingBefore, 'the invoking worktree is untouched');
+    assert.deepEqual(worktreeSnapshot(holder, ['a.txt']), holderBefore, 'the linked holder is untouched');
+    assert.deepEqual(worktreeSnapshot(secondHolder, ['a.txt']), secondHolderBefore, 'the second holder is untouched');
+    assert.equal(readFileSync(lp, 'utf8'), lock, 'the shared land lock is untouched');
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', secondHolder);
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(secondHolder, { recursive: true, force: true });
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('land refuses a red merged tree, leaves the integration branch untouched, and parks the merge', () => {
   const { dir, g } = loopRepo();
   try {
@@ -1509,7 +1659,7 @@ test('land refuses a red merged tree, leaves the integration branch untouched, a
     writeFileSync(join(dir, 'a.txt'), 'branch work\n');
     g('add', '-A');
     g('commit', '-qm', 'work');
-    execSync('git checkout -q main', { cwd: dir });
+    g('switch', '--detach', '-q', 'main');
 
     const before = g('rev-parse', 'main');
     // `only` is set on the merge-base re-run and absent on the merged run, so a
@@ -1548,7 +1698,7 @@ test('land distinguishes an inherited failure from an introduced one, and blocks
     writeFileSync(join(dir, 'a.txt'), 'branch work\n');
     g('add', '-A');
     g('commit', '-qm', 'work');
-    execSync('git checkout -q main', { cwd: dir });
+    g('switch', '--detach', '-q', 'main');
     const before = g('rev-parse', 'main');
 
     // Red after the merge *and* red at the base: not this branch's doing.
@@ -1565,12 +1715,12 @@ test('land distinguishes an inherited failure from an introduced one, and blocks
     // The blind spot attribution-by-gate created, and the reason it is by finding: an already-red
 // gate must not excuse the *new* violations of it this branch brings. Measured before the fix —
     // a branch adding its own broken link landed clean because the link gate was already red.
-    g('branch', 'feature/sneaky');
+    g('branch', 'feature/sneaky', 'main');
     execSync('git checkout -q feature/sneaky', { cwd: dir });
     writeFileSync(join(dir, 'c.txt'), 'more\n');
     g('add', '-A');
     g('commit', '-qm', 'sneaky');
-    execSync('git checkout -q main', { cwd: dir });
+    g('switch', '--detach', '-q', 'main');
 
     const held = g('rev-parse', 'main');
     const sameGateNewFinding = (_d, only) =>
@@ -1583,12 +1733,12 @@ test('land distinguishes an inherited failure from an introduced one, and blocks
     assert.equal(g('rev-parse', 'main'), held);
 
     // A base that cannot be gated at all attributes nothing, so everything blocks.
-    g('branch', 'feature/y');
+    g('branch', 'feature/y', 'main');
     execSync('git checkout -q feature/y', { cwd: dir });
     writeFileSync(join(dir, 'b.txt'), 'more\n');
     g('add', '-A');
     g('commit', '-qm', 'more');
-    execSync('git checkout -q main', { cwd: dir });
+    g('switch', '--detach', '-q', 'main');
 
     const tip = g('rev-parse', 'main');
     const unknowable = (_d, only) => {
@@ -1617,6 +1767,7 @@ test('land refuses a conflict, and refuses to run while another land holds the l
     writeFileSync(join(dir, 'a.txt'), 'ours\n');
     g('add', '-A');
     g('commit', '-qm', 'ours');
+    g('switch', '--detach', '-q', 'main');
 
     const before = g('rev-parse', 'main');
     const conflict = land(dir, 'feature/conflict', () => ({ pass: 1, failing: [] }));
@@ -1633,6 +1784,42 @@ test('land refuses a conflict, and refuses to run while another land holds the l
     assert.equal(busy.ok, false);
     assert.match(busy.lines.join('\n'), /another land is in progress/);
     assert.match(busy.lines.join('\n'), /feature\/other/, 'it names the holder');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land keeps its compare-and-swap refusal when integration moves during verification', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/cas');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '--detach', '-q', 'main');
+
+    g('switch', '-q', '-c', 'feature/advance', 'main');
+    writeFileSync(join(dir, 'advanced.txt'), 'concurrent work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'advance');
+    const advanced = g('rev-parse', 'HEAD');
+    g('switch', '--detach', '-q', 'main');
+    const before = g('rev-parse', 'main');
+    let moved = false;
+
+    const result = land(dir, 'feature/cas', () => {
+      if (!moved) {
+        g('update-ref', 'refs/heads/main', advanced, before);
+        moved = true;
+      }
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /main moved while this land was verifying/);
+    assert.equal(g('rev-parse', 'main'), advanced, 'the concurrent advance is never overwritten');
+    assert.ok(g('rev-parse', '--verify', 'refs/heads/integ/feature/cas'), 'the verified merge is parked');
+    assert.equal(existsSync(landLockPath(dir)), false, 'the land lock is released');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
