@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { parse } from 'smol-toml';
 import type { Manifest } from './types.ts';
-import { contentHash, emittedFiles, registerGates } from './add.ts';
+import { contentHash, emittedFiles, moduleEmissionCandidates, preflightModuleEmissions, registerGates } from './add.ts';
 import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadRegistry } from './check.ts';
+import { preflightEmittedPaths, resolveEmittedPath, UnsafeEmittedPathError } from './emitted-path.ts';
 
 const SRC = dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +26,15 @@ export interface InstallRecord {
 }
 
 export function readRecord(repoRoot: string): InstallRecord | null {
-  const p = join(repoRoot, '.ai', 'rungs.toml');
+  const resolved = resolveEmittedPath(repoRoot, 'rungs', '.ai/rungs.toml');
+  if (resolved.leafAlias) {
+    throw new UnsafeEmittedPathError(
+      'rungs',
+      '.ai/rungs.toml',
+      'the install record is a symlink or junction leaf and will not be used as configuration',
+    );
+  }
+  const p = resolved.absolute;
   if (!existsSync(p)) return null;
   try {
     const raw = parse(readFileSync(p, 'utf8')) as any;
@@ -59,16 +68,26 @@ export function planUpgrade(repoRoot: string, mods: Manifest[], record: InstallR
   const params = resolveParams(mods, paramsFrom(record), repoRoot);
   const skillsDir = record.harnesses.includes('claude') ? '.claude/skills' : '.agents/skills';
   const items: UpgradeItem[] = [];
+  const installedMods = mods.filter((mod) => record.modules[mod.name]);
 
-  for (const mod of mods) {
+  // Parameters in the install record are untrusted input to this newer CLI.
+  // Validate every installed module before examining any one of them, so a
+  // later unsafe target cannot make a partial plan look usable.
+  preflightModuleEmissions(installedMods, repoRoot, params, skillsDir);
+
+  for (const mod of installedMods) {
     const installed = record.modules[mod.name];
-    if (!installed) continue;
     const emitted = emittedFiles(mod, params, skillsDir);
     const files: UpgradeItem['files'] = [];
     const kept = new Set(installed.kept?.files ?? []);
     for (const [rel, wouldEmit] of emitted) {
       if (kept.has(rel)) continue;   // never ours; upgrade does not touch it
-      const full = join(repoRoot, rel);
+      const resolved = resolveEmittedPath(repoRoot, mod.name, rel);
+      const full = resolved.absolute;
+      if (resolved.leafAlias) {
+        files.push({ rel, state: 'diverged' });
+        continue;
+      }
       if (!existsSync(full)) {
         files.push({ rel, state: 'missing' });
         continue;
@@ -88,21 +107,58 @@ export function planUpgrade(repoRoot: string, mods: Manifest[], record: InstallR
 export function applyUpgrade(repoRoot: string, mods: Manifest[], record: InstallRecord, plan: UpgradeItem[]) {
   const params = resolveParams(mods, paramsFrom(record), repoRoot);
   const skillsDir = record.harnesses.includes('claude') ? '.claude/skills' : '.agents/skills';
+  const prepared = plan.map((item) => {
+    const mod = mods.find((candidate) => candidate.name === item.module);
+    if (!mod) throw new Error(`upgrade plan names unknown module '${item.module}'`);
+    const emitted = emittedFiles(mod, params, skillsDir);
+    const files = item.files.map((file) => {
+      const resolved = resolveEmittedPath(repoRoot, mod.name, file.rel);
+      if ((file.state === 'stale' || file.state === 'missing') && resolved.leafAlias) {
+        throw new UnsafeEmittedPathError(
+          mod.name,
+          file.rel,
+          'the destination is a symlink or junction leaf and upgrade will not write through it',
+        );
+      }
+      if ((file.state === 'stale' || file.state === 'missing') && !emitted.has(resolved.target)) {
+        throw new Error(`module '${mod.name}' upgrade plan names target '${file.rel}' that the module does not emit`);
+      }
+      return { ...file, target: resolved.target, absolute: resolved.absolute };
+    });
+    return { item, mod, emitted, files };
+  });
+
+  // Rebuild and validate the complete emission set at apply time.  Callers may
+  // retain or manufacture a plan, so application never trusts planning to have
+  // happened in this process or against this filesystem.
+  const writable = new Set(
+    prepared.flatMap(({ mod, files }) =>
+      files
+        .filter((file) => file.state === 'stale' || file.state === 'missing')
+        .map((file) => `${mod.name}\0${file.target}`),
+    ),
+  );
+  preflightEmittedPaths(repoRoot, [
+    ...moduleEmissionCandidates(prepared.map(({ mod }) => mod), params, skillsDir).map((candidate) =>
+      writable.has(`${candidate.moduleName}\0${candidate.target}`)
+        ? { ...candidate, writeExisting: true }
+        : candidate,
+    ),
+    { moduleName: prepared[0]?.mod.name ?? 'upgrade', target: '.ai/rungs.toml', writeExisting: true },
+  ]);
+
   let written = 0;
   // Only files this run rewrote. A diverged file is not in here, which is what
   // keeps its recorded hash — and therefore its protection — intact (F-017).
   const rewritten = new Map<string, Map<string, string>>();
-  for (const item of plan) {
-    const mod = mods.find((m) => m.name === item.module)!;
-    const emitted = emittedFiles(mod, params, skillsDir);
-    for (const f of item.files) {
+  for (const { mod, emitted, files } of prepared) {
+    for (const f of files) {
       if (f.state !== 'stale' && f.state !== 'missing') continue;
-      const full = join(repoRoot, f.rel);
-      const content = emitted.get(f.rel)!;
-      mkdirSync(dirname(full), { recursive: true });
-      writeFileSync(full, content);
+      const content = emitted.get(f.target)!;
+      mkdirSync(dirname(f.absolute), { recursive: true });
+      writeFileSync(f.absolute, content);
       if (!rewritten.has(mod.name)) rewritten.set(mod.name, new Map());
-      rewritten.get(mod.name)!.set(f.rel, contentHash(content));
+      rewritten.get(mod.name)!.set(f.target, contentHash(content));
       written++;
     }
   }
@@ -117,7 +173,7 @@ export function applyUpgrade(repoRoot: string, mods: Manifest[], record: Install
   // dropped from a manifest leaves the registry with the block that replaces it.
   // Idempotent, and cheap enough to run for every module in the plan rather than
   // only the ones whose files happened to be stale.
-  const upgraded = plan.map((p) => mods.find((m) => m.name === p.module)!).filter(Boolean);
+  const upgraded = prepared.map(({ mod }) => mod);
   const gateActions = upgraded.length ? registerGates(upgraded, repoRoot, false) : [];
 
   const recorded = updateRecordAfterUpgrade(
@@ -149,7 +205,9 @@ export function updateRecordAfterUpgrade(
   repoRoot: string,
   updates: { module: string; version: string; hashes: Map<string, string> }[],
 ): number {
-  const path = join(repoRoot, '.ai', 'rungs.toml');
+  const path = preflightEmittedPaths(repoRoot, [
+    { moduleName: updates[0]?.module ?? 'upgrade', target: '.ai/rungs.toml', writeExisting: true },
+  ])[0].absolute;
   if (!existsSync(path) || !updates.length) return 0;
 
   const lines = readFileSync(path, 'utf8').split('\n');

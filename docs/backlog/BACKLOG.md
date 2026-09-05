@@ -12,7 +12,6 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 | [WI-072](items/WI-072-release-consumption-boundary.md) | Track the consumed release boundary | feature | `feature/WI-072-release-consumption-boundary` |
-| [WI-073](items/WI-073-emitted-path-containment.md) | Contain every emitted module path inside the consumer repository | feature | `feature/WI-073-emitted-path-containment` |
 | [WI-079](items/WI-079-land-managed-ref-safety.md) | Protect every land-managed ref from checked-out worktrees | feature | `feature/WI-079-land-managed-ref-safety` |
 
 ## Review

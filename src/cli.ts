@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { auditModules, loadAllModules } from './manifest.ts';
 import { detect, scanRepo } from './detect.ts';
-import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
-import { render, writeReport, type Harness } from './render.ts';
+import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, moduleEmissionCandidates, preflightModuleEmissions, prospectiveRuleEmissions, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
+import { preflightRender, render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, UnknownTierError } from './check.ts';
 import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
@@ -13,6 +13,7 @@ import { applyArchive, planArchive } from './backlog.ts';
 import { land, preflight, sessionStart, worktrees } from './concurrency.ts';
 import { existsSync } from 'node:fs';
 import type { DetectResult, Manifest } from './types.ts';
+import { UnsafeEmittedPathError } from './emitted-path.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MODULES = join(HERE, '..', 'modules');
@@ -25,6 +26,12 @@ const c = {
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
   cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
 };
+
+function pathRefusal(error: unknown): number {
+  if (!(error instanceof UnsafeEmittedPathError)) throw error;
+  console.log(c.red(`\n  refused: ${error.message}\n`) + c.dim('  Nothing was written. Fix the module path parameter or repository alias and retry.\n'));
+  return 1;
+}
 
 const STATE_LABEL: Record<DetectResult['state'], string> = {
   absent: c.dim('absent'),
@@ -93,7 +100,12 @@ function cmdDoctor(target: string, doExplain = false) {
   console.log(c.bold(`\nrungs doctor — ${root}\n`));
 
   const files = scanRepo(root);
-  const record = readRecord(root);
+  let record;
+  try {
+    record = readRecord(root);
+  } catch (error) {
+    return pathRefusal(error);
+  }
   console.log(
     c.dim(`  scanned ${files.length} files`) +
       (record ? c.dim(` · installed ${Object.keys(record.modules).length} module(s)`) : c.dim(' · not a rungs repo')) +
@@ -104,10 +116,15 @@ function cmdDoctor(target: string, doExplain = false) {
     Object.entries(record?.modules ?? {}).flatMap(([n, e]) => (e.params ? [[n, e.params]] : [])),
   ), root);
   const skillsDir = record?.harnesses.includes('claude') === false ? '.agents/skills' : '.claude/skills';
-  const results = mods.map((m) => {
-    const installed = record?.modules[m.name];
-    return detect(m, root, files, installed ? { ...installed, skillsDir, params_all: params } : undefined);
-  });
+  let results;
+  try {
+    results = mods.map((m) => {
+      const installed = record?.modules[m.name];
+      return detect(m, root, files, installed ? { ...installed, skillsDir, params_all: params } : undefined);
+    });
+  } catch (error) {
+    return pathRefusal(error);
+  }
   const byState = (s: DetectResult['state']) => results.filter((r) => r.state === s);
 
   for (const r of results) {
@@ -404,7 +421,13 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   // What counts as present: what the repo already has, plus everything else in
   // this install set. Two modules that cannot coexist cannot arrive together
   // either.
-  const present = new Set([...Object.keys(readRecord(root)?.modules ?? {}), ...order.map((m) => m.name)]);
+  let record;
+  try {
+    record = readRecord(root);
+  } catch (error) {
+    return pathRefusal(error);
+  }
+  const present = new Set([...Object.keys(record?.modules ?? {}), ...order.map((m) => m.name)]);
   const declared = blockedByConflict(order, present, mods);
   const conflictOverride = flags.has('--confirm-conflict');
 
@@ -485,6 +508,28 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     );
   }
 
+  // This is one operation, even though files, gates, the install record and
+  // harness renderings are applied in phases.  Validate every selected module
+  // and every post-phase output before the first module can write.
+  const actualInstall = toInstall.filter(
+    (mod) => !(mod.threshold?.confirm && !dryRun && !flags.has('--confirm-threshold')),
+  );
+  try {
+    preflightModuleEmissions(actualInstall, root, params, skillsDir);
+    preflightRender(
+      root,
+      harnesses,
+      prospectiveRuleEmissions(actualInstall, params, skillsDir),
+      [
+        ...moduleEmissionCandidates(actualInstall, params, skillsDir),
+        { moduleName: 'rungs', target: '.ai/gates.toml', shared: true, writeExisting: true },
+        { moduleName: 'rungs', target: '.ai/rungs.toml', writeExisting: true },
+      ],
+    );
+  } catch (error) {
+    return pathRefusal(error);
+  }
+
   const installed: Manifest[] = [];
   const wrote = new Map<string, Set<string>>();
   for (const mod of toInstall) {
@@ -529,7 +574,7 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
   }
 
   if (!dryRun) {
-    writeInstallRecord(root, order, params, harnesses, stamp, skillsDir, wrote);
+    writeInstallRecord(root, installed, params, harnesses, stamp, skillsDir, wrote);
     const entries = render(root, harnesses);
     writeReport(root, entries, harnesses, stamp);
     console.log(
@@ -543,6 +588,11 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
 }
 
 function cmdRender(root: string, harnesses: Harness[], stamp: string) {
+  try {
+    preflightRender(root, harnesses);
+  } catch (error) {
+    return pathRefusal(error);
+  }
   const entries = render(root, harnesses);
   writeReport(root, entries, harnesses, stamp);
   console.log(c.bold(`\nrungs render — ${root}\n`));
@@ -706,7 +756,12 @@ function reportLedger(root: string) {
 }
 
 function cmdBacklogArchive(root: string, dryRun: boolean) {
-  const record = readRecord(root);
+  let record;
+  try {
+    record = readRecord(root);
+  } catch (error) {
+    return pathRefusal(error);
+  }
   const configured = record?.modules['backlog']?.params?.root;
   const backlogRoot = `docs/${configured ?? 'backlog'}`;
 
@@ -752,7 +807,13 @@ function cmdBacklogArchive(root: string, dryRun: boolean) {
 }
 
 function cmdInit(root: string, profile: string, dryRun: boolean, harnesses: Harness[], stamp: string) {
-  if (readRecord(root)) {
+  let existing;
+  try {
+    existing = readRecord(root);
+  } catch (error) {
+    return pathRefusal(error);
+  }
+  if (existing) {
     console.log(
       c.yellow('\n  this repo is already initialised.') +
         c.dim(' Use `rungs add <module>` to install more, or `rungs upgrade`.\n'),
@@ -769,13 +830,23 @@ function cmdInit(root: string, profile: string, dryRun: boolean, harnesses: Harn
 }
 
 function cmdUpgrade(root: string, apply: boolean) {
-  const record = readRecord(root);
+  let record;
+  try {
+    record = readRecord(root);
+  } catch (error) {
+    return pathRefusal(error);
+  }
   if (!record) {
     console.log(c.yellow('\n  not a rungs repo — nothing to upgrade.\n'));
     return 1;
   }
   const mods = loadAllModules(MODULES);
-  const plan = planUpgrade(root, mods, record);
+  let plan;
+  try {
+    plan = planUpgrade(root, mods, record);
+  } catch (error) {
+    return pathRefusal(error);
+  }
   console.log(c.bold(`\nrungs upgrade — ${root}${apply ? '' : c.yellow('  (preview)')}\n`));
 
   let stale = 0;
@@ -796,7 +867,13 @@ function cmdUpgrade(root: string, apply: boolean) {
   // old block — F-016, measured on a scratch consumer where `session` 1.1.0 →
   // 1.2.0 added a gate and `rungs check` went on running the previous twenty.
   if (apply) {
-    const { written, gates, recorded } = applyUpgrade(root, mods, record, plan);
+    let result;
+    try {
+      result = applyUpgrade(root, mods, record, plan);
+    } catch (error) {
+      return pathRefusal(error);
+    }
+    const { written, gates, recorded } = result;
     const parts = [
       written ? `${written} file(s)` : '',
       gates ? `${gates} gate registration(s)` : '',
@@ -813,7 +890,13 @@ function cmdUpgrade(root: string, apply: boolean) {
 }
 
 function cmdEject(root: string, dryRun: boolean) {
-  if (!readRecord(root)) {
+  let record;
+  try {
+    record = readRecord(root);
+  } catch (error) {
+    return pathRefusal(error);
+  }
+  if (!record) {
     console.log(c.yellow('\n  not a rungs repo — nothing to eject.\n'));
     return 1;
   }
