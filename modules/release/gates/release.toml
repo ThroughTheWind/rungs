@@ -11,7 +11,7 @@ base_branch          = "{{stable_branch}}"
 require_when_changed = ["src/**", "lib/**", "app/**", "server/**", "web/**", "packages/**"]
 requires_one_of     = ["{{changelog_dir}}/*.md"]
 ignore_when_only    = ["docs/**", "**/*.test.*", "**/*.spec.*", ".github/**", "*.md"]
-exempt_marker       = "changelog-ok:"      # ignored unless it states a reason
+exempt_marker       = "changelog-ok:"      # ignored unless followed by substantive text on that line
 message = """
 This branch changes shipping code and adds no fragment in {{changelog_dir}}/. Add one, or state why
 not with `changelog-ok: <reason>` — internal refactors with no user-visible effect are a legitimate

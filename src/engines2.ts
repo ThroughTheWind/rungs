@@ -425,8 +425,14 @@ export function resolveIntegrationRef(root: string, branch: string): Integration
 const matchesAny = (rel: string, patterns: string[] | undefined) =>
   (patterns ?? []).some((pattern) => matchAny([rel], pattern).length > 0);
 
+const patternList = (value: unknown, allowEmpty = false): value is string[] =>
+  Array.isArray(value) && (allowEmpty || value.length > 0) &&
+  value.every((pattern) => typeof pattern === 'string' && pattern.trim().length > 0);
+
 const sameLineExemption = (text: string, marker?: string) =>
-  !!marker && new RegExp(`${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[ \\t]*\\S[^\\r\\n]*`, 'm').test(text);
+  !!marker && text.split(/\r?\n/).some((line) =>
+    line.split(marker).slice(1).some((tail) => /[\p{L}\p{N}]/u.test(tail)),
+  );
 
 /**
  * Require a changed companion file when a branch changes a configured path.
@@ -437,6 +443,21 @@ const sameLineExemption = (text: string, marker?: string) =>
  * developer stages or commits the work.
  */
 export const changeRequiresFile: Engine = (t, root) => {
+  if (!patternList(t.require_when_changed) || !patternList(t.requires_one_of)) {
+    return {
+      findings: [{
+        message: "change-requires-file requires non-empty 'require_when_changed' and 'requires_one_of' pattern arrays",
+      }],
+      examined: 0,
+    };
+  }
+  if (t.ignore_when_only !== undefined && !patternList(t.ignore_when_only, true)) {
+    return {
+      findings: [{ message: "change-requires-file 'ignore_when_only' must be an array of non-empty patterns" }],
+      examined: 0,
+    };
+  }
+
   const baseName = String(t.base_branch ?? 'main');
   let changed: string[];
   try {

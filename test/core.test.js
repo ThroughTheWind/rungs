@@ -922,8 +922,30 @@ test('change-requires-file ignores non-shipping work and requires an exemption r
 
     write('src/a.ts', '// changelog-ok:\nconst laterLineIsNotAReason = true;\n');
     assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, 'bare marker cannot borrow next line');
+    for (const bareWrapper of ['<!-- changelog-ok: -->\n', '/* changelog-ok: */\n', '"changelog-ok:"\n']) {
+      write('src/a.ts', bareWrapper);
+      assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, `${bareWrapper.trim()} is not a reason`);
+    }
     write('src/a.ts', '// changelog-ok: internal rename, no user-visible effect\n');
     assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 0, 'same-line reason exempts');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('change-requires-file refuses missing or malformed pattern configuration', () => {
+  const { root } = releaseDeltaRepo();
+  try {
+    for (const broken of [
+      { ...releaseChangeTable, require_when_changed: [] },
+      { ...releaseChangeTable, requires_one_of: undefined },
+      { ...releaseChangeTable, ignore_when_only: [''] },
+    ]) {
+      const result = changeRequiresFile(broken, root, []);
+      assert.equal(result.examined, 0);
+      assert.equal(result.findings.length, 1);
+      assert.match(result.findings[0].message, /pattern|patterns/);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

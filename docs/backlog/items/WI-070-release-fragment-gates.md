@@ -44,8 +44,9 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
   complete change set is not ignore-only.
 - Satisfy the obligation only with a matching fragment that is both changed in this work and still
   exists. An inherited, deleted or ignored fragment must not satisfy it.
-- Accept an exemption marker only when a changed readable file states non-whitespace reasoning on
-  the same line; a bare marker cannot borrow text from the following line.
+- Accept an exemption marker only when a changed readable file states a substantive reason (at
+  least one letter or number) on the same line; a bare marker or comment closer is not a reason and
+  cannot borrow text from the following line.
 - Dispatch every implemented engine through one explicit table-section inventory shared by the
   source runner, explain path, module self-test runner and ejected runner template. Missing engine
   mappings and missing required sections fail closed; there is no whole-table fallback except the
@@ -94,7 +95,8 @@ and fragment make the real repository pass.
    a pre-existing or deleted fragment does not satisfy it.
 2. Documentation/test/tooling-only changes pass, while mixed changes containing shipping code still
    engage the gate.
-3. A reasoned exemption in a changed readable file passes and a bare marker fails.
+3. A reasoned exemption in a changed readable file passes; a bare marker, comment closer or reason
+   deferred to the next line fails.
 4. Branch, staged, unstaged and untracked changes are observed; local, `origin` and sole-other-remote
    bases work, while absent and ambiguous bases return explicit findings with `examined: 0`.
 5. All five `release-changelog-fragment` fixtures execute with their declared outcomes and zero
