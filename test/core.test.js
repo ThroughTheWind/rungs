@@ -9,7 +9,7 @@ import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
 import { blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
-import { changeRequiresFile, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
+import { changeRequiresFile, computedClaim, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
 import { applyUpgrade, eject, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { ENGINES, frontmatterSchema, linkIntegrity } from '../src/engines.ts';
@@ -18,6 +18,7 @@ import { collapseDuplicates, explainWith } from '../src/explain.ts';
 import { runSelfTests } from '../src/selftest.ts';
 import { loadTable, runGates } from '../src/check.ts';
 import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
+import { readVersionSource } from '../src/version-source.ts';
 
 test('substitute resolves local and cross-module values without touching passthrough expressions', () => {
   const params = {
@@ -1058,7 +1059,7 @@ test('change-requires-file resolves remote-only bases and refuses ambiguous or a
   }
 });
 
-test('release fragment fixtures execute and every engine uses the strict shared table selector', () => {
+test('release fixtures execute and every engine uses the strict shared table selector', () => {
   assert.deepEqual(
     Object.keys(ENGINE_TABLE_KEYS).filter((key) => key !== 'shell-safety').sort(),
     Object.keys(ENGINES).sort(),
@@ -1085,6 +1086,185 @@ test('release fragment fixtures execute and every engine uses the strict shared 
   );
   assert.equal(results.length, 5);
   assert.deepEqual(results.map((result) => result.outcome), ['ok', 'ok', 'ok', 'ok', 'ok']);
+
+  const versionBlocks = table.self_test
+    .filter((block) => block.gate === 'release-version-consistent')
+    .map((block) => ({ expect: block.expect, fixture: block.fixture }));
+  const versionResults = runSelfTests(
+    'release-version-consistent',
+    'computed-claim',
+    selectEngineTable(table, 'computed-claim', 'release-version-consistent'),
+    versionBlocks,
+  );
+  assert.equal(versionResults.length, 14);
+  assert.deepEqual(versionResults.map((result) => result.outcome), Array(14).fill('ok'));
+});
+
+const versionSources = {
+  id: 'version',
+  sources: [
+    { file: 'package.json', path: 'version' },
+    { file: '*/package.json', path: 'version' },
+    { file: 'Directory.Build.props', xpath: '//Version' },
+    { file: 'pyproject.toml', path: 'project.version' },
+  ],
+  rule: 'all-agree',
+  exclude: [],
+};
+
+function versionSourceRepo(entries) {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-version-sources-'));
+  for (const [rel, content] of Object.entries(entries)) {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), content);
+  }
+  return root;
+}
+
+test('the shared version reader parses JSON, TOML and XML and distinguishes invalid evidence', () => {
+  const root = versionSourceRepo({
+    'package.json': JSON.stringify({ version: '1.2.3' }),
+    'pyproject.toml': '[project]\nversion = "1.2.3"\n',
+    'Directory.Build.props': '<Project><PropertyGroup><Version>1.2.3</Version></PropertyGroup></Project>',
+    'missing.json': JSON.stringify({ name: 'fixture' }),
+    'invalid.json': JSON.stringify({ version: {} }),
+    'broken.toml': '[project',
+    'version.txt': 'version=1.2.3\n',
+    'unclosed.xml': '<Project><Version>1.2.3</Version>',
+    'garbage.xml': 'garbage <Version>1.2.3</Version>',
+    'comment.xml': '<Project><!-- <Version>9.9.9</Version> --></Project>',
+    'cdata.xml': '<Project><![CDATA[<Version>9.9.9</Version>]]></Project>',
+    'nested.xml': '<Project><Version><Value>1.2.3</Value></Version></Project>',
+    'duplicate.xml': '<Project><Version>1.2.3</Version><Version>1.2.3</Version></Project>',
+    'entity.xml': '<!DOCTYPE Project [<!ENTITY v "1.2.3">]><Project><Version>&v;</Version></Project>',
+  });
+  try {
+    assert.deepEqual(readVersionSource(root, 'package.json', { path: 'version' }), { ok: true, value: '1.2.3' });
+    assert.deepEqual(readVersionSource(root, 'pyproject.toml', { path: 'project.version' }), { ok: true, value: '1.2.3' });
+    assert.deepEqual(readVersionSource(root, 'Directory.Build.props', { xpath: '//Version' }), { ok: true, value: '1.2.3' });
+    assert.match(readVersionSource(root, 'missing.json', { path: 'version' }).reason, /does not contain configured path/);
+    assert.match(readVersionSource(root, 'invalid.json', { path: 'version' }).reason, /not a non-empty string or finite number/);
+    assert.match(readVersionSource(root, 'broken.toml', { path: 'project.version' }).reason, /invalid TOML/);
+    assert.match(readVersionSource(root, 'version.txt', { path: 'version' }).reason, /use JSON or TOML/);
+    assert.match(readVersionSource(root, 'unclosed.xml', { xpath: '//Version' }).reason, /invalid XML/);
+    assert.match(readVersionSource(root, 'garbage.xml', { xpath: '//Version' }).reason, /invalid XML/);
+    assert.match(readVersionSource(root, 'comment.xml', { xpath: '//Version' }).reason, /does not contain configured element/);
+    assert.match(readVersionSource(root, 'cdata.xml', { xpath: '//Version' }).reason, /does not contain configured element/);
+    assert.match(readVersionSource(root, 'nested.xml', { xpath: '//Version' }).reason, /contains nested XML/);
+    assert.match(readVersionSource(root, 'duplicate.xml', { xpath: '//Version' }).reason, /matched 2 values/);
+    assert.match(readVersionSource(root, 'entity.xml', { xpath: '//Version' }).reason, /invalid XML/);
+    assert.match(readVersionSource(root, 'package.json', {}).reason, /neither `path` nor `xpath`/);
+    assert.match(
+      readVersionSource(root, 'package.json', { path: 'version', xpath: '//Version' }).reason,
+      /both `path` and `xpath`/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('computed-claim counts every matched format, fails closed and preserves optional globs and exclusions', () => {
+  const equalRoot = versionSourceRepo({
+    'package.json': JSON.stringify({ version: '1.2.3' }),
+    'pyproject.toml': '[project]\nversion = "1.2.3"\n',
+    'Directory.Build.props': '<Project><PropertyGroup><Version>1.2.3</Version></PropertyGroup></Project>',
+  });
+  const invalidRoot = versionSourceRepo({ 'package.json': '{' });
+  const unsupportedRoot = versionSourceRepo({ 'version.txt': 'version=1.2.3\n' });
+  const emptyRoot = versionSourceRepo({ 'README.md': '# no configured source\n' });
+  const excludedRoot = versionSourceRepo({
+    'package.json': JSON.stringify({ version: '1.2.3' }),
+    'web/package.json': JSON.stringify({ version: '9.9.9' }),
+  });
+  try {
+    const equal = computedClaim(versionSources, equalRoot, ['package.json', 'pyproject.toml', 'Directory.Build.props']);
+    assert.equal(equal.examined, 3);
+    assert.deepEqual(equal.findings, []);
+
+    const invalid = computedClaim(versionSources, invalidRoot, ['package.json']);
+    assert.equal(invalid.examined, 1, 'a matched malformed source is examined evidence');
+    assert.equal(invalid.findings.length, 1);
+    assert.match(invalid.findings[0].message, /invalid JSON/);
+
+    const unsupported = computedClaim(
+      { ...versionSources, sources: [{ file: 'version.txt', path: 'version' }] },
+      unsupportedRoot,
+      ['version.txt'],
+    );
+    assert.equal(unsupported.examined, 1);
+    assert.match(unsupported.findings[0].message, /use JSON or TOML/);
+
+    const empty = computedClaim(versionSources, emptyRoot, ['README.md']);
+    assert.equal(empty.examined, 0);
+    assert.match(empty.findings[0].message, /no configured version sources/);
+
+    const excluded = computedClaim(
+      { ...versionSources, exclude: ['web/package.json'] },
+      excludedRoot,
+      ['package.json', 'web/package.json'],
+    );
+    assert.equal(excluded.examined, 1);
+    assert.deepEqual(excluded.findings, []);
+  } finally {
+    rmSync(equalRoot, { recursive: true, force: true });
+    rmSync(invalidRoot, { recursive: true, force: true });
+    rmSync(unsupportedRoot, { recursive: true, force: true });
+    rmSync(emptyRoot, { recursive: true, force: true });
+    rmSync(excludedRoot, { recursive: true, force: true });
+  }
+});
+
+test('runGates fails the exact F-047 package and pyproject disagreement', () => {
+  const root = versionSourceRepo({
+    'package.json': JSON.stringify({ version: '1.0.0' }),
+    'pyproject.toml': '[project]\nversion = "2.0.0"\n',
+    '.ai/gates.toml': '[[gates]]\nid = "release-version-consistent"\nkind = "declared"\nengine = "computed-claim"\ntable = "release/release.toml"\n',
+  });
+  try {
+    const [result] = runGates(root);
+    assert.equal(result.status, 'fail');
+    assert.equal(result.examined, 2);
+    assert.match(result.findings[0].message, /package\.json=1\.0\.0/);
+    assert.match(result.findings[0].message, /pyproject\.toml=2\.0\.0/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('consumer-configured version exclusions reach production runGates and remain narrow', () => {
+  const makeRoot = (versionExclude, packages) =>
+    versionSourceRepo({
+      ...Object.fromEntries(
+        Object.entries(packages).map(([rel, version]) => [rel, JSON.stringify({ version })]),
+      ),
+      '.ai/gates.toml': '[[gates]]\nid = "release-version-consistent"\nkind = "declared"\nengine = "computed-claim"\ntable = "release/release.toml"\n',
+      '.ai/rungs.toml': `[repo]\nharnesses = ["agents-md"]\n\n[modules.release]\nversion = "1.5.0"\nstate = "managed"\nparams = { version_exclude = "${versionExclude}" }\n`,
+    });
+  const excludedRoot = makeRoot('{web,docs}/package.json', {
+    'package.json': '1.2.3',
+    'web/package.json': '0.0.1',
+    'docs/package.json': '0.0.2',
+  });
+  const narrowRoot = makeRoot('web/package.json', {
+    'package.json': '1.2.3',
+    'web/package.json': '0.0.1',
+    'api/package.json': '9.9.9',
+  });
+  try {
+    const [excluded] = runGates(excludedRoot);
+    assert.equal(excluded.status, 'pass');
+    assert.equal(excluded.examined, 1);
+
+    const [narrow] = runGates(narrowRoot);
+    assert.equal(narrow.status, 'fail');
+    assert.equal(narrow.examined, 2);
+    assert.match(narrow.findings[0].message, /package\.json=1\.2\.3/);
+    assert.match(narrow.findings[0].message, /api\/package\.json=9\.9\.9/);
+    assert.doesNotMatch(narrow.findings[0].message, /web\/package\.json/);
+  } finally {
+    rmSync(excludedRoot, { recursive: true, force: true });
+    rmSync(narrowRoot, { recursive: true, force: true });
+  }
 });
 
 test('the production and generated runners select changelog tables without a whole-document fallback', () => {

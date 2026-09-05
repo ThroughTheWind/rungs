@@ -390,9 +390,14 @@ test('a consumer gets one exact launcher shared by local instructions and CI', (
     assert.equal(existsSync(join(dir, 'must-not-run.json')), false, 'a mutable selector never reaches npm');
 
     const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
-    assert.equal(manifest.dependencies['smol-toml'], '1.8.0');
-    assert.equal(lock.packages[''].dependencies['smol-toml'], '1.8.0');
-    assert.equal(lock.packages['node_modules/smol-toml'].version, '1.8.0');
+    const exactVersion = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+    for (const [name, version] of Object.entries(manifest.dependencies)) {
+      assert.match(version, exactVersion, `${name} must be pinned exactly`);
+      assert.equal(lock.packages[''].dependencies[name], version);
+      assert.equal(lock.packages[`node_modules/${name}`].version, version);
+    }
+    assert.equal(lock.packages['node_modules/saxes'].dependencies.xmlchars, '^2.2.0');
+    assert.equal(lock.packages['node_modules/xmlchars'].version, '2.2.0');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -450,31 +455,38 @@ test('a packed candidate retrofits an existing repository without taking over it
     const candidateIntegrity = `sha512-${createHash('sha512').update(readFileSync(candidateTarball)).digest('base64')}`;
     assert.equal(candidateIntegrity, packedCandidate.integrity, 'the candidate bytes must match npm\'s integrity');
 
-    const dependencyVersion = manifest.dependencies['smol-toml'];
-    assert.match(dependencyVersion, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'the runtime dependency must be exact');
-    const dependencySpec = `smol-toml@${dependencyVersion}`;
-    const packedDependency = parsePackResult(
-      expectOk(
-        runNpm(['pack', dependencySpec, '--json', '--ignore-scripts', '--pack-destination', packRoot], {
-          cwd: packRoot,
-          env: packageEnv,
-        }),
-        `pack ${dependencySpec}`,
-      ).stdout,
-    );
-    assert.equal(`${packedDependency.name}@${packedDependency.version}`, dependencySpec);
-    const dependencyTarball = join(packRoot, packedDependency.filename);
-    const dependencyIntegrity = `sha512-${createHash('sha512').update(readFileSync(dependencyTarball)).digest('base64')}`;
     const packageLock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
-    const lockedDependency = packageLock.packages['node_modules/smol-toml'];
-    assert.equal(packageLock.packages[''].dependencies['smol-toml'], dependencyVersion);
-    assert.equal(lockedDependency.version, dependencyVersion);
-    assert.equal(dependencyIntegrity, packedDependency.integrity, 'the dependency bytes must match npm\'s integrity');
-    assert.equal(
-      dependencyIntegrity,
-      lockedDependency.integrity,
-      'the packed dependency must be the exact artifact recorded in package-lock.json',
-    );
+    const runtimeClosure = [
+      ['smol-toml', manifest.dependencies['smol-toml']],
+      ['xmlchars', packageLock.packages['node_modules/xmlchars'].version],
+      ['saxes', manifest.dependencies.saxes],
+    ];
+    const dependencyTarballs = [];
+    for (const [name, version] of runtimeClosure) {
+      assert.match(version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, `${name} must resolve exactly`);
+      const dependencySpec = `${name}@${version}`;
+      const packedDependency = parsePackResult(
+        expectOk(
+          runNpm(['pack', dependencySpec, '--json', '--ignore-scripts', '--pack-destination', packRoot], {
+            cwd: packRoot,
+            env: packageEnv,
+          }),
+          `pack ${dependencySpec}`,
+        ).stdout,
+      );
+      assert.equal(`${packedDependency.name}@${packedDependency.version}`, dependencySpec);
+      const dependencyTarball = join(packRoot, packedDependency.filename);
+      const dependencyIntegrity = `sha512-${createHash('sha512').update(readFileSync(dependencyTarball)).digest('base64')}`;
+      const lockedDependency = packageLock.packages[`node_modules/${name}`];
+      assert.equal(lockedDependency.version, version);
+      assert.equal(dependencyIntegrity, packedDependency.integrity, `${name} bytes must match npm's integrity`);
+      assert.equal(
+        dependencyIntegrity,
+        lockedDependency.integrity,
+        `${name} must be the exact artifact recorded in package-lock.json`,
+      );
+      dependencyTarballs.push([name, dependencyTarball]);
+    }
 
     const installFlags = [
       '--offline',
@@ -487,43 +499,40 @@ test('a packed candidate retrofits an existing repository without taking over it
       '--cache',
       npmCache,
     ];
-    expectOk(
-      runNpm(['install', ...installFlags, dependencyTarball], { cwd: toolRoot, env: packageEnv }),
-      'install exact runtime dependency',
-    );
+    for (const [name, dependencyTarball] of dependencyTarballs) {
+      expectOk(
+        runNpm(['install', ...installFlags, dependencyTarball], { cwd: toolRoot, env: packageEnv }),
+        `install exact ${name} dependency`,
+      );
+    }
     expectOk(
       runNpm(['install', ...installFlags, candidateTarball], { cwd: toolRoot, env: packageEnv }),
       'install packed candidate',
     );
 
     const installedPackageRoot = realpathSync(join(toolRoot, 'node_modules', '@rungs', 'cli'));
-    const installedDependencyRoot = realpathSync(join(toolRoot, 'node_modules', 'smol-toml'));
     assert.ok(
       isExistingWithin(toolRoot, installedPackageRoot),
       'the candidate must resolve inside the isolated tool prefix',
-    );
-    assert.ok(
-      isExistingWithin(toolRoot, installedDependencyRoot),
-      'the dependency must resolve inside the isolated tool prefix',
     );
     assert.equal(
       isExistingWithin(root, installedPackageRoot),
       false,
       'the candidate must not resolve from the producer',
     );
-    assert.equal(
-      isExistingWithin(root, installedDependencyRoot),
-      false,
-      'the dependency must not resolve from the producer',
-    );
     const installedManifest = JSON.parse(readFileSync(join(installedPackageRoot, 'package.json'), 'utf8'));
-    const installedDependency = JSON.parse(readFileSync(join(installedDependencyRoot, 'package.json'), 'utf8'));
     assert.equal(installedManifest.name, '@rungs/cli');
     assert.equal(installedManifest.version, manifest.version);
     assert.deepEqual(installedManifest.bin, { rungs: 'dist/cli.js' });
-    assert.equal(installedManifest.dependencies['smol-toml'], dependencyVersion);
-    assert.equal(installedDependency.name, 'smol-toml');
-    assert.equal(installedDependency.version, dependencyVersion);
+    assert.deepEqual(installedManifest.dependencies, manifest.dependencies);
+    for (const [name, version] of runtimeClosure) {
+      const installedDependencyRoot = realpathSync(join(toolRoot, 'node_modules', name));
+      assert.ok(isExistingWithin(toolRoot, installedDependencyRoot), `${name} must resolve inside the isolated tool prefix`);
+      assert.equal(isExistingWithin(root, installedDependencyRoot), false, `${name} must not resolve from the producer`);
+      const installedDependency = JSON.parse(readFileSync(join(installedDependencyRoot, 'package.json'), 'utf8'));
+      assert.equal(installedDependency.name, name);
+      assert.equal(installedDependency.version, version);
+    }
     const installedBin = join(toolRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'rungs.cmd' : 'rungs');
     assert.ok(existsSync(installedBin), 'npm should expose the installed package bin in the isolated prefix');
 
