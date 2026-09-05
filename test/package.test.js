@@ -476,6 +476,11 @@ test('a packed candidate retrofits an existing repository without taking over it
       assert.match(applied.stdout, /0 to update\s*·\s*0 diverged/);
       applyDigests.push(trackedDigest(consumer));
       applyDiffs.push(gitText(consumer, ['diff', '--no-ext-diff', '--']));
+      assert.equal(
+        gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']),
+        '',
+        `same-version upgrade apply ${pass} must leave the consumer clean`,
+      );
     }
     const finalPreview = expectOk(candidate('upgrade', consumer), 'post-apply upgrade preview');
     assert.match(finalPreview.stdout, /0 to update\s*·\s*0 diverged/);

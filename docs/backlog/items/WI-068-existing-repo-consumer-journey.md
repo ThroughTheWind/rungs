@@ -2,7 +2,7 @@
 id: WI-068
 title: Gate the packaged existing-repository consumer journey
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-068-existing-repo-consumer-journey
 created: 2026-09-05
 updated: 2026-09-05
@@ -126,13 +126,41 @@ module code.
 - The parallel release audit's unrelated changelog-gate mismatch was recorded as [F-039](../FINDINGS.md),
   not folded into this item.
 
-The focused run on 2026-09-05 reaches the final upgrade assertion, after rollback succeeds, and
-then deliberately fails criterion 6. [F-040](../FINDINGS.md) records the product defect: the first
-same-version apply removes four inter-block blank lines and the terminal newline from
-`.ai/gates.toml` despite preview reporting `0 to update · 0 diverged`; the second apply is stable.
-The strict reproducer remains failing and this item remains `in_progress` until that separate fix
-lands. No production behavior was changed here.
+The journey exposed [F-040](../FINDINGS.md): a same-version apply consumed inter-block blank lines
+and the terminal newline from `.ai/gates.toml` despite reporting `0 to update · 0 diverged`.
+[WI-069](../archive/WI-069-idempotent-gate-registration.md) fixed the production defect separately
+and landed on `main` in `7a69711` (including the CRLF preservation fix `c05fb4b`). After integrating
+that fix, the unchanged packed journey passes both applies byte-for-byte and each apply leaves the
+consumer clean. WI-068 itself remains a test-and-documentation-only change.
 
 ## Review
 
-Not started — acceptance criterion 6 is blocked by F-040's confirmed same-version apply rewrite.
+Ready for independent review. Acceptance evidence, measured on 2026-09-05:
+
+1. **Met.** The test recomputes and matches npm's SHA-512 integrity, packs the exact declared
+   `smol-toml@1.8.0` dependency through npm into the isolated cache, and inspects the isolated
+   install's package name, version, bin, exact dependency and installed dependency version. Every
+   candidate command uses offline `npm exec` against that prefix with producer resolution paths
+   removed; the registry launcher is inspected but never executed.
+2. **Met.** The committed fixture contains all six existing authority surfaces and its own
+   validator. Full Git state and tracked/untracked bytes are identical before and after `doctor`
+   and tracked `init --dry-run`.
+3. **Met.** Tracked init uses `NEXT` and `AF`, preserves `README.md`, `CLAUDE.md` and every other seed
+   file byte-for-byte except the declared managed appends to `AGENTS.md` and `.gitignore`, adopts the
+   validator, stays inside the allowed generated path families, and emits no consumer package,
+   lockfile or `node_modules`.
+4. **Met.** The installed tree has one exact `@rungs/cli@0.3.1` launcher authority, whose derived
+   12-character managed hash is recorded in `.ai/rungs.toml`; it contains no mutable selector,
+   tarball path or duplicate CLI version source.
+5. **Met.** Repeated init refuses with no diff. Two full checks pass on `consumer/canary` with only
+   `origin/main`, including merged-status reconciliation and the adopted validator. The ignored
+   ledger doubles exactly while the tracked digest and repository status stay clean.
+6. **Met.** Upgrade preview reports zero work without changing Git state. Both same-version applies
+   report `0 to update · 0 diverged`, preserve the adoption digest byte-for-byte and leave clean
+   status; the final preview also reports zero work.
+7. **Met.** Rollback is path-guarded to the temporary consumer and restores its complete seed Git
+   state and bytes before cleanup; producer status is unchanged. The focused packed journey passed
+   1/1 in 15.29 s and `npm test` passed 45/45 in 18.80 s.
+
+Repository audit also passed: 52 module command spans resolve across 15 dispatched commands,
+`npm run rungs -- check` passes 29/29 gates, and `git diff --check` reports no whitespace errors.
