@@ -137,13 +137,21 @@ create-only dangling-symref analogue, both recorded in the Decision and Out of s
 would require a new cooperative transaction protocol, so the plan is narrowed explicitly rather
 than overstating `no-deref`.
 
-Final integrated verification passed locally. The broad land/ref-safety slice passed 44/44; full
+Pre-reconciliation verification passed locally. The broad land/ref-safety slice passed 44/44; full
 `npm test` passed 111 tests with three platform skips (114 total); `npm pack --dry-run` included
 110 files in a 354.8 kB package; and `git diff --check` was clean. The first integrated gate run
 correctly rejected the stale generated site snapshot after `concurrency` moved from 1.3.0 to 1.4.0.
 After the prescribed `npm run claims` regeneration, all 30 registered gates passed, and the
 snapshot was regenerated once more from that green run so it records 30 pass / 0 fail. No land,
 branch deletion or worktree removal is part of this item.
+
+After exact candidate `b6916c3` passed all seven jobs in Actions run 33970794192, integrated exact
+green `main` commit `2358993` (main run 33970797719) as required. The two textual conflicts retained
+both the WI-079 and WI-076 changelog entries, kept WI-072 and WI-076 archived from `main`, and kept
+WI-079 in progress. On the reconciled tree, the focused land/ref-safety suite passed 44/44; full
+`npm test` passed 121 tests with three platform skips (124 total); all 30 Rungs gates passed;
+`npm pack --dry-run` included 111 files in a 367.7 kB package; and `git diff --check` was clean.
+No land, branch deletion or worktree removal is part of this item.
 
 ## Review
 
@@ -166,4 +174,7 @@ both Ubuntu cells and the site job green, but macOS and Windows showed that Git'
 worktree path can be a filesystem alias of the path Rungs reports. The retained-worktree regression
 now compares `realpath` identities from NUL-delimited `git worktree list --porcelain -z` output,
 preserving the registration invariant without assuming one textual path spelling. Production
-behavior was unchanged; the exact-tip review and matrix are being repeated.
+behavior was unchanged. Independent review approved the corrected exact tip `b6916c3` with no
+remaining implementable blocker, and Actions run 33970794192 passed all six OS/Node cells plus the
+site job. That candidate is now superseded only by the required merge of exact green main
+`2358993`; final reconciled-tip review and CI evidence remain pending.
