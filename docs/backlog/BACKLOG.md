@@ -11,7 +11,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
-| [WI-071](items/WI-071-canonical-consumer-paths.md) | Canonicalize packed-consumer containment checks | chore | `chore/WI-071-canonical-consumer-paths` |
 
 ## Review
 

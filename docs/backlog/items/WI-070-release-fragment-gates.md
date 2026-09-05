@@ -144,9 +144,10 @@ Implemented in five bounded layers:
   stale production fragments, malformed configuration, comment-only exemptions, ignored files and
   preservation of literal POSIX backslashes in Git path names.
 - Updated the generated site claims and public prose to 30 registered gates, the current source
-  size and the repaired release-module behavior. F-039 and F-041 are closed; the independently
-  observed eject dependency defect remains F-042, and stale inherited exemptions are recorded as
-  F-043 rather than folded into this item.
+  size and the repaired release-module behavior. The implementations for F-039 and F-041 are
+  complete, but their rows remain open until this item lands. The independently observed eject
+  dependency defect remains F-042, and stale inherited exemptions are recorded as F-043 rather
+  than folded into this item.
 
 ## Review
 
@@ -158,13 +159,16 @@ released line rather than backlog's configured integration line, allowing an old
 fragment to satisfy a child feature; `3e083d8` corrected the boundary and added a regression that
 proves both verdicts. The final sweep approved the implementation with no remaining code blocker.
 The POSIX filename integration test is intentionally skipped on Windows and awaits the required CI
-matrix; its pure Git-path parser regression runs on every platform.
+matrix on the final integrated branch; its pure Git-path parser regression runs on every platform.
 
 The first external matrix at `3df7451` passed Ubuntu, Windows and the site, and failed both macOS
 `npm test` cells at WI-068's packed-consumer containment assertion. The new POSIX-backslash test
 passed in those jobs; the failure instead compares macOS's lexical `/var` temporary prefix with an
 installed child canonicalised through `/private/var`. That independent harness defect is F-044 and
-WI-071. This item remains in review until that child is integrated and the complete matrix is green.
+WI-071. WI-071 subsequently landed on `main` at `6790cac`; its branch and merged-main matrices both
+passed all six OS/Node cells plus the site, and two independent reviews approved its platform-aware
+containment fix. This branch now integrates that exact main commit. The complete combined WI-070
+matrix remains the final acceptance evidence.
 
 Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
 
