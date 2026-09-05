@@ -6,7 +6,7 @@ status: review
 branch: feature/WI-070-release-fragment-gates
 created: 2026-09-05
 updated: 2026-09-05
-related: [WI-064, WI-068, F-039, F-041]
+related: [WI-064, WI-068, WI-071, F-039, F-041, F-044]
 epic: WI-064
 children: []
 ---
@@ -159,6 +159,12 @@ fragment to satisfy a child feature; `3e083d8` corrected the boundary and added 
 proves both verdicts. The final sweep approved the implementation with no remaining code blocker.
 The POSIX filename integration test is intentionally skipped on Windows and awaits the required CI
 matrix; its pure Git-path parser regression runs on every platform.
+
+The first external matrix at `3df7451` passed Ubuntu, Windows and the site, and failed both macOS
+`npm test` cells at WI-068's packed-consumer containment assertion. The new POSIX-backslash test
+passed in those jobs; the failure instead compares macOS's lexical `/var` temporary prefix with an
+installed child canonicalised through `/private/var`. That independent harness defect is F-044 and
+WI-071. This item remains in review until that child is integrated and the complete matrix is green.
 
 Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
 

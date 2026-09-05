@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-071 -->
+<!-- NEXT-ID: WI-072 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -11,6 +11,7 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
+| [WI-071](items/WI-071-canonical-consumer-paths.md) | Canonicalize packed-consumer containment checks | chore | `chore/WI-071-canonical-consumer-paths` |
 
 ## Review
 
