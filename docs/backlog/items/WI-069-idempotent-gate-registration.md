@@ -2,7 +2,7 @@
 id: WI-069
 title: Preserve gate-registry bytes on a no-op upgrade
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-069-idempotent-gate-registration
 created: 2026-09-05
 updated: 2026-09-05
@@ -69,8 +69,28 @@ replacement before relying on the packed consumer journey.
 
 ## Execution
 
-Implementation started on `feature/WI-069-idempotent-gate-registration` from `0ed80b5`.
+Implemented on `feature/WI-069-idempotent-gate-registration` from `0ed80b5`.
+
+The cause was narrower than general block composition: both marker expressions used `\s*` inside
+the marker line. JavaScript's `\s` includes newlines, so the end-marker match greedily consumed the
+blank lines and terminal newline that followed it. The expressions now accept horizontal marker
+whitespace plus an optional CR only; replacement still slices around the exact marker range.
+
+Added unit coverage for an unchanged middle block, an unchanged final block and a real version/body
+replacement. WI-068 merged this branch as dependency commit `10ac4be` without changing its packed
+test and replayed the complete consumer journey successfully.
 
 ## Review
 
-Not started.
+Verified 2026-09-05.
+
+1. **Met.** Both unchanged hash-comment blocks return the exact input string, including the blank
+   separator and terminal newline.
+2. **Met.** A `first@1.0.0` → `first@1.1.0` body replacement matches the exact expected registry;
+   the runner prefix, adjacent block, separator and final newline are unchanged.
+3. **Met.** The unchanged WI-068 packed journey passed 1/1 from integration commit `10ac4be` in
+   14.48 seconds. Both apply digests match the committed tracked digest, all Git status checks are
+   clean and rollback restores the original ref/file state.
+4. **Met.** The two focused `mergeBlock` tests pass; `npm test` passes 44/44, `git diff --check`
+   passes and `npm run rungs -- check` passes 29/29. The existing warning for 45 fixtures without
+   builders remains explicit and out of scope.
