@@ -66,6 +66,11 @@ interface GitWorktree {
   branch?: string;
 }
 
+interface GitBranchRef {
+  ref: string;
+  symref?: string;
+}
+
 /**
  * Read worktree paths without line parsing.
  *
@@ -96,6 +101,80 @@ function gitWorktrees(root: string): GitWorktree[] {
   }
   if (row) rows.push(row);
   return rows;
+}
+
+/**
+ * Enumerate the branch names Git actually stores instead of asking its ref
+ * resolver whether a constructed spelling happens to work on this filesystem.
+ *
+ * Windows can resolve `refs/heads/MAIN` through a loose `refs/heads/main`, and
+ * `update-ref` follows a symbolic branch ref by default. Either would make the
+ * worktree-holder check and the ref update talk about different branches. Ref
+ * names cannot contain tabs or newlines, so this argv-only format is unambiguous.
+ */
+function gitLocalBranchRefs(root: string): GitBranchRef[] {
+  const out = git(root, ['for-each-ref', '--format=%(refname)%09%(symref)', 'refs/heads/']);
+  if (!out) return [];
+  return out.split('\n').map((line) => {
+    const [ref, symref] = line.split('\t');
+    return { ref, ...(symref ? { symref } : {}) };
+  });
+}
+
+type IntegrationRefResolution =
+  | { ref: string; error?: never }
+  | { ref?: never; error: string };
+
+function exactIntegrationRef(root: string, integration: string): IntegrationRefResolution {
+  const wanted = `refs/heads/${integration}`;
+  let stored: GitBranchRef[];
+  try {
+    stored = gitLocalBranchRefs(root);
+  } catch {
+    return {
+      error: `cannot enumerate local branch refs for '${integration}'; ref identity is unknown, so land is refused.`,
+    };
+  }
+
+  const exact = stored.find((entry) => entry.ref === wanted);
+  if (!exact) {
+    const asciiCaseKey = (value: string) => value.replace(/[A-Z]/g, (character) => character.toLowerCase());
+    const alias = stored.find((entry) => asciiCaseKey(entry.ref) === asciiCaseKey(wanted));
+    return {
+      error: alias
+        ? `configured integration branch '${integration}' does not exactly match stored ref '${alias.ref}'; use the stored spelling and retry.`
+        : `configured integration branch '${integration}' has no exact stored local ref '${wanted}'; land is refused.`,
+    };
+  }
+  if (exact.symref) {
+    return {
+      error: `configured integration branch '${integration}' is symbolic (${exact.ref} -> ${exact.symref}); land requires a direct local branch ref and is refused.`,
+    };
+  }
+  return { ref: exact.ref };
+}
+
+function findIntegrationHolders(root: string, integrationRef: string): string[] {
+  return gitWorktrees(root)
+    .filter((worktree) => worktree.branch === integrationRef)
+    .map((worktree) => worktree.path);
+}
+
+type IntegrationState =
+  | { ref: string; holders: string[]; error?: never }
+  | { ref?: never; holders?: never; error: string };
+
+/** Prove ref identity and checkout state together wherever land may mutate. */
+function integrationState(root: string, integration: string): IntegrationState {
+  const resolved = exactIntegrationRef(root, integration);
+  if (!resolved.ref) return resolved;
+  try {
+    return { ref: resolved.ref, holders: findIntegrationHolders(root, resolved.ref) };
+  } catch {
+    return {
+      error: `cannot read git worktrees for '${integration}'; checkout state is unknown, so land is refused.`,
+    };
+  }
 }
 
 export interface Result {
@@ -249,24 +328,16 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
   if (!branch) return { ok: false, lines: ['a branch name is required: `rungs land <branch>`'] };
   const head = revParse(root, `refs/heads/${branch}`);
   if (!head) return { ok: false, lines: [`branch '${branch}' does not exist`] };
-  const before = revParse(root, `refs/heads/${integration}`);
+  const initialIntegration = integrationState(root, integration);
+  if (!initialIntegration.ref) return { ok: false, lines: [initialIntegration.error] };
+  const integrationRef = initialIntegration.ref;
+  const before = revParse(root, integrationRef);
   if (!before) return { ok: false, lines: [`'${integration}' does not resolve`] };
 
   // ADR-0009 rule 3 is a mutation precondition, not merely a gate installed in
   // some consumers. Keep this before even inspecting the coordination lock: a
   // known-invalid land must not replace a stale lock or create any artifact.
-  let integrationHolders: string[];
-  try {
-    const integrationRef = `refs/heads/${integration}`;
-    integrationHolders = gitWorktrees(root)
-      .filter((worktree) => worktree.branch === integrationRef)
-      .map((worktree) => worktree.path);
-  } catch {
-    return {
-      ok: false,
-      lines: [`cannot read git worktrees for '${integration}'; checkout state is unknown, so land is refused.`],
-    };
-  }
+  const integrationHolders = initialIntegration.holders;
   if (integrationHolders.length) {
     return {
       ok: false,
@@ -398,10 +469,40 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
       git(scratch, ['reset', '--hard', merged]);
     }
 
+    // The runner is arbitrary repository code. It can create a worktree while
+    // gates execute, after the early precondition was proved. Re-establish the
+    // same fact at the mutation boundary; otherwise advancing the ref leaves
+    // that new holder's index and files at the old commit (F-048 again).
+    const lateIntegration = integrationState(root, integration);
+    if (!lateIntegration.ref || lateIntegration.ref !== integrationRef) {
+      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
+      return {
+        ok: false,
+        lines: [...lines,
+          `integration ref identity and checkout state could not be revalidated after verification, so the ref advance is refused.`,
+          `  ${lateIntegration.error ?? `'${integration}' no longer names the original direct ref '${integrationRef}'.`}`,
+          `Your verified merge is parked on '${parked}'. Re-run \`rungs land ${branch}\` after checkout state can be verified.`],
+      };
+    }
+    const lateHolders = lateIntegration.holders;
+    if (lateHolders.length) {
+      git(root, ['update-ref', `refs/heads/${parked}`, merged]);
+      return {
+        ok: false,
+        lines: [...lines,
+          `'${integration}' became checked out in ${lateHolders.length} worktree(s) while this land was verifying, so the ref advance is refused:`,
+          ...lateHolders.map((path) => `  ${path}`),
+          'Switch each listed worktree to another branch or detach it (`git switch --detach`), then retry.',
+          `Your verified merge is parked on '${parked}'. Re-run \`rungs land ${branch}\` to rebuild it after releasing the branch.`],
+      };
+    }
+
     // Rule 1: compare-and-swap. If someone else advanced the branch while we
     // verified, this fails and nothing is lost — their merge is not overwritten.
+    // `--no-deref` also makes a symbolic-ref swap after the revalidation unable
+    // to redirect this write into the branch another worktree actually holds.
     try {
-      git(root, ['update-ref', `refs/heads/${integration}`, merged, before]);
+      git(root, ['update-ref', '--no-deref', integrationRef, merged, before]);
     } catch {
       git(root, ['update-ref', `refs/heads/${parked}`, merged]);
       return {

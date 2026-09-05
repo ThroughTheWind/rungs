@@ -2,7 +2,7 @@
 id: WI-075
 title: Refuse landing while the integration branch is checked out
 type: feature
-status: review
+status: in_progress
 branch: feature/WI-075-land-checked-out-integration
 created: 2026-09-05
 updated: 2026-09-05
@@ -111,9 +111,25 @@ no-integration-checkout rule; this item adds the missing enforcement at the comm
 The user-visible refusal is recorded explicitly in `changelog.d/0.4.0.md`; relying on an inherited
 `changelog-ok:` test fixture would have repeated F-043's known false-green.
 
+Review of exact `49b6b26` exposed two ways the first implementation could still recreate F-048.
+This is a deliberate hardening deviation from the early-preflight-only approach: arbitrary runner
+code can check out the integration branch after that preflight, and Windows can resolve a configured
+`MAIN` through the differently spelled stored ref `main`. A symbolic `refs/heads/alias` adds the
+same mismatch on every platform because worktree discovery reports its direct target while
+`update-ref` dereferences the alias.
+
+`land` now enumerates local refs with argv-only `git for-each-ref`, requires the configured
+integration name to identify one exact, direct stored ref, and inspects that same ref plus all of its
+worktree holders again after runner/attribution work at the mutation boundary. A late holder or ref
+identity failure refuses the advance and parks the verified merge. The final compare-and-swap uses
+`update-ref --no-deref`, preserving the expected-old-tip guard while preventing a symbolic-ref swap
+in the remaining check-to-update interval from redirecting the write into its target.
+
 ## Review
 
-Local acceptance evidence on 2026-09-05:
+The local and GitHub evidence below proved exact `5135bbe`, then remained green after the diagnostic
+documentation commit `49b6b26`. It is superseded as acceptance evidence: neither exact tip covered
+a runner-time checkout, non-canonical configured ref spelling, or a symbolic integration ref.
 
 1. The clean-holder test refuses before its runner, preserves a pre-existing lock byte-for-byte,
    and keeps `HEAD`, index, status, file and all ref bytes unchanged with no staged reversion.
@@ -128,3 +144,21 @@ Local acceptance evidence on 2026-09-05:
    skip; all 30 registered Rungs gates pass; package dry-run succeeds with 109 entries; and
    `git diff --check` is clean. GitHub Actions run 33959306119 passes exact code SHA `5135bbe`
    across Node 22.18 and Node 22 on Ubuntu, macOS and Windows plus the site job.
+
+Repair evidence on 2026-09-05, while status remains `in_progress`:
+
+1. Focused `land` tests pass 11/11. The late-checkout test records the holder immediately after the
+   runner creates it, then proves the refused land leaves its `HEAD`, index, status and file bytes
+   unchanged while parking the exact verified merge.
+2. The late-symbolic-ref test replaces `main` during the runner and proves the target ref and green
+   ref stay unchanged while the merge is parked. Initial `MAIN` and symbolic-alias regressions both
+   refuse before the runner, lock or any ref mutation; the former executes on Windows, where the
+   pre-fix implementation reproduced the case-insensitive alias rather than merely simulating it.
+3. `npm test` passes 69 tests: 68 passed and the POSIX-backslash fixture is intentionally skipped on
+   Windows. The original compare-and-swap regression remains green with the non-dereferencing CAS.
+4. `npm run rungs -- check` passes all 30 registered gates; the 45 fixtures without builders remain
+   explicitly reported as not run, not counted as passes.
+5. `npm pack --dry-run --json` succeeds with 109 entries, and `git diff --check` is clean.
+
+Exact pushed-SHA CI and independent re-review are still pending. The earlier green run remains
+diagnostic, not approval.

@@ -1487,6 +1487,14 @@ function landLockPath(dir) {
   return resolve(dir, gitText(dir, 'rev-parse', '--git-common-dir'), 'rungs-land.lock');
 }
 
+function configureIntegration(dir, integration) {
+  mkdirSync(join(dir, '.ai'), { recursive: true });
+  writeFileSync(
+    join(dir, '.ai', 'rungs.toml'),
+    `[repo]\nharnesses = ["agents-md"]\n\n[modules.concurrency]\nversion = "1.0.0"\nstate = "managed"\nparams = { integration_branch = "${integration}" }\n`,
+  );
+}
+
 function worktreeSnapshot(dir, files) {
   const gitDir = resolve(dir, gitText(dir, 'rev-parse', '--git-dir'));
   return {
@@ -1647,6 +1655,150 @@ test('land invoked elsewhere refuses a linked integration holder and preserves b
       rmSync(secondHolder, { recursive: true, force: true });
       rmSync(holder, { recursive: true, force: true });
     }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land revalidates integration holders after gates, parks the merge, and leaves the late holder clean', () => {
+  const { dir, g } = loopRepo();
+  const holder = join(dirname(dir), `${basename(dir)}-runner holder`);
+  try {
+    g('switch', '-q', '-c', 'feature/late-holder');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    const branch = g('rev-parse', 'HEAD');
+    g('switch', '--detach', '-q', 'main');
+    g('update-ref', 'refs/heads/green/main', 'main');
+
+    const integrationBefore = g('rev-parse', 'main');
+    const greenBefore = g('rev-parse', 'green/main');
+    let holderBefore;
+    let verifiedMerge;
+
+    const result = land(dir, 'feature/late-holder', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      g('worktree', 'add', '-q', holder, 'main');
+      holderBefore = worktreeSnapshot(holder, ['a.txt']);
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /main.*checked out.*verif|checked out.*main.*verif/i);
+    assert.match(result.lines.join('\n'), /parked on 'integ\/feature\/late-holder'/);
+    assert.equal(g('rev-parse', 'main'), integrationBefore, 'the held integration ref does not advance');
+    assert.equal(g('rev-parse', 'green/main'), greenBefore, 'green does not mark the refused merge');
+    assert.equal(g('rev-parse', 'feature/late-holder'), branch, 'the source branch is unchanged');
+    assert.equal(g('rev-parse', 'integ/feature/late-holder'), verifiedMerge, 'the verified merge is recoverable');
+
+    const holderAfter = worktreeSnapshot(holder, ['a.txt']);
+    const { refs: _beforeRefs, ...holderBeforeLocal } = holderBefore;
+    const { refs: _afterRefs, ...holderAfterLocal } = holderAfter;
+    assert.deepEqual(holderAfterLocal, holderBeforeLocal, 'holder HEAD, index, status and files stay byte-identical');
+    assert.equal(holderAfter.status.length, 0, 'the concurrent checkout remains clean');
+    assert.equal(readFileSync(join(holder, 'a.txt'), 'utf8'), 'base\n', 'the holder files still match its HEAD');
+    assert.equal(existsSync(landLockPath(dir)), false, 'the land lock is released');
+  } finally {
+    try {
+      g('worktree', 'remove', '--force', holder);
+    } catch {
+      rmSync(holder, { recursive: true, force: true });
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land revalidates direct integration-ref identity after gates and parks when the runner swaps in a symref', () => {
+  const { dir, g } = loopRepo();
+  try {
+    g('switch', '-q', '-c', 'feature/late-symref');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    const branch = g('rev-parse', 'HEAD');
+    g('switch', '--detach', '-q', 'main');
+    g('update-ref', 'refs/heads/green/main', 'main');
+
+    const integrationBefore = g('rev-parse', 'main');
+    const greenBefore = g('rev-parse', 'green/main');
+    let verifiedMerge;
+    const result = land(dir, 'feature/late-symref', (scratch) => {
+      verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+      g('update-ref', 'refs/heads/replacement', integrationBefore);
+      g('update-ref', '-d', 'refs/heads/main');
+      g('symbolic-ref', 'refs/heads/main', 'refs/heads/replacement');
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /identity.*revalidated|symbolic.*main.*replacement/i);
+    assert.match(result.lines.join('\n'), /parked on 'integ\/feature\/late-symref'/);
+    assert.equal(g('symbolic-ref', 'refs/heads/main'), 'refs/heads/replacement', 'the runner-created symref is not dereferenced or rewritten');
+    assert.equal(g('rev-parse', 'refs/heads/replacement'), integrationBefore, 'the symref target is not advanced');
+    assert.equal(g('rev-parse', 'green/main'), greenBefore, 'green does not mark the refused merge');
+    assert.equal(g('rev-parse', 'feature/late-symref'), branch, 'the source branch is unchanged');
+    assert.equal(g('rev-parse', 'integ/feature/late-symref'), verifiedMerge, 'the verified merge is recoverable');
+    assert.equal(existsSync(landLockPath(dir)), false, 'the land lock is released');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land rejects a configured integration spelling that is not an exact stored local ref', () => {
+  const { dir, g } = loopRepo();
+  try {
+    configureIntegration(dir, 'MAIN');
+    g('add', '.ai/rungs.toml');
+    g('commit', '-qm', 'configure integration');
+    g('switch', '-q', '-c', 'feature/ref-case');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '-q', 'main');
+
+    const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+    let runnerCalls = 0;
+    const result = land(dir, 'feature/ref-case', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /MAIN.*exact.*stored|stored.*main.*MAIN|ref spelling/i);
+    assert.equal(runnerCalls, 0, 'a non-canonical integration ref never reaches gates');
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before, 'HEAD, index, files, status and refs are unchanged');
+    assert.equal(existsSync(landLockPath(dir)), false, 'refusal creates no land lock');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('land rejects a symbolic integration ref instead of dereferencing it into the held branch', () => {
+  const { dir, g } = loopRepo();
+  try {
+    configureIntegration(dir, 'alias');
+    g('add', '.ai/rungs.toml');
+    g('commit', '-qm', 'configure integration');
+    g('switch', '-q', '-c', 'feature/ref-alias');
+    writeFileSync(join(dir, 'a.txt'), 'branch work\n');
+    g('add', '-A');
+    g('commit', '-qm', 'branch');
+    g('switch', '-q', 'main');
+    g('symbolic-ref', 'refs/heads/alias', 'refs/heads/main');
+
+    const before = worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']);
+    let runnerCalls = 0;
+    const result = land(dir, 'feature/ref-alias', () => {
+      runnerCalls++;
+      return { pass: 1, failing: [] };
+    });
+
+    assert.equal(result.ok, false);
+    assert.match(result.lines.join('\n'), /symbolic.*alias.*main|direct local branch/i);
+    assert.equal(runnerCalls, 0, 'a symbolic integration ref never reaches gates');
+    assert.deepEqual(worktreeSnapshot(dir, ['a.txt', '.ai/rungs.toml']), before, 'the target branch and holder stay byte-identical');
+    assert.equal(existsSync(landLockPath(dir)), false, 'refusal creates no land lock');
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
