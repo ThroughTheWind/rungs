@@ -1,6 +1,7 @@
 import { ENGINES, type Finding } from './engines.ts';
-import { loadTable, tableKey } from './check.ts';
+import { loadTable } from './check.ts';
 import type { DetectResult, Manifest } from './types.ts';
+import { selectEngineTable } from './engine-table.ts';
 
 /**
  * `doctor` answers a *presence* question — which of our modules does this repo
@@ -138,12 +139,7 @@ export function explainWith(
       }
 
       try {
-        const key = tableKey(g.engine!);
-        let section = table[key] ?? table;
-        if (Array.isArray(section) && section.some((s: any) => s?.id)) {
-          const mine = section.filter((s: any) => !s.id || g.id.includes(s.id));
-          if (mine.length) section = mine;
-        }
+        const section = selectEngineTable(table, g.engine!, g.id);
         const r = engines[g.engine!](section, repoRoot, files);
         if (r.findings.length) {
           reported.push({ module: mod.name, gate: g.id, why: g.why, findings: r.findings, examined: r.examined });

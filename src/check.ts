@@ -7,6 +7,7 @@ import { ENGINES, isImplemented, type Finding } from './engines.ts';
 import { walk } from './glob.ts';
 import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadAllModules } from './manifest.ts';
+import { selectEngineTable } from './engine-table.ts';
 
 const MODULES = join(dirname(fileURLToPath(import.meta.url)), '..', 'modules');
 
@@ -129,13 +130,7 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
         findings = [{ message: `table '${g.table}' not found` }];
       } else {
         try {
-          const key = tableKey(g.engine);
-          let section = table[key] ?? table;
-          // An array table holds one entry per gate; select by trailing id.
-          if (Array.isArray(section) && section.some((s: any) => s?.id)) {
-            const mine = section.filter((s: any) => !s.id || g.id.includes(s.id));
-            if (mine.length) section = mine;
-          }
+          const section = selectEngineTable(table, g.engine, g.id);
           const r = ENGINES[g.engine](section, repoRoot, files);
           findings = r.findings;
           examined = r.examined;
@@ -205,29 +200,6 @@ export function installedParams(repoRoot: string): Params {
   paramCache = { root: repoRoot, params: defaults };
   return defaults;
 }
-
-export const tableKey = (engine: string) =>
-  ({
-    'file-budget': 'file_budget',
-    sections: 'sections',
-    'frontmatter-schema': 'frontmatter_schema',
-    'link-integrity': 'link_integrity',
-    'file-population': 'file_population',
-    'gate-meta': 'gate_meta',
-    'id-integrity': '__whole__',
-    'render-freshness': 'render_freshness',
-    'register-schema': 'register_schema',
-    'self-declared-closure': 'self_declared_closure',
-    'filename-schema': 'filename_schema',
-    'cross-reference': 'cross_reference',
-    'git-status-reconcile': 'merged_status',
-    'computed-claim': 'computed_claim',
-    'term-ownership': 'term_ownership',
-    'rule-propagation': 'rule_propagation',
-    'git-state': 'git_state',
-    'merge-driver-check': 'merge_driver_check',
-    'board-reconcile': 'board_reconcile',
-  })[engine] ?? engine;
 
 /**
  * ADR-0005 tier A. One line per gate per run: what the runner directly observes

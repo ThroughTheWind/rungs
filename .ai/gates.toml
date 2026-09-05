@@ -40,6 +40,17 @@ fast_budget_ms = 30000
 # aligned to the package, so the gate genuinely checks it instead of being told to look away.
 # The cost is a second bump every release, and the gate is what makes that impossible to forget.
 [[gates]]
+id     = "release-changelog-fragment"
+kind   = "declared"
+module = "release"
+engine = "change-requires-file"
+table  = "release/release.toml"
+tier   = "fast"
+why    = """A shipping-code branch without a changed release fragment leaves the cut to reconstruct intent
+after the work is no longer fresh. The gate considers only this branch and worktree's delta, so an
+old fragment cannot make new work look documented."""
+
+[[gates]]
 id     = "release-version-consistent"
 kind   = "declared"
 module = "release"

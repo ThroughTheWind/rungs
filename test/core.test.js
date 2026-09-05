@@ -9,13 +9,15 @@ import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
 import { blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
-import { gitStatusReconcile, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
+import { changeRequiresFile, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
-import { applyUpgrade, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
-import { frontmatterSchema, linkIntegrity } from '../src/engines.ts';
+import { applyUpgrade, eject, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
+import { ENGINES, frontmatterSchema, linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
 import { runSelfTests } from '../src/selftest.ts';
+import { loadTable, runGates } from '../src/check.ts';
+import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
 
 test('substitute resolves local and cross-module values without touching passthrough expressions', () => {
   const params = {
@@ -258,7 +260,7 @@ test('explain runs only repo-content gates over a repo that has its own equivale
       gates: [
         { id: 'adr-index-current', kind: 'declared', engine: 'render-freshness', applicability: 'our-artifacts', table: 'gates/adr.toml' },
         { id: 'adr-schema', kind: 'declared', engine: 'frontmatter-schema', applicability: 'our-schema', table: 'gates/adr.toml' },
-        { id: 'adr-links', kind: 'declared', engine: 'link-integrity', applicability: 'repo-content', table: 'gates/adr.toml' },
+        { id: 'adr-sections', kind: 'declared', engine: 'sections', applicability: 'repo-content', table: 'gates/adr.toml' },
         { id: 'adr-script', kind: 'command', command: 'rm -rf /' },
       ],
     },
@@ -270,12 +272,12 @@ test('explain runs only repo-content gates over a repo that has its own equivale
   const engines = {
     'render-freshness': stub('render-freshness'),
     'frontmatter-schema': stub('frontmatter-schema'),
-    'link-integrity': stub('link-integrity'),
+    sections: stub('sections'),
   };
 
   const result = explainWith(engines, mods, theirs, '/nowhere', []);
 
-  assert.deepEqual(ran, ['link-integrity'], 'only repo-content runs on a repo that is not ours');
+  assert.deepEqual(ran, ['sections'], 'only repo-content runs on a repo that is not ours');
   assert.equal(result.skipped.command, 1, 'a command gate is counted, never executed');
 });
 
@@ -835,6 +837,287 @@ test('merged-status uses deterministic ref precedence and refuses an ambiguous o
   assert.match(absent.findings[0].message, /has no local or remote-tracking ref/);
 
   rmSync(root, { recursive: true, force: true });
+});
+
+const releaseChangeTable = {
+  base_branch: 'main',
+  require_when_changed: ['src/**', 'lib/**', 'app/**', 'server/**', 'web/**', 'packages/**'],
+  requires_one_of: ['changelog.d/*.md'],
+  ignore_when_only: ['docs/**', '**/*.test.*', '**/*.spec.*', '.github/**', '*.md'],
+  exempt_marker: 'changelog-ok:',
+  message: 'add a changed changelog fragment',
+};
+
+function releaseDeltaRepo(baseFiles = {}) {
+  const root = mkdtempSync(join(tmpdir(), 'rungs-release-delta-'));
+  const git = (...args) => {
+    const run = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+    assert.equal(run.status, 0, `git ${args.join(' ')}: ${run.stderr || run.stdout}`);
+    return run.stdout.trim();
+  };
+  const write = (rel, body = 'fixture\n') => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), body);
+  };
+  git('init', '-q', '-b', 'main', '.');
+  git('config', 'user.email', 'release-test@rungs.local');
+  git('config', 'user.name', 'rungs-release-test');
+  write('.fixture-base', 'base\n');
+  for (const [rel, body] of Object.entries(baseFiles)) write(rel, body);
+  git('add', '--all');
+  git('commit', '-q', '-m', 'base');
+  git('switch', '-q', '-c', 'feature/release-test');
+  return { root, git, write };
+}
+
+test('change-requires-file sees untracked, staged and committed work and requires this branch\'s fragment', () => {
+  const { root, git, write } = releaseDeltaRepo();
+  try {
+    write('src/a.ts');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, 'untracked source engages');
+
+    git('add', '--all');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, 'staged source engages');
+
+    git('commit', '-q', '-m', 'shipping work');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, 'committed source engages');
+
+    write('changelog.d/42.feature.md', '# changed here\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 0, 'untracked companion satisfies');
+    git('add', '--all');
+    git('commit', '-q', '-m', 'add fragment');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 0, 'committed companion satisfies');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('change-requires-file rejects inherited, deleted and ignored fragments but accepts a modified one', () => {
+  for (const [state, mutate, expected] of [
+    ['inherited', () => {}, 1],
+    ['deleted', ({ root }) => rmSync(join(root, 'changelog.d', 'old.md')), 1],
+    ['modified', ({ write }) => write('changelog.d/old.md', '# changed on this branch\n'), 0],
+  ]) {
+    const fixture = releaseDeltaRepo({ 'changelog.d/old.md': '# old fragment\n' });
+    try {
+      fixture.write('src/a.ts');
+      mutate(fixture);
+      assert.equal(
+        changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length,
+        expected,
+        `${state} fragment verdict`,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+
+  const ignored = releaseDeltaRepo({ '.gitignore': 'changelog.d/*.md\n' });
+  try {
+    ignored.write('src/a.ts');
+    ignored.write('changelog.d/ignored.md', '# ignored fragment\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, ignored.root, []).findings.length, 1, 'ignored fragment is not changed evidence');
+  } finally {
+    rmSync(ignored.root, { recursive: true, force: true });
+  }
+});
+
+test('Git path parsing preserves literal backslashes instead of aliasing a different path', () => {
+  assert.deepEqual(
+    parseGitPathList('src/a.ts\0changelog.d\\old.md\0'),
+    ['src/a.ts', 'changelog.d\\old.md'],
+  );
+});
+
+test('change-requires-file excludes fragments inherited from the configured integration branch', () => {
+  const fixture = releaseDeltaRepo();
+  try {
+    fixture.git('branch', '-m', 'candidate/0.4.0');
+    fixture.write('src/prior.ts');
+    fixture.write('changelog.d/prior.md', '# prior candidate work\n');
+    fixture.git('add', '--all');
+    fixture.git('commit', '-q', '-m', 'prior candidate work');
+    fixture.git('switch', '-q', '-c', 'feature/next');
+    fixture.write('src/next.ts');
+
+    const againstIntegration = changeRequiresFile(
+      { ...releaseChangeTable, base_branch: 'candidate/0.4.0' },
+      fixture.root,
+      [],
+    );
+    assert.equal(againstIntegration.findings.length, 1, 'the child feature still owes its own fragment');
+
+    const againstStable = changeRequiresFile(releaseChangeTable, fixture.root, []);
+    assert.equal(againstStable.findings.length, 0, 'the older candidate fragment demonstrates the stable-line false green');
+
+    assert.match(
+      readFileSync(resolve('modules/release/gates/release.toml'), 'utf8'),
+      /base_branch\s*=\s*"\{\{backlog\.integration_branch\}\}"/,
+      'the shipped table must use the branch work is cut from and merged into',
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('a POSIX backslash filename cannot impersonate a changed release fragment', {
+  skip: process.platform === 'win32',
+}, () => {
+  const fixture = releaseDeltaRepo({ 'changelog.d/old.md': '# inherited fragment\n' });
+  try {
+    fixture.write('src/a.ts');
+    fixture.write('changelog.d\\old.md', '# different POSIX filename\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, fixture.root, []).findings.length, 1);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('change-requires-file ignores non-shipping work and requires an exemption reason on the same line', () => {
+  const { root, write } = releaseDeltaRepo();
+  try {
+    write('docs/a.md', '# docs\n');
+    write('src/a.test.ts', 'test only\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 0, 'ignore-only changes pass');
+
+    write('src/a.ts', '// changelog-ok:\nconst laterLineIsNotAReason = true;\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, 'bare marker cannot borrow next line');
+    for (const bareWrapper of [
+      '<!-- changelog-ok: -->\n',
+      '/* changelog-ok: */\n',
+      '"changelog-ok:"\n',
+      '/* changelog-ok: */ const shipped = true;\n',
+      '<!-- changelog-ok: --><div>shipped</div>\n',
+      '"changelog-ok:"; doWork()\n',
+    ]) {
+      write('src/a.ts', bareWrapper);
+      assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, `${bareWrapper.trim()} is not a reason`);
+    }
+    write('src/a.ts', '// changelog-ok: internal rename, no user-visible effect\n');
+    assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 0, 'same-line reason exempts');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('change-requires-file refuses missing or malformed pattern configuration', () => {
+  const { root } = releaseDeltaRepo();
+  try {
+    for (const broken of [
+      { ...releaseChangeTable, require_when_changed: [] },
+      { ...releaseChangeTable, requires_one_of: undefined },
+      { ...releaseChangeTable, ignore_when_only: [''] },
+      { ...releaseChangeTable, exempt_marker: '' },
+      { ...releaseChangeTable, exempt_marker: 42 },
+    ]) {
+      const result = changeRequiresFile(broken, root, []);
+      assert.equal(result.examined, 0);
+      assert.equal(result.findings.length, 1);
+      assert.match(result.findings[0].message, /change-requires-file/);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('change-requires-file resolves remote-only bases and refuses ambiguous or absent refs', () => {
+  const { root, git, write } = releaseDeltaRepo();
+  try {
+    const base = git('rev-parse', 'main');
+    write('src/a.ts');
+    git('add', '--all');
+    git('commit', '-q', '-m', 'shipping work');
+    git('remote', 'add', 'origin', 'https://example.invalid/origin.git');
+    git('update-ref', 'refs/remotes/origin/main', base);
+    git('branch', '-D', 'main');
+
+    const origin = changeRequiresFile(releaseChangeTable, root, []);
+    assert.equal(origin.findings.length, 1, 'exact origin/main is evaluated');
+    assert.ok(origin.examined > 0);
+
+    git('update-ref', '-d', 'refs/remotes/origin/main');
+    git('remote', 'add', 'upstream', 'https://example.invalid/upstream.git');
+    git('remote', 'add', 'fork', 'https://example.invalid/fork.git');
+    git('update-ref', 'refs/remotes/upstream/main', base);
+    git('update-ref', 'refs/remotes/fork/main', base);
+    const ambiguous = changeRequiresFile(releaseChangeTable, root, []);
+    assert.equal(ambiguous.examined, 0);
+    assert.match(ambiguous.findings[0].message, /ambiguous across/);
+
+    git('update-ref', '-d', 'refs/remotes/fork/main');
+    const soleRemote = changeRequiresFile(releaseChangeTable, root, []);
+    assert.equal(soleRemote.findings.length, 1, 'a sole non-origin remote is evaluated');
+    assert.ok(soleRemote.examined > 0);
+
+    git('update-ref', '-d', 'refs/remotes/upstream/main');
+    const absent = changeRequiresFile(releaseChangeTable, root, []);
+    assert.equal(absent.examined, 0);
+    assert.match(absent.findings[0].message, /has no local or remote-tracking ref/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('release fragment fixtures execute and every engine uses the strict shared table selector', () => {
+  assert.deepEqual(
+    Object.keys(ENGINE_TABLE_KEYS).filter((key) => key !== 'shell-safety').sort(),
+    Object.keys(ENGINES).sort(),
+    'an implemented engine cannot exist without an explicit section mapping',
+  );
+  assert.throws(
+    () => selectEngineTable({}, 'unknown-engine', 'demo'),
+    /no table-section mapping/,
+  );
+  assert.throws(
+    () => selectEngineTable({}, 'changelog-freshness', 'release-fragment-current'),
+    /requires table section 'changelog_freshness'/,
+  );
+
+  const table = loadTable('release/release.toml', resolve('.'));
+  const blocks = table.self_test
+    .filter((block) => block.gate === 'release-changelog-fragment')
+    .map((block) => ({ expect: block.expect, fixture: block.fixture }));
+  const results = runSelfTests(
+    'release-changelog-fragment',
+    'change-requires-file',
+    selectEngineTable(table, 'change-requires-file', 'release-changelog-fragment'),
+    blocks,
+  );
+  assert.equal(results.length, 5);
+  assert.deepEqual(results.map((result) => result.outcome), ['ok', 'ok', 'ok', 'ok', 'ok']);
+});
+
+test('the production and generated runners select changelog tables without a whole-document fallback', () => {
+  const staleRoot = mkdtempSync(join(tmpdir(), 'rungs-stale-fragment-'));
+  const ejectRoot = mkdtempSync(join(tmpdir(), 'rungs-ejected-selector-'));
+  try {
+    mkdirSync(join(staleRoot, '.ai'), { recursive: true });
+    mkdirSync(join(staleRoot, 'changelog.d'), { recursive: true });
+    writeFileSync(join(staleRoot, 'package.json'), JSON.stringify({ version: '0.2.0' }));
+    writeFileSync(join(staleRoot, 'changelog.d', '0.1.0.md'), '# stale\n');
+    writeFileSync(
+      join(staleRoot, '.ai', 'gates.toml'),
+      '[[gates]]\nid = "release-fragment-current"\nkind = "declared"\nengine = "changelog-freshness"\ntable = "release/release.toml"\n',
+    );
+    const [stale] = runGates(staleRoot);
+    assert.equal(stale.status, 'fail');
+    assert.equal(stale.examined, 1, 'the production path must reach the one stale fragment');
+
+    mkdirSync(join(ejectRoot, '.ai'), { recursive: true });
+    writeFileSync(
+      join(ejectRoot, '.ai', 'gates.toml'),
+      '[[gates]]\nid = "release-fragment-current"\nkind = "declared"\nengine = "changelog-freshness"\ntable = "release/release.toml"\n',
+    );
+    eject(ejectRoot, loadAllModules(resolve('modules')));
+    const runner = readFileSync(join(ejectRoot, '.rungs', 'run-gate.mjs'), 'utf8');
+    assert.match(runner, /import \{ selectEngineTable \} from '\.\/engine-table\.ts'/);
+    assert.match(runner, /selectEngineTable\(raw, engine, id\)/);
+    assert.doesNotMatch(runner, /const KEYS|\?\? raw/);
+    assert.ok(existsSync(join(ejectRoot, '.rungs', 'engine-table.ts')));
+  } finally {
+    rmSync(staleRoot, { recursive: true, force: true });
+    rmSync(ejectRoot, { recursive: true, force: true });
+  }
 });
 
 /**

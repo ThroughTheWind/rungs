@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { ENGINES, type Finding } from './engines.ts';
@@ -68,6 +69,37 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
   if (typeof input === 'string') return [write(targetPath(table), `${input}\n`)];
   if (!fx || typeof fx !== 'object') return null;
 
+  // A branch delta plus the companion files it carries. Unlike content-only
+  // fixtures this needs a real repository: the engine deliberately observes
+  // committed, staged, unstaged and untracked Git state rather than trusting a
+  // fixture's list as the answer.
+  if (Array.isArray(fx.changed) && Array.isArray(fx.fragments)) {
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString().trim();
+    git('init', '-q', '-b', 'main', '.');
+    git('config', 'user.email', 'selftest@rungs.local');
+    git('config', 'user.name', 'rungs-selftest');
+    const written = [write('.fixture-base', 'base\n')];
+    git('add', '--all');
+    git('commit', '-q', '-m', 'base');
+    git('switch', '-q', '-c', 'fixture/change');
+
+    for (const [index, rel] of fx.changed.entries()) {
+      const body = index === 0 && typeof fx.exempt === 'string'
+        ? `// ${fx.exempt}\n`
+        : 'fixture change\n';
+      written.push(write(String(rel), body));
+    }
+    const changelogDir = fx.dir ?? 'changelog.d';
+    for (const rel of fx.fragments) {
+      const concrete = String(rel).replace(/\{\{changelog_dir\}\}/g, changelogDir);
+      written.push(write(concrete, '# fixture fragment\n'));
+    }
+    git('add', '--all');
+    git('commit', '-q', '-m', 'fixture change');
+    return [...new Set(written)];
+  }
+
   // A set of manifests and the version each states — the computed-claim shapes.
   // `{ "package.json": "1.2.0", "site/package.json": "1.1.0" }`.
   if (fx.packages && typeof fx.packages === 'object') {
@@ -128,8 +160,9 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
 }
 
 /**
- * Engines whose verdict depends **only on the content of the file the fixture
- * describes**, so a fixture can be executed faithfully in an empty directory.
+ * Engines whose verdict can be reproduced completely by a fixture builder.
+ * Most depend only on content in an empty directory; `change-requires-file`
+ * gets the explicit Git repository built above.
  *
  * The rest need context the fixture does not carry, and running them anyway
  * produces confident nonsense. `gates-links-resolve`'s `pass` fixture is
@@ -152,6 +185,7 @@ const CONTEXT_FREE: ReadonlySet<string> = new Set([
   'register-schema',
   'file-population',
   'changelog-freshness',
+  'change-requires-file',
   'computed-claim',
 ]);
 
@@ -168,7 +202,7 @@ const CONTEXT_FREE: ReadonlySet<string> = new Set([
  */
 function deparam<T>(spec: T, dir: string): T {
   const walk = (v: any): any =>
-    typeof v === 'string' ? v.replace(/\{\{[^}]+\}\}/g, dir)
+    typeof v === 'string' ? v.replace(/\{\{changelog_dir\}\}/g, dir)
       : Array.isArray(v) ? v.map(walk)
       : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]))
       : v;
@@ -205,6 +239,12 @@ export function runSelfTests(
       // Same bridge, for paths: a fixture that names a parameterised directory
       // has to hand the spec the same literal it wrote the files into.
       if (Array.isArray(b.fixture?.fragments)) spec = deparam(spec, b.fixture.dir ?? 'changelog.d');
+      if (Array.isArray(b.fixture?.changed)) {
+        const base = b.fixture.base_branch ?? 'main';
+        spec = Array.isArray(spec)
+          ? spec.map((s: any) => ({ ...s, base_branch: base }))
+          : { ...spec, base_branch: base };
+      }
       // And for `exclude`, which is the thing under test in half these fixtures:
       // the table ships it empty by default, so a fixture proving exclusion works
       // has to set it, exactly as a repo would.

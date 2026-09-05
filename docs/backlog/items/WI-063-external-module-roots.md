@@ -125,8 +125,8 @@ whose gates point at a directory it no longer owns is a broken promise wearing a
 4. `rungs modules` over the external root reports the same manifest issues it reports for a bundled
    one — demonstrated with one module missing `applicability` and one missing
    `[provenance].incident`.
-5. This repo is unchanged: `rungs check` 29 pass · 0 fail, and the platform matrix passes on all
-   three operating systems.
+5. This repo is unchanged: every registered gate passes with 0 fail, and the platform matrix passes
+   on all three operating systems.
 6. No network call is added. Verified by reading the diff — stated as read, not as measured.
 
 ### Out of scope

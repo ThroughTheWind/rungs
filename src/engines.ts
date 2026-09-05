@@ -10,6 +10,7 @@ import { resolveParams, substitute } from './substitute.ts';
 import {
   computedClaim,
   crossReference,
+  changeRequiresFile,
   filenameSchema,
   gitStatusReconcile,
   idIntegrity,
@@ -18,6 +19,7 @@ import {
   selfDeclaredClosure,
 } from './engines2.ts';
 import { boardReconcile, changelogFreshness, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
+import { selectEngineTable } from './engine-table.ts';
 
 /**
  * Where the CLI's own `modules/` lives.
@@ -412,9 +414,14 @@ export const gateMeta: Engine = (_t, root) => {
       const blocks = (Array.isArray(parsed.self_test) ? parsed.self_test : [])
         .filter((b: any) => b?.gate === id)
         .map((b: any) => ({ expect: String(b.expect), input: b.input, fixture: b.fixture }));
-      for (const r of runSelfTests(id, engine, parsed[tableKeyFor(engine)] ?? parsed, blocks)) {
-        if (r.outcome === 'mismatch') findings.push({ message: `self-test for '${id}' ${r.detail}` });
-        else if (r.outcome === 'unrun') unrun++;
+      try {
+        const section = selectEngineTable(parsed, engine, id);
+        for (const r of runSelfTests(id, engine, section, blocks)) {
+          if (r.outcome === 'mismatch') findings.push({ message: `self-test for '${id}' ${r.detail}` });
+          else if (r.outcome === 'unrun') unrun++;
+        }
+      } catch (e: any) {
+        findings.push({ message: `gate '${id}' table dispatch failed: ${e.message}` });
       }
     }
   }
@@ -477,28 +484,6 @@ function parseTable(path: string, module: string): any | null {
   }
 }
 
-/** Duplicated from `check.ts` rather than imported, to keep engines dependency-free of the runner. */
-const tableKeyFor = (engine: string) =>
-  ({
-    'file-budget': 'file_budget',
-    'frontmatter-schema': 'frontmatter_schema',
-    'link-integrity': 'link_integrity',
-    'file-population': 'file_population',
-    'render-freshness': 'render_freshness',
-    'register-schema': 'register_schema',
-    'self-declared-closure': 'self_declared_closure',
-    'filename-schema': 'filename_schema',
-    'cross-reference': 'cross_reference',
-    'git-status-reconcile': 'merged_status',
-    'computed-claim': 'computed_claim',
-    'term-ownership': 'term_ownership',
-    'rule-propagation': 'rule_propagation',
-    'git-state': 'git_state',
-    'merge-driver-check': 'merge_driver_check',
-    'board-reconcile': 'board_reconcile',
-    'changelog-freshness': 'changelog_freshness',
-  })[engine] ?? engine;
-
 export const ENGINES: Record<string, Engine> = {
   'file-budget': fileBudget,
   sections,
@@ -520,6 +505,7 @@ export const ENGINES: Record<string, Engine> = {
   'merge-driver-check': mergeDriverCheck,
   'board-reconcile': boardReconcile,
   'changelog-freshness': changelogFreshness,
+  'change-requires-file': changeRequiresFile,
 };
 
 /**
