@@ -25,7 +25,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-071](items/WI-071-canonical-consumer-paths.md) | Canonicalize packed-consumer containment checks | chore | — |
 
 ## Accepted
 
