@@ -2435,7 +2435,7 @@ test('land preserves unsafe preferred parking refs and uses collision-free recov
   });
 });
 
-test('Git create-only cannot CAS dangling-symref identity in the documented raw-process micro-window', () => {
+test('Git create-only preserves the target despite version-dependent dangling-symref handling', () => {
   const { dir, g } = loopRepo();
   try {
     const oid = g('rev-parse', 'main');
@@ -2444,14 +2444,20 @@ test('Git create-only cannot CAS dangling-symref identity in the documented raw-
     g('symbolic-ref', candidate, target);
     const input = Buffer.from(`option no-deref\0create ${candidate}\0${oid}\0`, 'utf8');
 
-    execFileSync('git', ['update-ref', '--stdin', '-z'], { cwd: dir, stdio: 'pipe', input });
-
-    assert.notEqual(
-      spawnSync('git', ['symbolic-ref', '--quiet', candidate], { cwd: dir }).status,
-      0,
-      'Git replaced the racing dangling symref name despite no-deref',
-    );
-    assert.equal(g('rev-parse', candidate), oid);
+    const write = spawnSync('git', ['update-ref', '--stdin', '-z'], { cwd: dir, input });
+    assert.equal(write.error, undefined);
+    const symbolic = spawnSync('git', ['symbolic-ref', '--quiet', candidate], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+    if (write.status === 0) {
+      assert.notEqual(symbolic.status, 0, 'this Git replaced the racing dangling symref name');
+      assert.equal(g('rev-parse', candidate), oid);
+    } else {
+      assert.notEqual(write.status, null, write.stderr.toString());
+      assert.equal(symbolic.status, 0, write.stderr.toString());
+      assert.equal(symbolic.stdout.trim(), target, 'this Git refused and preserved the dangling symref');
+    }
     assert.notEqual(
       spawnSync('git', ['show-ref', '--verify', '--quiet', target], { cwd: dir }).status,
       0,
@@ -2788,6 +2794,7 @@ test('a recovery-enumeration failure retains the scratch worktree at the verifie
   const { dir, g } = loopRepo();
   let retained;
   let malformed;
+  let mergedBytes;
   try {
     g('switch', '-q', '-c', 'feature/retained-scratch');
     writeFileSync(join(dir, 'a.txt'), 'branch work\n');
@@ -2801,6 +2808,7 @@ test('a recovery-enumeration failure retains the scratch worktree at the verifie
     const result = land(dir, 'feature/retained-scratch', (scratch, only) => {
       if (!only) {
         verifiedMerge = gitText(scratch, 'rev-parse', 'HEAD');
+        mergedBytes = readFileSync(join(scratch, 'a.txt'));
         writeFileSync(malformed, 'not-an-object-id\n');
         return { pass: 0, failing: [{ id: 'new-gate', findings: ['new failure'] }] };
       }
@@ -2812,7 +2820,8 @@ test('a recovery-enumeration failure retains the scratch worktree at the verifie
 
     assert.equal(result.ok, false);
     assert.equal(gitText(retained, 'rev-parse', 'HEAD'), verifiedMerge, 'the retained worktree points at the merge, not the reset base');
-    assert.equal(readFileSync(join(retained, 'a.txt'), 'utf8'), 'branch work\n');
+    assert.deepEqual(readFileSync(join(retained, 'a.txt')), mergedBytes, 'retention preserves the merged checkout bytes');
+    assert.equal(gitText(retained, 'status', '--porcelain'), '', 'the retained merge checkout remains clean');
     assert.ok(
       g('worktree', 'list', '--porcelain').replaceAll('\\', '/').includes(`worktree ${retained.replaceAll('\\', '/')}`),
       'the retained path stays registered as a Git worktree',

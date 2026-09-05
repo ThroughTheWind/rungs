@@ -74,9 +74,11 @@ There is one deliberately narrow raw-Git boundary. After the last identity check
 takes a lock, another process can replace a validated direct ref with a same-object-ID symbolic ref,
 or create a dangling symbolic ref at the recovery name Rungs is about to create. Git's public ref
 transaction compares object IDs (or absence), not direct-versus-symbolic type. `--no-deref`
-protects the symbolic target, but Git can replace the named symbolic ref itself. Do not mutate
-managed or recovery refs outside the Rungs land protocol; closing these micro-windows requires a
-cooperative repository-wide transaction protocol, not another before/after check.
+protects the symbolic target. Supported Git versions differ on whether create-only refuses a
+dangling symbolic name or replaces the name itself, so Rungs cannot rely on one portable ref-type
+precondition. Do not mutate managed or recovery refs outside the Rungs land protocol; closing these
+micro-windows requires a cooperative repository-wide transaction protocol, not another
+before/after check.
 
 ## Recovery refs are retained
 

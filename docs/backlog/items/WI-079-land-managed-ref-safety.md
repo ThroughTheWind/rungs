@@ -39,9 +39,10 @@ the transaction guarantee means an OID change caught by expected-old CAS or an i
 change visible to the final validation. A raw process can still replace a direct ref with a
 same-OID symbolic ref after that validation but before Git takes its locks, or create a dangling
 symbolic recovery candidate after allocator validation but before its create-only write. Git's
-public `update-ref` transaction cannot CAS direct-versus-symbolic type and treats a dangling symref
-as absent; `no-deref` protects the target but may replace the named symref itself. These measured
-micro-races are the explicit raw-Git exception below, not silently claimed as closed.
+public `update-ref` transaction cannot CAS direct-versus-symbolic type; supported Git versions
+disagree on whether create-only treats a dangling symref as absent and replaces its name or refuses
+it as occupied. `no-deref` protects the target in either case. These measured micro-races are the
+explicit raw-Git exception below, not silently claimed as closed.
 
 ## Plan
 
@@ -105,9 +106,9 @@ recovery ref is no longer needed.
 - Preventing an uncooperative raw Git process from beginning a checkout, swapping a direct ref for
   a same-OID symbolic ref, or creating a dangling symbolic recovery candidate in the unavoidable
   intervals between final validation and Git's locks. Git's public expected-old/create protocol
-  compares OIDs or absence, not ref type; `no-deref` protects the symbolic target but cannot assert
-  that the named ref stayed direct. The early/late checks and Rungs land lock remain the cooperative
-  repository contract.
+  compares OIDs or absence, not ref type, and Git versions disagree on dangling-symref absence;
+  `no-deref` protects the symbolic target but cannot assert that the named ref stayed direct. The
+  early/late checks and Rungs land lock remain the cooperative repository contract.
 - Automatically switching, resetting, removing or deleting an operator's worktree or branch; those
   are deliberately operator-owned under ADR-0009.
 - WI-073 path containment, WI-076 archive containment, WI-077 ejection, WI-078 exemptions,
@@ -138,7 +139,7 @@ than overstating `no-deref`.
 
 Final integrated verification passed locally. The broad land/ref-safety slice passed 44/44; full
 `npm test` passed 111 tests with three platform skips (114 total); `npm pack --dry-run` included
-110 files in a 354.6 kB package; and `git diff --check` was clean. The first integrated gate run
+110 files in a 354.8 kB package; and `git diff --check` was clean. The first integrated gate run
 correctly rejected the stale generated site snapshot after `concurrency` moved from 1.3.0 to 1.4.0.
 After the prescribed `npm run claims` regeneration, all 30 registered gates passed, and the
 snapshot was regenerated once more from that green run so it records 30 pass / 0 fail. No land,
@@ -146,11 +147,16 @@ branch deletion or worktree removal is part of this item.
 
 ## Review
 
-Independent review approved the final live diff with no remaining implementable WI-079 blocker.
+Independent review approved the first pushed live diff with no remaining implementable WI-079 blocker.
 It independently reran full `npm test` (111 pass, three platform skips), the narrowed new regression
 slice (15/15), and `git diff --check`, and verified the dangling files/reftable symrefs, malformed
 loose refs, merged scratch preservation, NFKD/full-fold aliases, canonical reserved-name filtering,
 atomic two-ref CAS, recovery preservation, and honest limitation language. Its only non-blocking
 hardening note is that a future tri-state symbolic-ref probe could distinguish an ordinary
-non-symbolic exit from a fatal Git error more precisely. Exact committed-tip CI evidence remains
-pending.
+non-symbolic exit from a fatal Git error more precisely. The first pushed candidate, `497b633`, is
+superseded as final evidence: Actions run
+33970295165 exposed Git-version-dependent dangling-symref behavior in the diagnostic test on every
+matrix host, plus one redundant LF-only retained-file assertion on Windows. Production already
+handled both create outcomes; the regression now proves the portable target-preservation invariant,
+and the retained-worktree check compares its exact pre-refusal bytes and clean status. This CI
+diagnostic repair awaits exact-tip re-review and exact-SHA CI evidence.

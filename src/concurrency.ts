@@ -315,9 +315,11 @@ interface RecoveryRefResult {
  */
 function createDirectRef(root: string, ref: string, oid: string): void {
   // `create` is the strongest public Git precondition for an absent ref and
-  // `no-deref` protects a symbolic target. Git still treats a dangling symref
-  // created after our last identity check as absent and replaces its *name*;
-  // that uncooperative raw-Git micro-race is documented as a residual boundary.
+  // `no-deref` protects a symbolic target. Supported Git versions disagree on
+  // whether a racing dangling symref is absent (replace its name) or occupied
+  // (refuse). Neither behavior follows the target, but the public protocol
+  // cannot portably CAS the name's direct-versus-symbolic type; that raw-Git
+  // micro-race is documented as a residual boundary.
   const input = `option no-deref\0create ${ref}\0${oid}\0`;
   execFileSync('git', ['update-ref', '--stdin', '-z', '-m', 'rungs park verified merge'], {
     cwd: root,
