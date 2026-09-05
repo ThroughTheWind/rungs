@@ -131,6 +131,24 @@ test('mergeBlock preserves gate-block separators and the terminal newline', () =
     expected,
     'a real replacement changes only the selected managed block',
   );
+
+  const crlfRegistry = registry.replace(/\n/g, '\r\n');
+  const crlfExpected = expected.replace(/\n/g, '\r\n');
+  assert.equal(
+    mergeBlock(crlfRegistry, first, 'first'),
+    crlfRegistry,
+    'an LF fragment identical to a CRLF middle block preserves every original byte',
+  );
+  assert.equal(
+    mergeBlock(crlfRegistry, second.replace(/\n/g, '\r\n'), 'second'),
+    crlfRegistry,
+    'an unchanged CRLF final block preserves its terminal CRLF',
+  );
+  assert.equal(
+    mergeBlock(crlfRegistry, replacement, 'first'),
+    crlfExpected,
+    'a real replacement adopts the managed block CRLF convention',
+  );
 });
 
 test('module manifests are complete and parameter-auditable', () => {
