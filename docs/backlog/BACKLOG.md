@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-074 -->
+<!-- NEXT-ID: WI-075 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -13,6 +13,7 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 | [WI-072](items/WI-072-release-consumption-boundary.md) | Track the consumed release boundary | feature | `feature/WI-072-release-consumption-boundary` |
 | [WI-073](items/WI-073-emitted-path-containment.md) | Contain every emitted module path inside the consumer repository | feature | `feature/WI-073-emitted-path-containment` |
+| [WI-074](items/WI-074-version-source-formats.md) | Make release version sources format-aware and fail closed | feature | `feature/WI-074-version-source-formats` |
 
 ## Review
 
