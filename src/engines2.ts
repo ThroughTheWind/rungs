@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { matchAny } from './glob.ts';
+import { readVersionSource } from './version-source.ts';
 import type { Engine, Finding } from './engines.ts';
 
 const read = (root: string, rel: string) => {
@@ -574,6 +575,7 @@ export const computedClaim: Engine = (t, root, files) => {
   let examined = 0;
   for (const spec of specs) {
     const values = new Map<string, string>();
+    let specExamined = 0;
     // Which files share a version is the repo's judgement, not something to infer
     // (F-023). The default sources glob `*/package.json`, which is right for a
     // monorepo released in lockstep and wrong for a sibling that is deliberately
@@ -585,22 +587,20 @@ export const computedClaim: Engine = (t, root, files) => {
     for (const src of spec.sources ?? []) {
       for (const rel of matchAny(files, src.file)) {
         if (excluded(rel)) continue;
-        const text = read(root, rel);
-        let v: string | undefined;
-        if (src.path && rel.endsWith('.json')) {
-          try {
-            v = src.path.split('.').reduce((o: any, k: string) => o?.[k], JSON.parse(text));
-          } catch {
-            /* unparseable is not a disagreement */
-          }
-        } else if (src.xpath) {
-          v = text.match(new RegExp(`<${src.xpath.split('//')[1]}>(.*?)<`))?.[1];
+        examined++;
+        specExamined++;
+        const result = readVersionSource(root, rel, src);
+        if (!result.ok) {
+          findings.push({ file: rel, message: `${spec.id} version source ${result.reason}` });
+          continue;
         }
-        if (v) {
-          examined++;
-          values.set(rel, String(v));
-        }
+        values.set(rel, result.value);
       }
+    }
+    if (specExamined === 0) {
+      findings.push({
+        message: `${spec.id} found no configured version sources; check the source globs and exclusions`,
+      });
     }
     const distinct = new Set(values.values());
     if (spec.rule === 'all-agree' && distinct.size > 1) {
