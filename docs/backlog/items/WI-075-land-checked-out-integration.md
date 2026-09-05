@@ -2,7 +2,7 @@
 id: WI-075
 title: Refuse landing while the integration branch is checked out
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-075-land-checked-out-integration
 created: 2026-09-05
 updated: 2026-09-05
@@ -120,10 +120,11 @@ Local acceptance evidence on 2026-09-05:
 2. The dirty-holder test preserves distinct staged, unstaged and untracked changes byte-for-byte,
    names the holder and creates no lock.
 3. The linked-holder test names both forced holders and preserves the invoking worktree, both
-   holders, every ref and the shared lock. The exact POSIX newline-path execution awaits CI.
+   holders, every ref and the shared lock. Its newline-containing path passes on Ubuntu and macOS.
 4. All existing introduced, inherited, unattributable, conflict, live-lock and green outcomes pass
    with `main` unheld; the new compare-and-swap regression preserves the competing advance and
    parks the verified merge.
 5. Focused `land` tests pass 8/8. `npm test` passes 64 tests with one intentional Windows platform
    skip; all 30 registered Rungs gates pass; package dry-run succeeds with 109 entries; and
-   `git diff --check` is clean. Exact pushed-SHA matrix and site evidence are pending.
+   `git diff --check` is clean. GitHub Actions run 33959306119 passes exact code SHA `5135bbe`
+   across Node 22.18 and Node 22 on Ubuntu, macOS and Windows plus the site job.

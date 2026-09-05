@@ -13,7 +13,6 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 | [WI-072](items/WI-072-release-consumption-boundary.md) | Track the consumed release boundary | feature | `feature/WI-072-release-consumption-boundary` |
 | [WI-073](items/WI-073-emitted-path-containment.md) | Contain every emitted module path inside the consumer repository | feature | `feature/WI-073-emitted-path-containment` |
-| [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | `feature/WI-075-land-checked-out-integration` |
 
 ## Review
 
@@ -22,6 +21,7 @@ The board. One row per live work item, grouped by status. Items live in
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
 | [WI-060](items/WI-060-release-0.2.0.md) | Prepare the v0.2.0 release and close the release-integrity findings it surfaced | chore | `feature/WI-060-release-0.2.0` |
 | [WI-062](items/WI-062-concurrency-phantom-commands.md) | Decide what the concurrency module is — four commands, or the manual protocol it actually documents | chore | `feature/WI-062-concurrency-loop` |
+| [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | `feature/WI-075-land-checked-out-integration` |
 
 ## Planned
 
