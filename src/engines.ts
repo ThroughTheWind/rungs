@@ -41,6 +41,8 @@ const CLI_MODULES = join(dirname(fileURLToPath(import.meta.url)), '..', 'modules
 export interface Finding {
   file?: string;
   message: string;
+  /** Stable comparison form when the displayed diagnostic carries environment-specific detail. */
+  identity?: string;
 }
 export interface EngineResult {
   findings: Finding[];

@@ -562,10 +562,80 @@ export interface GateOutcome {
    * "inherited". Measured — a branch adding `./also-missing.md` on top of an
    * already-red link gate landed clean. Attribution is per finding.
    */
-  failing: { id: string; findings: string[] }[];
+  failing: { id: string; findings: (string | { identity: string; diagnostic: string })[] }[];
 }
 
 export type LandRunner = (dir: string, only?: ReadonlySet<string>) => GateOutcome;
+
+type GateFailure = GateOutcome['failing'][number];
+type GateFailureFinding = GateFailure['findings'][number];
+
+const findingIdentity = (finding: GateFailureFinding) =>
+  typeof finding === 'string' ? finding : finding.identity;
+
+const findingDiagnostic = (finding: GateFailureFinding) =>
+  typeof finding === 'string' ? finding : finding.diagnostic;
+
+function failingIdentities(outcome: GateOutcome): Map<string, Set<string>> {
+  return new Map(outcome.failing.map((failure) => [
+    failure.id,
+    new Set(failure.findings.map(findingIdentity)),
+  ]));
+}
+
+function coversGateIds(outcome: GateOutcome, ids: ReadonlySet<string>): boolean {
+  const failedIds = new Set(outcome.failing.map((failure) => failure.id));
+  return [...failedIds].every((id) => ids.has(id)) && failedIds.size + outcome.pass >= ids.size;
+}
+
+type ControlEligibility = { ok: true } | { ok: false; reason: string };
+
+/**
+ * The invoking checkout can prove an inherited failure only when its tracked
+ * tree is exactly the captured integration tree. Ignored dependencies are the
+ * reason this control exists; non-ignored work makes it untrustworthy.
+ */
+function exactControlEligibility(root: string, integrationOid: string): ControlEligibility {
+  try {
+    let attached = '';
+    try {
+      attached = execFileSync('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
+        cwd: root,
+        stdio: 'pipe',
+        encoding: 'utf8',
+      }).trim();
+    } catch (error: any) {
+      // Exit 1 is Git's documented detached-HEAD answer. Anything else means
+      // the checkout identity itself could not be established.
+      if (error?.status !== 1) {
+        return { ok: false, reason: 'the invoking worktree HEAD attachment state could not be read' };
+      }
+    }
+    if (attached) {
+      return { ok: false, reason: `the invoking worktree is attached to '${attached}', not detached` };
+    }
+
+    const head = revParse(root, 'HEAD');
+    if (head !== integrationOid) {
+      return {
+        ok: false,
+        reason: `the invoking worktree is at ${head?.slice(0, 8) ?? 'an unreadable HEAD'}, not integration ${integrationOid.slice(0, 8)}`,
+      };
+    }
+
+    const status = execFileSync(
+      'git',
+      ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all'],
+      { cwd: root, stdio: 'pipe' },
+    );
+    if (status.length) {
+      return { ok: false, reason: 'the invoking worktree has tracked, staged or non-ignored untracked changes' };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: 'the invoking worktree state could not be verified' };
+  }
+}
 
 export function land(root: string, branch: string, runner: LandRunner, dryRun = false): Result {
   const { integration, greenRef, integPrefix } = loopParams(root);
@@ -705,31 +775,97 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
 
       // A gate that did not run at the base cannot be attributed at all. We do
       // not land on an unknown, so that blocks.
-      const attributable = base !== null && base.failing.length + base.pass >= ids.size;
-      const baseFindings = new Map((base?.failing ?? []).map((f) => [f.id, new Set(f.findings)]));
+      const baseAttributable = base !== null && coversGateIds(base, ids);
 
-      const introduced: { id: string; findings: string[] }[] = [];
-      const inherited: { id: string; findings: string[] }[] = [];
+      // The same detached scratch supplies both sides of the branch comparison.
+      // That controls content, not runtime: ignored dependencies can be absent
+      // from both and manufacture an identical failure. A clean detached
+      // invoking checkout at the exact integration OID is the independent
+      // control that can establish whether the base is genuinely red.
+      let control: GateOutcome | null = null;
+      let controlIssue = '';
+      const eligibleBefore = exactControlEligibility(root, before);
+      if (!eligibleBefore.ok) {
+        controlIssue = eligibleBefore.reason;
+      } else {
+        try {
+          control = runner(root, ids);
+          const eligibleAfter = exactControlEligibility(root, before);
+          if (!eligibleAfter.ok) {
+            control = null;
+            controlIssue = `the invoking control changed while gates ran: ${eligibleAfter.reason}`;
+          }
+        } catch {
+          control = null;
+          controlIssue = 'the exact integration control could not be gated';
+        }
+      }
+      if (control && !coversGateIds(control, ids)) {
+        control = null;
+        controlIssue = 'some failing gates did not run in the exact integration control';
+      }
+
+      const controlAttributable = control !== null;
+      const baseFindings = base ? failingIdentities(base) : new Map<string, Set<string>>();
+      const controlFindings = control ? failingIdentities(control) : new Map<string, Set<string>>();
+
+      const introduced: GateFailure[] = [];
+      const inherited: GateFailure[] = [];
+      const unverified: GateFailure[] = [];
+      const addFinding = (target: GateFailure[], id: string, finding: GateFailureFinding) => {
+        let failure = target.find((entry) => entry.id === id);
+        if (!failure) {
+          failure = { id, findings: [] };
+          target.push(failure);
+        }
+        failure.findings.push(finding);
+      };
       for (const f of res.failing) {
-        const seen = attributable ? baseFindings.get(f.id) ?? new Set<string>() : null;
-        // Per finding: a gate already red at the base does not excuse the new
-        // violations of it that this branch brought.
-        const fresh = seen ? f.findings.filter((x) => !seen.has(x)) : f.findings;
-        if (fresh.length) introduced.push({ id: f.id, findings: fresh });
-        else inherited.push(f);
+        const atBase = baseAttributable ? baseFindings.get(f.id) ?? new Set<string>() : null;
+        const inControl = controlAttributable ? controlFindings.get(f.id) ?? new Set<string>() : null;
+        for (const finding of f.findings) {
+          const identity = findingIdentity(finding);
+          // Per finding: a gate already red at the base does not excuse a new
+          // violation. A base match becomes inherited only with independent
+          // confirmation from the exact integration control.
+          if (!atBase || !atBase.has(identity)) {
+            addFinding(introduced, f.id, finding);
+          } else if (!inControl || !inControl.has(identity)) {
+            addFinding(unverified, f.id, finding);
+          } else {
+            addFinding(inherited, f.id, finding);
+          }
+        }
       }
 
       for (const f of inherited) {
-        lines.push(`  inherited  ${f.id}${f.findings[0] ? ` — ${f.findings[0]}` : ''}`);
+        lines.push(`  inherited  ${f.id}${f.findings[0] ? ` — ${findingDiagnostic(f.findings[0])}` : ''}`);
       }
       for (const f of introduced) {
-        lines.push(`  INTRODUCED ${f.id}${f.findings[0] ? ` — ${f.findings[0]}` : ''}`);
-        for (const extra of f.findings.slice(1, 4)) lines.push(`             ${extra}`);
+        lines.push(`  INTRODUCED ${f.id}${f.findings[0] ? ` — ${findingDiagnostic(f.findings[0])}` : ''}`);
+        for (const extra of f.findings.slice(1, 4)) lines.push(`             ${findingDiagnostic(extra)}`);
       }
       if (base === null) {
         lines.push('  The merge base could not be gated, so nothing here is attributable and all of it blocks.');
-      } else if (!attributable) {
+      } else if (!baseAttributable) {
         lines.push('  Some gates could not be attributed against the merge base, so they block. We do not land on an unknown.');
+      }
+
+      if (controlIssue) {
+        lines.push(`  CONTROL UNAVAILABLE — ${controlIssue}; inherited failure cannot be established.`);
+      }
+      for (const f of unverified) {
+        if (controlAttributable) {
+          const mismatch = (controlFindings.get(f.id)?.size ?? 0) > 0
+            ? 'the detached base scratch and exact integration control reported different findings'
+            : 'the exact integration control passed while the detached base scratch failed';
+          lines.push(`  UNVERIFIED ${f.id} — ${mismatch}; the scratch environment cannot establish inheritance.`);
+          if (f.findings[0]) {
+            lines.push(`             ${findingDiagnostic(f.findings[0]).replace(/\n/g, '\n             ')}`);
+          }
+        } else {
+          lines.push(`  UNVERIFIED ${f.id}${f.findings[0] ? ` — ${findingDiagnostic(f.findings[0])}` : ''}`);
+        }
       }
 
       if (introduced.length) {
@@ -738,6 +874,16 @@ export function land(root: string, branch: string, runner: LandRunner, dryRun = 
         return refuseWithRecovery(
           [`${introduced.length} introduced by this branch. ${integration} and ${greenRef} were not advanced.`],
           'Fix it there and land again; recovery-ref cleanup remains operator-owned.',
+        );
+      }
+
+      if (unverified.length || !baseAttributable || !controlAttributable) {
+        const unverifiedCount = unverified.reduce((total, failure) => total + failure.findings.length, 0);
+        return refuseWithRecovery(
+          [
+            `${unverifiedCount || res.failing.length} failure(s) could not be verified as inherited. ${integration} and ${greenRef} were not advanced.`,
+          ],
+          `Run land from a clean detached checkout at ${integration} (${before.slice(0, 8)}) with the gate runtime available, then retry.`,
         );
       }
 

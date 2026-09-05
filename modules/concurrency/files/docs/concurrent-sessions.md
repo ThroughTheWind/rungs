@@ -35,10 +35,17 @@ deliberate question, never as a ritual.
 
 ## A failure is attributed, never just counted
 
-`land` re-runs each failing gate against the merge base in the throwaway worktree it already has,
-and reports each failure as **inherited** (already red before you started — stated, never blocking)
-or **INTRODUCED** (yours — blocks). Anything it cannot attribute also blocks: **we do not land on an
-unknown.**
+`land` re-runs each failing gate against the merge base in the throwaway worktree it already has.
+A finding is **inherited** only when one independent control reproduces it too: the invoking
+worktree must be clean, detached and at the exact integration commit. That checkout can retain
+ignored dependencies a fresh worktree does not have. If the exact control passes while the scratch
+fails, the scratch runtime is **UNVERIFIED**, not evidence that the branch inherited a red gate.
+An attached, dirty or different-commit invoking worktree cannot be the control, so a scratch
+failure then blocks and the merge is parked for recovery.
+
+With that control established, each failure is reported as **inherited** (already red before you
+started — stated, never blocking) or **INTRODUCED** (yours — blocks). Anything it cannot attribute
+also blocks: **we do not land on an unknown.**
 
 Attribution is **per finding, not per gate.** The first implementation compared gate ids, which
 made an already-red gate a blind spot: a branch could add new broken links and land them as
@@ -108,6 +115,9 @@ merge instead of accumulating duplicates.
 - **Use the recovery ref that the refusal reports.** Its name can carry a merge-identity suffix when
   the preferred `{{integ_prefix}}…` name is held or contains other work. Do not assume the preferred
   name was changed, and remove recovery refs only after inspecting them.
+- **Run from the detached integration checkout when inherited red is possible.** All-green merges
+  need no baseline control. A failing scratch can be attributed as inherited only when the invoking
+  worktree is clean, detached and still at the integration commit with its gate runtime available.
 - **Check the exit code of `land` itself.** Piping it through `tail` or `grep` reports *that*
   command's status, so a refused land reads as success.
 - **Reconcile generated artifacts by regenerating, never by merging text.** Take one side, re-run

@@ -23,10 +23,10 @@
  * "every number here is verified".
  */
 import { readFileSync, readdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { derive } from '../site/scripts/claims.mjs';
+import { COMMANDS } from '../src/help.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(root, rel), 'utf8');
@@ -35,15 +35,11 @@ const pkg = JSON.parse(read('package.json'));
 const srcLines = readdirSync(join(root, 'src'))
   .filter((f) => f.endsWith('.ts'))
   .reduce((n, f) => n + read(join('src', f)).split('\n').length, 0);
-const commands = (() => {
-  const help = execFileSync(process.execPath, ['--experimental-strip-types', 'src/cli.ts', '--help'], {
-    cwd: root,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore'],
-  });
-  // The help block lists one command per line as `rungs <name>`; count the distinct names.
-  return new Set([...help.matchAll(/^\s+\[1mrungs (\w+)/gm)].map((m) => m[1])).size;
-})();
+// `COMMANDS` is the exact table `renderHelp` maps. Importing that dependency-free
+// authority keeps this command gate runnable in a fresh land worktree without
+// turning command counting into a second hand-kept inventory. Dispatch remains
+// independently enforced by `module-commands-exist`.
+const commands = new Set(COMMANDS.map(([usage]) => usage.split(' ')[0])).size;
 
 /**
  * Two kinds of claim, checked differently on purpose.

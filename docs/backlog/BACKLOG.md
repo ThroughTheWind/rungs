@@ -3,13 +3,14 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-080 -->
+<!-- NEXT-ID: WI-082 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
+| [WI-081](items/WI-081-land-scratch-verification-control.md) | Refuse land when its detached scratch cannot reproduce a trustworthy control | feature | `feature/WI-081-land-scratch-verification-control` |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 
 ## Review
