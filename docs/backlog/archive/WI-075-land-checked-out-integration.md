@@ -2,7 +2,7 @@
 id: WI-075
 title: Refuse landing while the integration branch is checked out
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-075-land-checked-out-integration
 created: 2026-09-05
 updated: 2026-09-05
@@ -169,3 +169,10 @@ compared its checked-out text to a literal LF string while Actions correctly mat
 under its Git configuration. The test already preserves the stronger byte-for-byte before/after
 snapshot and empty porcelain-status assertions, so the redundant line-ending-dependent literal was
 removed. Production behavior and its invariants were not normalized or weakened.
+
+Final code tip `e5f4cbd` passes GitHub Actions run 33960655308 across Node 22.18 and Node 22 on
+Ubuntu, macOS and Windows plus the site job. Independent review approved that exact pushed SHA
+after inspecting the direct-ref resolution, early and late holder checks, non-dereferencing CAS,
+all four new bypass regressions and the retained byte/status assertions. Current green `main`
+`5ef482f` was then merged as `cf43924`; its additions are only later bootstrap plans and finding
+records, and the integrated branch passes all 30 registered gates before lifecycle closure.

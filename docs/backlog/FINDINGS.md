@@ -39,7 +39,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | --- | --- | --- | --- |
 | F-049 | `rungs backlog archive` can move a finished item outside the repository through an outward archive-directory junction | promoted | WI-076 takes the configured root, every rewrite leaf and every move source/destination as one untrusted mutation set; it reuses WI-073's portable/canonical/writable-leaf boundary, validates again at apply time and proves refusal leaves in-repo links/items and outside bytes unchanged |
 
-## Closed — 2026-09-05 by [WI-075](items/WI-075-land-checked-out-integration.md)
+## Closed — 2026-09-05 by [WI-075](archive/WI-075-land-checked-out-integration.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
