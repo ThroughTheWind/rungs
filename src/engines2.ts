@@ -430,7 +430,7 @@ const patternList = (value: unknown, allowEmpty = false): value is string[] =>
 
 const sameLineExemption = (text: string, marker?: string) =>
   !!marker && text.split(/\r?\n/).some((line) =>
-    line.split(marker).slice(1).some((tail) => /[\p{L}\p{N}]/u.test(tail)),
+    line.split(marker).slice(1).some((tail) => /^[ \t]*[\p{L}\p{N}]/u.test(tail)),
   );
 
 /**
@@ -453,6 +453,13 @@ export const changeRequiresFile: Engine = (t, root) => {
   if (t.ignore_when_only !== undefined && !patternList(t.ignore_when_only, true)) {
     return {
       findings: [{ message: "change-requires-file 'ignore_when_only' must be an array of non-empty patterns" }],
+      examined: 0,
+    };
+  }
+  if (t.exempt_marker !== undefined &&
+      (typeof t.exempt_marker !== 'string' || !t.exempt_marker.trim())) {
+    return {
+      findings: [{ message: "change-requires-file 'exempt_marker' must be a non-empty string when configured" }],
       examined: 0,
     };
   }

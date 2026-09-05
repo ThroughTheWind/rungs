@@ -951,7 +951,14 @@ test('change-requires-file ignores non-shipping work and requires an exemption r
 
     write('src/a.ts', '// changelog-ok:\nconst laterLineIsNotAReason = true;\n');
     assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, 'bare marker cannot borrow next line');
-    for (const bareWrapper of ['<!-- changelog-ok: -->\n', '/* changelog-ok: */\n', '"changelog-ok:"\n']) {
+    for (const bareWrapper of [
+      '<!-- changelog-ok: -->\n',
+      '/* changelog-ok: */\n',
+      '"changelog-ok:"\n',
+      '/* changelog-ok: */ const shipped = true;\n',
+      '<!-- changelog-ok: --><div>shipped</div>\n',
+      '"changelog-ok:"; doWork()\n',
+    ]) {
       write('src/a.ts', bareWrapper);
       assert.equal(changeRequiresFile(releaseChangeTable, root, []).findings.length, 1, `${bareWrapper.trim()} is not a reason`);
     }
@@ -969,11 +976,13 @@ test('change-requires-file refuses missing or malformed pattern configuration', 
       { ...releaseChangeTable, require_when_changed: [] },
       { ...releaseChangeTable, requires_one_of: undefined },
       { ...releaseChangeTable, ignore_when_only: [''] },
+      { ...releaseChangeTable, exempt_marker: '' },
+      { ...releaseChangeTable, exempt_marker: 42 },
     ]) {
       const result = changeRequiresFile(broken, root, []);
       assert.equal(result.examined, 0);
       assert.equal(result.findings.length, 1);
-      assert.match(result.findings[0].message, /pattern|patterns/);
+      assert.match(result.findings[0].message, /change-requires-file/);
     }
   } finally {
     rmSync(root, { recursive: true, force: true });

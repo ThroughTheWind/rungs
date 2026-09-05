@@ -44,9 +44,9 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
   complete change set is not ignore-only.
 - Satisfy the obligation only with a matching fragment that is both changed in this work and still
   exists. An inherited, deleted or ignored fragment must not satisfy it.
-- Accept an exemption marker only when a changed readable file states a substantive reason (at
-  least one letter or number) on the same line; a bare marker or comment closer is not a reason and
-  cannot borrow text from the following line.
+- Accept an exemption marker only when a changed readable file states a substantive reason whose
+  first non-space character is a letter or number on the same line; a bare marker or comment closer
+  is not a reason, and syntax later on that line or text on the following line cannot rescue it.
 - Dispatch every implemented engine through one explicit table-section inventory shared by the
   source runner, explain path, module self-test runner and ejected runner template. Missing engine
   mappings and missing required sections fail closed; there is no whole-table fallback except the
