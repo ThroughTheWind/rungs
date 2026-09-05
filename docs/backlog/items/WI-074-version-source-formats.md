@@ -2,7 +2,7 @@
 id: WI-074
 title: Make release version sources format-aware and fail closed
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-074-version-source-formats
 created: 2026-09-05
 updated: 2026-09-05
@@ -90,8 +90,47 @@ ensuring a malformed third source cannot turn a three-way comparison into a gree
 
 ## Execution
 
-Not started.
+Implemented on `feature/WI-074-version-source-formats`. Exact code tip `140d38a` replaces the XML
+tag regex with a complete-document Saxes parser, rejects DTD/entity indirection, and treats
+malformed structure, duplicate elements and nested markup as unusable evidence. JSON and TOML use
+the same discriminated reader, so every matched source now contributes either a comparable value or
+an explicit finding and examined count.
+
+The first review also proved that the old exclusion fixtures changed the selected table in memory
+to a configuration no consumer could set. That bridge is removed. Release module 1.5.0 exposes the
+single-glob `release.version_exclude` parameter (brace groups cover several paths), substitutes it
+into the production table, and ignores its empty default. The production-path regression persists
+the parameter through `.ai/rungs.toml`, proves two excluded siblings pass with one source examined,
+then proves the same pattern does not hide a different disagreeing sibling.
+
+Adding the exact `saxes@6.0.0` runtime dependency expanded the packed-consumer isolation test rather
+than weakening it: the candidate, both direct dependencies and the locked `xmlchars@2.2.0`
+transitive closure are packed, integrity-checked, installed offline, resolved inside the isolated
+tool prefix and proved outside the producer checkout.
 
 ## Review
 
-Not started.
+The first independent review requested changes at `57fd6df`: malformed/non-XML text could satisfy
+the XML regex, and two self-tests fabricated an `exclude` setting absent from the consumer API.
+Both were treated as P1 evidence gaps. Exact pushed code SHA `140d38a` received independent approval
+after the reviewer reproduced external DTD, undefined entity and trailing-junk failures; valid XML
+declarations, CDATA values and numeric entities still parse.
+
+Acceptance evidence on 2026-09-05:
+
+1. Equal JSON, TOML and XML values pass with three examined; disagreement names each contributing
+   file and value. The exact F-047 `package.json=1.0.0` / `pyproject.toml=2.0.0` production run fails
+   with two examined.
+2. Unit and shipped-module fixtures cover malformed JSON/TOML/XML, missing paths/elements, invalid
+   scalars, XML comment/CDATA decoys, nested/duplicate elements, an optional unmatched glob and the
+   zero-source refusal. All 14 release-version fixtures execute with `ok` outcomes.
+3. A real scratch `init` with `--set release.version_exclude={web,docs}/package.json` persists the
+   setting and passes the production gate with one source examined; the focused narrowness
+   regression still reports an unexcluded `api/package.json` disagreement.
+4. `npm test` passes 60 tests with one intentional platform skip. All 30 registered gates pass.
+   Package dry-run succeeds with 109 entries, including the source and bundled reader.
+   `git diff --check` is clean.
+5. The site builds 147 pages; Astro reports zero diagnostics and 2,317 internal links resolve with
+   zero broken.
+6. GitHub Actions run 33957818667 passes exact code SHA `140d38a`: Node 22.18 and Node 22 on Ubuntu,
+   macOS and Windows plus the site job all succeed.
