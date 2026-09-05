@@ -4,10 +4,11 @@ import { join } from 'node:path';
 import { matchAny } from './glob.ts';
 import type { Engine, Finding } from './engines.ts';
 import { readVersionSource } from './version-source.ts';
+import { semanticText } from './text.ts';
 
 const read = (root: string, rel: string) => {
   try {
-    return readFileSync(join(root, rel), 'utf8');
+    return semanticText(readFileSync(join(root, rel), 'utf8'));
   } catch {
     return '';
   }

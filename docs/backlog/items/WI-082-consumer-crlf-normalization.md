@@ -88,6 +88,26 @@ states, then assert raw bytes and Git status never change.
 
 Started from exact verified `green/main` `6c3b846bbbc21d6255db84323db54facc08ddef2`.
 
+- Added a semantic-only newline normalizer and routed all three declared-engine families plus neutral
+  rule parsing through it. Ownership hashes, divergence reads and byte comparisons remain raw.
+- Reworked the surgical install-record update to parse normalized lines, rejoin with the source's
+  first newline convention, retain terminal-newline state, count only real line replacements and
+  avoid `writeFileSync` when no semantic line changed.
+- Extended the packed existing-repository journey with a true fresh checkout configured
+  `core.autocrlf=true`. It proves CRLF bytes, an origin-only stable ref and detached HEAD, then runs
+  full checks, preview and two applies in each state while comparing record bytes, every tracked
+  byte and Git status.
+- Added LF/CRLF engine equivalence, CRLF record replacement, terminal-newline and mixed-newline
+  no-write unit regressions. The small text helper is included in the package and ejected source
+  inventory so this change does not introduce another missing local import.
+
 ## Review
 
-Pending implementation and independent review.
+Local acceptance evidence:
+
+1. Focused semantic/record/packed journey: 3/3 pass; the packed journey alone completes in 34.2s.
+2. Full `npm test`: 129 total, 126 pass, 3 expected platform skips, 0 fail.
+3. Registered Rungs gates: 30/30 pass; `git diff --check` is clean.
+4. `npm pack --dry-run --json`: 112 entries, including `src/text.ts`; 369,538 bytes packed.
+
+Independent review and the exact pushed OS/Node/site matrix remain pending.
