@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -2822,9 +2822,13 @@ test('a recovery-enumeration failure retains the scratch worktree at the verifie
     assert.equal(gitText(retained, 'rev-parse', 'HEAD'), verifiedMerge, 'the retained worktree points at the merge, not the reset base');
     assert.deepEqual(readFileSync(join(retained, 'a.txt')), mergedBytes, 'retention preserves the merged checkout bytes');
     assert.equal(gitText(retained, 'status', '--porcelain'), '', 'the retained merge checkout remains clean');
+    const listedWorktrees = g('worktree', 'list', '--porcelain', '-z')
+      .split('\0')
+      .filter((field) => field.startsWith('worktree '))
+      .map((field) => realpathSync.native(field.slice('worktree '.length)));
     assert.ok(
-      g('worktree', 'list', '--porcelain').replaceAll('\\', '/').includes(`worktree ${retained.replaceAll('\\', '/')}`),
-      'the retained path stays registered as a Git worktree',
+      listedWorktrees.includes(realpathSync.native(retained)),
+      'the retained path stays registered as a Git worktree despite platform path aliases',
     );
     assert.equal(existsSync(landLockPath(dir)), false, 'retaining recovery never retains the coordination lock');
   } finally {

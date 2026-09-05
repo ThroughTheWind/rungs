@@ -160,3 +160,10 @@ matrix host, plus one redundant LF-only retained-file assertion on Windows. Prod
 handled both create outcomes; the regression now proves the portable target-preservation invariant,
 and the retained-worktree check compares its exact pre-refusal bytes and clean status. This CI
 diagnostic repair awaits exact-tip re-review and exact-SHA CI evidence.
+
+The next candidate, `3be07f6`, is also superseded as final evidence. Actions run 33970613191 made
+both Ubuntu cells and the site job green, but macOS and Windows showed that Git's registered
+worktree path can be a filesystem alias of the path Rungs reports. The retained-worktree regression
+now compares `realpath` identities from NUL-delimited `git worktree list --porcelain -z` output,
+preserving the registration invariant without assuming one textual path spelling. Production
+behavior was unchanged; the exact-tip review and matrix are being repeated.
