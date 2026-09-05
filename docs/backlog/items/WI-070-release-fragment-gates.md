@@ -36,8 +36,9 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
 
 ### Requirements
 
-- Resolve the configured stable branch deterministically as a local ref, exact `origin` ref, or
-  sole other remote-tracking ref; an absent or ambiguous base fails closed and names why.
+- Resolve the configured backlog integration branch deterministically as a local ref, exact
+  `origin` ref, or sole other remote-tracking ref; an absent or ambiguous base fails closed and
+  names why. A release candidate can be ahead of the stable line, so stable is not the work branch.
 - Observe the union of merge-base-to-HEAD changes, staged changes, unstaged changes and untracked
   non-ignored files using Git argv calls rather than a shell.
 - Engage only when at least one changed path matches the configured shipping-code patterns and the
@@ -73,7 +74,10 @@ repository files, not Rungs-managed artifacts or a Rungs-defined document schema
 ### Approach
 
 Factor the exact integration-ref resolver already proven by WI-067 so both Git-aware engines use one
-precedence rule. Collect NUL-delimited path output from explicit Git argv calls, keep each entry as
+precedence rule. The release table takes its base from `backlog.integration_branch`, the authority
+for where item branches are cut and landed, rather than `release.stable_branch`; otherwise a
+fragment already accumulated on a candidate would satisfy every child feature. Collect
+NUL-delimited path output from explicit Git argv calls, keep each entry as
 Git's canonical repository-relative name, and de-duplicate it before applying the table's path
 sets. Git already uses `/` as its index separator; a literal POSIX backslash remains a filename byte
 rather than being aliased to a different path.
@@ -82,7 +86,7 @@ line is not attributed to the working branch.
 
 Teach the self-test builder to initialise a tiny repository, commit a base on `main`, switch to a
 fixture branch and materialise the declared changed files, fragments and optional exemption. The
-test must pass the engine the same literal stable branch and changelog directory that the fixture
+test must pass the engine the same literal integration branch and changelog directory that the fixture
 created; unresolved template parameters are never silently guessed.
 
 Pin F-041 through the production `check` path over a scratch Rungs registry/table containing a stale
@@ -100,7 +104,8 @@ and fragment make the real repository pass.
 3. A reasoned exemption in a changed readable file passes; a bare marker, comment closer or reason
    deferred to the next line fails.
 4. Branch, staged, unstaged and untracked changes are observed; local, `origin` and sole-other-remote
-   bases work, while absent and ambiguous bases return explicit findings with `examined: 0`.
+   integration bases work, while absent and ambiguous bases return explicit findings with
+   `examined: 0`. A fragment inherited from the active candidate does not satisfy its child feature.
 5. All five `release-changelog-fragment` fixtures execute with their declared outcomes and zero
    unrun fixtures. Registering those five fixtures does not increase the global known-unbuilt count,
    because the new builder executes all five.
@@ -160,9 +165,10 @@ Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
 2. Documentation/test-only changes pass and a mixed shipping delta still engages.
 3. Same-line substantive exemptions pass. Bare, next-line, quoted and HTML/C-wrapper-only markers,
    including wrappers followed by ordinary code on the same line, fail.
-4. Local, exact `origin` and sole-other-remote bases evaluate; absent and ambiguous refs return a
-   finding with `examined: 0`. Literal POSIX backslashes are preserved rather than normalised into
-   another path.
+4. Local, exact `origin` and sole-other-remote integration bases evaluate; absent and ambiguous
+   refs return a finding with `examined: 0`. A candidate's existing fragment does not satisfy a
+   child feature, and literal POSIX backslashes are preserved rather than normalised into another
+   path.
 5. All five module fixtures report `ok`; the global warning remains 45 known unbuilt fixtures
    rather than rising by five, and still explicitly says they are not passes.
 6. The production stale-fragment regression fails with one examined fragment. Every implemented
@@ -172,5 +178,5 @@ Acceptance evidence on the WI-068-integrated tree, measured 2026-09-05:
    `release-fragment-current` examining the reconstructed `0.4.0` fragment.
 8. Final combined `npm test`: 54 pass, 0 fail, one expected Windows-only skip for the POSIX filename
    integration case. Module audit: 52 command spans, 15 dispatched. Site: 143 pages built; Astro
-   reports 0 errors/warnings/hints and 2,275 internal links with 0 broken. `npm publish --dry-run`
+   reports 0 errors/warnings/hints and 2,276 internal links with 0 broken. `npm publish --dry-run`
    succeeds with 108 files (including `engine-table.ts`); `git diff --check` is clean.

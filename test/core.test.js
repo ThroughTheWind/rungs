@@ -929,6 +929,37 @@ test('Git path parsing preserves literal backslashes instead of aliasing a diffe
   );
 });
 
+test('change-requires-file excludes fragments inherited from the configured integration branch', () => {
+  const fixture = releaseDeltaRepo();
+  try {
+    fixture.git('branch', '-m', 'candidate/0.4.0');
+    fixture.write('src/prior.ts');
+    fixture.write('changelog.d/prior.md', '# prior candidate work\n');
+    fixture.git('add', '--all');
+    fixture.git('commit', '-q', '-m', 'prior candidate work');
+    fixture.git('switch', '-q', '-c', 'feature/next');
+    fixture.write('src/next.ts');
+
+    const againstIntegration = changeRequiresFile(
+      { ...releaseChangeTable, base_branch: 'candidate/0.4.0' },
+      fixture.root,
+      [],
+    );
+    assert.equal(againstIntegration.findings.length, 1, 'the child feature still owes its own fragment');
+
+    const againstStable = changeRequiresFile(releaseChangeTable, fixture.root, []);
+    assert.equal(againstStable.findings.length, 0, 'the older candidate fragment demonstrates the stable-line false green');
+
+    assert.match(
+      readFileSync(resolve('modules/release/gates/release.toml'), 'utf8'),
+      /base_branch\s*=\s*"\{\{backlog\.integration_branch\}\}"/,
+      'the shipped table must use the branch work is cut from and merged into',
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('a POSIX backslash filename cannot impersonate a changed release fragment', {
   skip: process.platform === 'win32',
 }, () => {

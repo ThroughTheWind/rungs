@@ -7,7 +7,7 @@
 # is a gate people learn to bypass.
 
 [change_requires_file]
-base_branch          = "{{stable_branch}}"
+base_branch          = "{{backlog.integration_branch}}"
 require_when_changed = ["src/**", "lib/**", "app/**", "server/**", "web/**", "packages/**"]
 requires_one_of     = ["{{changelog_dir}}/*.md"]
 ignore_when_only    = ["docs/**", "**/*.test.*", "**/*.spec.*", ".github/**", "*.md"]
