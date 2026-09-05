@@ -2,7 +2,7 @@
 id: WI-069
 title: Preserve gate-registry bytes on a no-op upgrade
 type: feature
-status: planned
+status: in_progress
 branch: feature/WI-069-idempotent-gate-registration
 created: 2026-09-05
 updated: 2026-09-05
@@ -69,7 +69,7 @@ replacement before relying on the packed consumer journey.
 
 ## Execution
 
-Not started.
+Implementation started on `feature/WI-069-idempotent-gate-registration` from `0ed80b5`.
 
 ## Review
 
