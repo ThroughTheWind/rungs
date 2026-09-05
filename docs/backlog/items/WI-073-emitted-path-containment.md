@@ -2,7 +2,7 @@
 id: WI-073
 title: Contain every emitted module path inside the consumer repository
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-073-emitted-path-containment
 created: 2026-09-05
 updated: 2026-09-05
@@ -90,8 +90,39 @@ the supplied plan again before any write rather than trusting an earlier in-memo
 
 ## Execution
 
-Not started.
+Implemented on `feature/WI-073-emitted-path-containment`.
+
+`src/emitted-path.ts` is the single boundary for consumer destinations. It treats module output as
+portable repository-relative data, rejects both platforms' rooted/traversal/device-name forms,
+canonicalises the deepest existing ancestor, and refuses outward aliases. Its operation preflight
+also rejects canonical case/Unicode aliases, file/descendant target pairs, writable leaf aliases,
+and existing non-file overwrite sinks before any phase writes.
+
+Add now derives files, rules and skills from one emission source and preflights the actual install
+set together with fragments, gates, the install record and prospective render output. This wider
+set was necessary because `add` automatically renders after installing: validating only module
+files could still leave a partial install when a parameterised rule routed an `AGENTS.md` outside
+the repository or a later fixed sink was obstructed. Upgrade performs the same check from stored
+parameters and revalidates the supplied plan, including emission membership, writable targets,
+the gate registry and install record. Doctor/upgrade ownership reads use the same canonical paths.
+
+Adversarial review found and closed three additional forms of the same atomicity defect: an inward
+leaf symlink redirecting ownership to another in-repository file, a directory/FIFO/socket at a
+later overwrite sink, and individually contained targets such as `foo` plus `foo/bar` that cannot
+both be files. The last was reproduced through the real CLI before its regression was added.
 
 ## Review
 
-Not started.
+| Criterion | Verified |
+| --- | --- |
+| Direct parameters | CLI and unit fixtures refuse parent/mixed traversal, POSIX/Windows rooted and absolute forms, drive-relative paths, device/ADS/control-name forms, and report the module plus escaped target without writing |
+| Stored parameters and supplied upgrade plans | Planning, doctor ownership inspection and application all fail closed; a mixed safe/unsafe plan, a forged non-emission target and a later directory target leave the earlier file and install record untouched |
+| Canonical aliases and collisions | An outward junction with a missing descendant is refused; an inward directory alias remains valid; leaf redirects, cross-phase aliases, case/Unicode aliases and order-independent file/descendant pairs are rejected |
+| Preserved behavior | Valid nested targets and `.agents/skills` retain dry-run, install-record, current/stale planning, upgrade and no-overwrite behavior |
+| Regression suite | `test/emitted-path.test.js`: 10 tests, 8 pass and 2 Windows file-symlink privilege skips; `npm test`: 67 total, 64 pass and 3 expected platform/privilege skips |
+| Package and repository | `npm pack --dry-run --json`: `@rungs/cli@0.3.1`, 109 entries including `src/emitted-path.ts`; `node src/cli.ts check`: 30 pass, 0 fail; `git diff --check`: clean |
+| Site | `astro check`: 0 errors, warnings or hints; link check: 146 routes, 2,306 internal links, 0 broken; static build: 146 pages |
+
+The two file-leaf symlink fixtures require the POSIX CI cells on the exact pushed SHA because this
+Windows host does not grant file-symlink creation. The six-cell OS/Node matrix and site job remain
+the merge gate rather than being represented as local evidence.

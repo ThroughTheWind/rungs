@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import type { Manifest } from './types.ts';
 import { matchAny, walk } from './glob.ts';
 import { markers, mergeBlock, substitute, type Params } from './substitute.ts';
+import { preflightEmittedPaths, resolveEmittedPath, type EmittedPathCandidate } from './emitted-path.ts';
 
 export interface AddAction {
   disposition: 'create' | 'skip-exists' | 'rule' | 'skill' | 'merge' | 'gate';
@@ -17,6 +18,93 @@ const FRAGMENT_TARGET: Record<string, string> = {
   gitignore: '.gitignore',
   gitattributes: '.gitattributes',
 };
+
+const SHARED = new Set(['AGENTS.md', 'CLAUDE.md', '.gitignore', '.gitattributes', '.ai/gates.toml']);
+
+interface FileEmission {
+  target: string;
+  content: string;
+  disposition: AddAction['disposition'];
+}
+
+/** One source of truth for the files, rules and skills both add and upgrade emit. */
+function fileEmissions(mod: Manifest, params: Params, skillsDir = '.claude/skills'): FileEmission[] {
+  const out: FileEmission[] = [];
+  const sub = (text: string) => substitute(text, mod.name, params);
+  for (const [dir, prefix, disposition] of [
+    ['files', '', 'create'],
+    ['rules', '.ai/rules/', 'rule'],
+    ['skills', `${skillsDir}/`, 'skill'],
+  ] as const) {
+    const base = join(mod.dir, dir);
+    if (!existsSync(base)) continue;
+    for (const rel of walk(base)) {
+      const target = sub(prefix + rel).replace(/\\/g, '/');
+      let content = sub(readFileSync(join(base, rel), 'utf8'));
+      if (dir === 'skills') content = withOptedInExtensions(mod, rel, content);
+      out.push({ target, content, disposition });
+    }
+  }
+  return out;
+}
+
+function fragmentTargets(mod: Manifest): string[] {
+  const base = join(mod.dir, 'fragments');
+  if (!existsSync(base)) return [];
+  return walk(base).map((rel) => FRAGMENT_TARGET[rel]).filter((target): target is string => Boolean(target));
+}
+
+function moduleTargets(
+  mod: Manifest,
+  params: Params,
+  skillsDir: string,
+  files = fileEmissions(mod, params, skillsDir),
+): EmittedPathCandidate[] {
+  return [
+    ...files.map((file) => ({ moduleName: mod.name, target: file.target, shared: SHARED.has(file.target) })),
+    ...fragmentTargets(mod).map((target) => ({ moduleName: mod.name, target, shared: true, writeExisting: true })),
+    ...(mod.gates.length
+      ? [{ moduleName: mod.name, target: '.ai/gates.toml', shared: true, writeExisting: true }]
+      : []),
+  ];
+}
+
+/** Validate a whole install set before the first module is allowed to write. */
+export function moduleEmissionCandidates(
+  mods: Manifest[],
+  params: Params,
+  skillsDir = '.claude/skills',
+): EmittedPathCandidate[] {
+  return mods.flatMap((mod) => moduleTargets(mod, params, skillsDir));
+}
+
+export function preflightModuleEmissions(
+  mods: Manifest[],
+  repoRoot: string,
+  params: Params,
+  skillsDir = '.claude/skills',
+): void {
+  preflightEmittedPaths(repoRoot, moduleEmissionCandidates(mods, params, skillsDir));
+}
+
+export interface ProspectiveRuleEmission {
+  moduleName: string;
+  target: string;
+  content: string;
+}
+
+/** Rule sources an install would create, in installation order. */
+export function prospectiveRuleEmissions(
+  mods: Manifest[],
+  params: Params,
+  skillsDir = '.claude/skills',
+): ProspectiveRuleEmission[] {
+  return mods.flatMap((mod) =>
+    fileEmissions(mod, params, skillsDir)
+      .filter((file) => file.disposition === 'rule')
+      .map((file) => ({ moduleName: mod.name, target: file.target, content: file.content })),
+  );
+}
 
 /**
  * Install one module. Disposition is decided by which subdirectory a file is
@@ -33,8 +121,13 @@ export function addModule(
   opts: { dryRun?: boolean; skillsDir?: string } = {},
 ): AddAction[] {
   const actions: AddAction[] = [];
+  const skillsDir = opts.skillsDir ?? '.claude/skills';
+  const files = fileEmissions(mod, params, skillsDir);
+  const targets = moduleTargets(mod, params, skillsDir, files);
+  const resolved = preflightEmittedPaths(repoRoot, targets);
+  const destinations = new Map(targets.map((candidate, index) => [candidate.target, resolved[index].absolute]));
   const write = (rel: string, content: string, disposition: AddAction['disposition']) => {
-    const full = join(repoRoot, rel);
+    const full = destinations.get(rel)!;
     if (existsSync(full)) {
       actions.push({ disposition: 'skip-exists', target: rel, note: 'already present — left alone' });
       return;
@@ -48,31 +141,7 @@ export function addModule(
   const sub = (text: string) => substitute(text, mod.name, params);
   const has = (d: string) => existsSync(join(mod.dir, d));
 
-  if (has('files')) {
-    const base = join(mod.dir, 'files');
-    for (const rel of walk(base)) {
-      write(sub(rel), sub(readFileSync(join(base, rel), 'utf8')), 'create');
-    }
-  }
-
-  if (has('rules')) {
-    const base = join(mod.dir, 'rules');
-    for (const rel of walk(base)) {
-      write(join('.ai', 'rules', rel).split('\\').join('/'), sub(readFileSync(join(base, rel), 'utf8')), 'rule');
-    }
-  }
-
-  if (has('skills')) {
-    const base = join(mod.dir, 'skills');
-    const dir = opts.skillsDir ?? '.claude/skills';
-    for (const rel of walk(base)) {
-      // Through the same helper `emittedFiles` uses. These two paths both emit
-      // skills and are easy to change apart — patching only `emittedFiles` for
-      // F-019 left `add` still writing the un-extended file, so an install and
-      // an upgrade would have produced different content for the same skill.
-      write(`${dir}/${rel}`, withOptedInExtensions(mod, rel, sub(readFileSync(join(base, rel), 'utf8'))), 'skill');
-    }
-  }
+  for (const file of files) write(file.target, file.content, file.disposition);
 
   if (has('fragments')) {
     const base = join(mod.dir, 'fragments');
@@ -82,7 +151,7 @@ export function addModule(
         actions.push({ disposition: 'merge', target: rel, note: 'unknown fragment target — skipped' });
         continue;
       }
-      const full = join(repoRoot, target);
+      const full = destinations.get(target)!;
       const existing = existsSync(full) ? readFileSync(full, 'utf8') : '';
       const fragment = sub(readFileSync(join(base, rel), 'utf8'));
       const merged = mergeBlock(existing, fragment, mod.name);
@@ -114,7 +183,12 @@ export function addModule(
  */
 export function registerGates(mods: Manifest[], repoRoot: string, dryRun = false, adopted: AdoptedGate[] = []): AddAction[] {
   const actions: AddAction[] = [];
-  const registry = join(repoRoot, '.ai', 'gates.toml');
+  const owners = [...(adopted.length ? ['adopted'] : []), ...mods.filter((mod) => mod.gates.length).map((mod) => mod.name)];
+  const destinations = preflightEmittedPaths(
+    repoRoot,
+    owners.map((moduleName) => ({ moduleName, target: '.ai/gates.toml', shared: true, writeExisting: true })),
+  );
+  const registry = destinations[0]?.absolute ?? join(repoRoot, '.ai', 'gates.toml');
 
   // Adoption, in the only form ADR-0004 permits: the repo's existing validators
   // are registered as `command` gates so they gain the runner, the ledger and
@@ -317,8 +391,6 @@ export const contentHash = (s: string) => createHash('sha256').update(s.replace(
  * managed blocks is never whole-file upgraded — its **blocks** are, through the
  * merge path.
  */
-const SHARED = new Set(['AGENTS.md', 'CLAUDE.md', '.gitignore', '.gitattributes', '.ai/gates.toml']);
-
 /**
  * Add the harness extensions a module opted this skill into.
  *
@@ -352,21 +424,8 @@ function withOptedInExtensions(mod: Manifest, rel: string, content: string): str
 
 export function emittedFiles(mod: Manifest, params: Params, skillsDir = '.claude/skills'): Map<string, string> {
   const out = new Map<string, string>();
-  const sub = (t: string) => substitute(t, mod.name, params);
-  for (const [dir, prefix] of [
-    ['files', ''],
-    ['rules', '.ai/rules/'],
-    ['skills', `${skillsDir}/`],
-  ] as const) {
-    const base = join(mod.dir, dir);
-    if (!existsSync(base)) continue;
-    for (const rel of walk(base)) {
-      const target = sub(prefix + rel).split('\\').join('/');
-      if (SHARED.has(target)) continue;
-      let content = sub(readFileSync(join(base, rel), 'utf8'));
-      if (dir === 'skills') content = withOptedInExtensions(mod, rel, content);
-      out.set(target, content);
-    }
+  for (const file of fileEmissions(mod, params, skillsDir)) {
+    if (!SHARED.has(file.target)) out.set(file.target, file.content);
   }
   return out;
 }
@@ -409,8 +468,9 @@ export function writeInstallRecord(
     // divergence the user caused — implying they broke something they never
     // touched. Kept files are listed separately and stay theirs forever.
     const emitted = emittedFiles(m, params, skillsDir);
-    const created = [...emitted].filter(([rel]) => (wroteByModule?.get(m.name)?.has(rel) ?? existsSync(join(repoRoot, rel))));
-    const kept = [...emitted].filter(([rel]) => !created.some(([c]) => c === rel) && existsSync(join(repoRoot, rel)));
+    const exists = (rel: string) => existsSync(resolveEmittedPath(repoRoot, m.name, rel).absolute);
+    const created = [...emitted].filter(([rel]) => (wroteByModule?.get(m.name)?.has(rel) ?? exists(rel)));
+    const kept = [...emitted].filter(([rel]) => !created.some(([c]) => c === rel) && exists(rel));
     if (created.length) {
       lines.push(`[modules.${m.name}.hashes]`);
       for (const [rel, content] of created) lines.push(`"${rel}" = "${contentHash(content)}"`);
@@ -421,7 +481,10 @@ export function writeInstallRecord(
     }
     lines.push('');
   }
-  writeFileSync(join(repoRoot, '.ai', 'rungs.toml'), lines.join('\n'));
+  const record = preflightEmittedPaths(repoRoot, [
+    { moduleName: 'rungs', target: '.ai/rungs.toml', writeExisting: true },
+  ])[0];
+  writeFileSync(record.absolute, lines.join('\n'));
 }
 
 export interface AdoptedGate {
