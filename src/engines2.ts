@@ -434,6 +434,76 @@ const sameLineExemption = (text: string, marker?: string) =>
     line.split(marker).slice(1).some((tail) => /^[ \t]*[\p{L}\p{N}]/u.test(tail)),
   );
 
+const stripCarriageReturn = (line: string) => line.endsWith('\r') ? line.slice(0, -1) : line;
+
+/**
+ * Return only exemption evidence introduced by the complete current delta.
+ *
+ * One `git diff <merge-base>` observes committed, staged and unstaged tracked
+ * content in its final working-tree state, so staging cannot change the
+ * verdict and an intermediate edit that was later reverted cannot count. Git
+ * prefixes added content with a control-byte indicator, which keeps diff
+ * headers and user-authored `+++` lines out of the parser. Untracked files are
+ * wholly branch-local by definition.
+ *
+ * An unchanged marker line found anywhere in the base tree remains historical
+ * even if a rename, copy or line move makes Git present it as an addition. The
+ * conservative repository-wide comparison is intentional: copying an old
+ * reason is not new evidence; edit the reason to state why this branch is safe.
+ */
+function hasBranchLocalExemption(
+  root: string,
+  mergeBase: string,
+  untracked: string[],
+  marker: string,
+): boolean {
+  if (untracked.some((rel) => existsSync(join(root, rel)) && sameLineExemption(read(root, rel), marker))) {
+    return true;
+  }
+
+  const newLine = '\x1f';
+  const oldLine = '\x1e';
+  const contextLine = '\x1d';
+  const diff = execFileSync('git', [
+    'diff',
+    '--no-ext-diff',
+    '--no-textconv',
+    '--no-color',
+    '--unified=0',
+    '--find-renames',
+    '--find-copies',
+    '--find-copies-harder',
+    `--output-indicator-new=${newLine}`,
+    `--output-indicator-old=${oldLine}`,
+    `--output-indicator-context=${contextLine}`,
+    mergeBase,
+    '--',
+  ], { cwd: root, stdio: 'pipe' }).toString();
+
+  const added = diff
+    .split('\n')
+    .filter((line) => line.startsWith(newLine))
+    .map((line) => stripCarriageReturn(line.slice(1)))
+    .filter((line) => sameLineExemption(line, marker));
+  if (!added.length) return false;
+
+  let historical = '';
+  try {
+    historical = execFileSync(
+      'git',
+      ['grep', '-I', '-h', '-F', '-e', marker, mergeBase, '--'],
+      { cwd: root, stdio: 'pipe' },
+    ).toString();
+  } catch (error: any) {
+    // `git grep` uses 1 for a valid search with no matches. Every other error
+    // means provenance is unknown and must be surfaced by the caller.
+    if (error?.status !== 1) throw error;
+    historical = error?.stdout?.toString() ?? '';
+  }
+  const inherited = new Set(historical.split('\n').map(stripCarriageReturn).filter(Boolean));
+  return added.some((line) => !inherited.has(line));
+}
+
 /**
  * Require a changed companion file when a branch changes a configured path.
  *
@@ -467,6 +537,8 @@ export const changeRequiresFile: Engine = (t, root) => {
 
   const baseName = String(t.base_branch ?? 'main');
   let changed: string[];
+  let mergeBase: string;
+  let untracked: string[];
   try {
     const resolved = resolveIntegrationRef(root, baseName);
     if (!resolved.ref) {
@@ -475,12 +547,13 @@ export const changeRequiresFile: Engine = (t, root) => {
         examined: 0,
       };
     }
-    const mergeBase = gitArgs(root, ['merge-base', 'HEAD', resolved.ref]);
+    mergeBase = gitArgs(root, ['merge-base', 'HEAD', resolved.ref]);
+    untracked = gitPaths(root, ['ls-files', '--others', '--exclude-standard', '-z']);
     changed = [...new Set([
       ...gitPaths(root, ['diff', '--name-only', '--no-renames', '-z', mergeBase, 'HEAD']),
       ...gitPaths(root, ['diff', '--cached', '--name-only', '--no-renames', '-z']),
       ...gitPaths(root, ['diff', '--name-only', '--no-renames', '-z']),
-      ...gitPaths(root, ['ls-files', '--others', '--exclude-standard', '-z']),
+      ...untracked,
     ])].sort();
   } catch {
     return {
@@ -504,10 +577,18 @@ export const changeRequiresFile: Engine = (t, root) => {
   );
   if (companion) return { findings: [], examined };
 
-  const exempt = changed.some(
-    (rel) => existsSync(join(root, rel)) && sameLineExemption(read(root, rel), t.exempt_marker),
-  );
-  if (exempt) return { findings: [], examined };
+  if (t.exempt_marker) {
+    try {
+      if (hasBranchLocalExemption(root, mergeBase, untracked, t.exempt_marker)) {
+        return { findings: [], examined };
+      }
+    } catch {
+      return {
+        findings: [{ message: `cannot read git exemption provenance against '${baseName}'; required companion file not evaluated` }],
+        examined: 0,
+      };
+    }
+  }
 
   return {
     findings: [{ message: String(t.message ?? 'changed shipping code requires a companion file').trim() }],

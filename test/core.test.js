@@ -1125,6 +1125,13 @@ test('change-requires-file resolves remote-only bases and refuses ambiguous or a
     assert.equal(origin.findings.length, 1, 'exact origin/main is evaluated');
     assert.ok(origin.examined > 0);
 
+    write('src/a.ts', '// changelog-ok: internal cache only; output is unchanged\n');
+    assert.equal(
+      changeRequiresFile(releaseChangeTable, root, []).findings.length,
+      0,
+      'exact origin/main preserves branch-local exemption provenance',
+    );
+
     git('update-ref', '-d', 'refs/remotes/origin/main');
     git('remote', 'add', 'upstream', 'https://example.invalid/upstream.git');
     git('remote', 'add', 'fork', 'https://example.invalid/fork.git');
@@ -1136,7 +1143,7 @@ test('change-requires-file resolves remote-only bases and refuses ambiguous or a
 
     git('update-ref', '-d', 'refs/remotes/fork/main');
     const soleRemote = changeRequiresFile(releaseChangeTable, root, []);
-    assert.equal(soleRemote.findings.length, 1, 'a sole non-origin remote is evaluated');
+    assert.equal(soleRemote.findings.length, 0, 'a sole non-origin remote preserves branch-local exemption provenance');
     assert.ok(soleRemote.examined > 0);
 
     git('update-ref', '-d', 'refs/remotes/upstream/main');
@@ -1173,8 +1180,8 @@ test('release fixtures execute and every engine uses the strict shared table sel
     selectEngineTable(table, 'change-requires-file', 'release-changelog-fragment'),
     blocks,
   );
-  assert.equal(results.length, 5);
-  assert.deepEqual(results.map((result) => result.outcome), ['ok', 'ok', 'ok', 'ok', 'ok']);
+  assert.equal(results.length, 7);
+  assert.deepEqual(results.map((result) => result.outcome), Array(7).fill('ok'));
 
   const versionBlocks = table.self_test
     .filter((block) => block.gate === 'release-version-consistent')
@@ -1327,7 +1334,7 @@ test('consumer-configured version exclusions reach production runGates and remai
         Object.entries(packages).map(([rel, version]) => [rel, JSON.stringify({ version })]),
       ),
       '.ai/gates.toml': '[[gates]]\nid = "release-version-consistent"\nkind = "declared"\nengine = "computed-claim"\ntable = "release/release.toml"\n',
-      '.ai/rungs.toml': `[repo]\nharnesses = ["agents-md"]\n\n[modules.release]\nversion = "1.5.0"\nstate = "managed"\nparams = { version_exclude = "${versionExclude}" }\n`,
+      '.ai/rungs.toml': `[repo]\nharnesses = ["agents-md"]\n\n[modules.release]\nversion = "1.6.0"\nstate = "managed"\nparams = { version_exclude = "${versionExclude}" }\n`,
     });
   const excludedRoot = makeRoot('{web,docs}/package.json', {
     'package.json': '1.2.3',
