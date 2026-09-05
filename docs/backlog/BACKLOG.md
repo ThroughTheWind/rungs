@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-064 -->
+<!-- NEXT-ID: WI-069 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -24,11 +24,16 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type |
 | --- | --- | --- |
+| [WI-065](items/WI-065-fresh-findings-baseline.md) | Make a fresh tracked findings register pass its own gate | feature |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
+| [WI-064](items/WI-064-arena-lab-dogfood-bootstrap.md) | Bootstrap Arena Lab as the first direct Rungs consumer | epic |
+| [WI-066](items/WI-066-consumer-cli-pin.md) | Give consumers one exact Rungs CLI version source | feature |
+| [WI-067](items/WI-067-ref-only-integration-branch.md) | Reconcile backlog state when the integration branch has no local ref | feature |
+| [WI-068](items/WI-068-existing-repo-consumer-journey.md) | Gate the packaged existing-repository consumer journey | feature |
 
 ## Proposed
 
