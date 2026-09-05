@@ -2,8 +2,8 @@
 id: WI-078
 title: Require release exemptions from the current branch
 type: feature
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-078-branch-local-release-exemptions
 created: 2026-09-05
 updated: 2026-09-05
 related: [WI-067, WI-070, WI-072, F-043]
@@ -26,10 +26,10 @@ into a permanent off switch on a hot file.
 ## Decision
 
 `accepted` — 2026-09-05, during the user-authorised Arena Lab bootstrap. An exemption satisfies
-`change-requires-file` only when the marker and substantive same-line reason are added or modified by
-the complete current branch/worktree delta against the resolved integration ref. Existing markers
-may remain as history, but unchanged, moved or copied historical text supplies no evidence for new
-shipping work.
+`change-requires-file` only when the marker has a substantive same-line reason whose wording is new
+to the complete current branch/worktree delta against the resolved integration ref. Existing
+markers may remain as history, but reusing, duplicating, moving or copying any reason already present
+in the merge-base tree supplies no evidence for new shipping work; rewording is the explicit proof.
 
 ## Plan
 
@@ -41,8 +41,16 @@ shipping work.
   before and after staging/committing.
 - Preserve the substantive same-line reason rule; bare markers, wrapper punctuation, next-line text,
   deleted markers and binary/unreadable evidence remain refusals.
-- Reject an unchanged marker inherited from the integration branch, including one carried through a
-  pure rename, copy or line move while unrelated shipping content changes.
+- Reject reason wording inherited anywhere from the integration branch, including duplicates and
+  text carried through a pure rename, copy or line move while unrelated shipping content changes.
+- Read candidate evidence only from canonically contained regular UTF-8 text that Git attributes do
+  not declare binary; aliases, symlinks (including mode `120000` entries materialized as ordinary
+  files by Git), invalid text and binary files cannot waive a fragment.
+- When a candidate has an index entry, require exactly one stage-zero ordinary blob mode; allow an
+  index-absent candidate only after validating its untracked filesystem leaf. Historical `HEAD`
+  mode does not override the current index proposal.
+- Carry block-comment, HTML-comment and quoted-string state across document lines so a marker in a
+  multiline wrapper ends at its actual close token and cannot absorb adjacent implementation text.
 - Preserve NUL-safe path handling, deterministic local/origin/sole-remote integration resolution,
   no-renames changed-path semantics and explicit failure when Git cannot establish provenance.
 
@@ -55,11 +63,18 @@ shipping work.
 
 ### Approach
 
-Collect the current branch/worktree view once against the resolved merge base, then evaluate only
-lines Git can attribute as additions or modifications in that delta. Use argv-based Git calls and
-NUL-delimited path discovery; never interpolate a path or ref into a shell command. Untracked text is
-entirely branch-local. For tracked files, follow rename/copy provenance or otherwise compare against
-the base so merely relocating an identical historical marker cannot make it new evidence.
+Collect the complete changed-path view against the resolved merge base with argv-based Git calls and
+NUL-delimited path discovery; never interpolate a path or ref into a shell command. Extract the
+reason text with a document-aware scanner for common comment/string wrappers so adjacent code or
+formatting is not mistaken for a reason edit. Read the full matching merge-base blobs rather than
+context-free grep lines. Build one conservative set of all substantive reason strings present in
+the merge-base tree, then accept only contained regular UTF-8 text whose reason is absent from that
+set. When the path is present in the index, accept only a single stage-zero ordinary blob mode, even
+when a platform configured with `core.symlinks=false` exposes a mode `120000` entry as a regular
+file. An absent index entry delegates to the already validated untracked leaf. Do not consult
+historical `HEAD` mode: a staged `120000` to `100644` conversion is current ordinary evidence.
+This deliberately resolves an unknowable copied-versus-coincidentally-identical sentence the same
+way before and after staging: historical wording must be reworded for the current branch.
 
 Keep the existing path-level changed set for deciding whether shipping work and a companion fragment
 participate. Line provenance narrows only the exemption branch; failure to parse textual provenance
@@ -70,17 +85,24 @@ means no exemption, not a guessed pass.
 1. A base-branch file already containing a substantive marker fails when a later branch changes an
    unrelated line and supplies no fragment; the exact F-043 reproduction fails in production
    `runGates` as well as the direct engine.
-2. Adding a new reasoned marker or modifying the marker's reason passes in committed, staged,
-   unstaged and untracked files, with the verdict unchanged across those state transitions.
-3. A pure rename/copy or line move carrying the inherited marker fails; changing the reason during
-   the move passes. Deleted files/markers and binary or unreadable diffs cannot exempt.
-4. Bare, next-line, quoted and comment-wrapper-only reasons retain their current failures, and a
-   valid branch-local reason still satisfies only a branch that also changes a configured shipping
-   path.
-5. Local, exact `origin` and sole-other-remote bases produce identical provenance decisions;
+2. Adding a marker with new reason wording or modifying inherited reason wording passes in
+   committed, staged, unstaged and untracked files, with the verdict unchanged across those state
+   transitions. Reusing merge-base wording fails consistently in all four states.
+3. A duplicate, pure rename/copy or line move carrying inherited wording fails; changing the reason
+   during the move passes. Deleted files/markers, aliases, symlinks and binary or unreadable text
+   cannot exempt.
+4. Bare, next-line, quoted and comment-wrapper-only reasons retain their current failures. Wrapper
+   state spanning lines isolates the reason from adjacent code in block comments, HTML comments and
+   quoted strings, while a genuinely new multiline-wrapped reason passes. A valid branch-local
+   reason still satisfies only a branch that also changes a configured shipping path.
+5. Git mode `120000` evidence fails in staged/index and committed states even when Git checks it out
+   as an ordinary file; ordinary untracked, staged and committed blob evidence remains valid. A
+   `120000` to `100644` conversion passes once the ordinary mode is staged and after commit, while
+   the inverse passes only before its proposed `120000` mode reaches the index and then fails.
+6. Local, exact `origin` and sole-other-remote bases produce identical provenance decisions;
    ambiguous or absent refs fail closed with the existing actionable result.
-6. Every release self-test still executes in both directions with zero newly unrun fixtures.
-7. Focused tests, full `npm test`, package dry-run, `git diff --check` and all registered Rungs gates
+7. Every release self-test still executes in both directions with zero newly unrun fixtures.
+8. Focused tests, full `npm test`, package dry-run, `git diff --check` and all registered Rungs gates
    pass. The exact pushed SHA passes all six OS/Node matrix cells and the site job.
 
 ### Out of scope
@@ -92,8 +114,25 @@ means no exemption, not a guessed pass.
 
 ## Execution
 
-Not started.
+Started from verified `green/main` at `0833172a780da6377da081e7423c46d7bc370186` after WI-076
+landed.
+
+The final review hardening replaces line-local wrapper inference with full-document state and reads
+the original matching blobs from the merge-base tree. It also verifies the current index proposal
+when present, closing the `core.symlinks=false` representation gap without letting historical
+`HEAD` mode veto a staged ordinary conversion. Regression fixtures exercise all three multiline
+wrapper families and create both directions of `120000`/`100644` mode transitions through Git
+plumbing, so the Windows path requires no symlink privilege.
+
+Local verification after that hardening: 11 focused `change-requires-file`/exemption groups passed;
+the full suite passed 93 of 96 tests with the three expected platform skips; all 30 registered gates
+passed; and `npm pack --dry-run --json` produced 110 entries (360,302-byte archive, 1,227,099 bytes
+unpacked). `git diff --check` was clean.
 
 ## Review
 
-Not started.
+Independent final review of `fb81f76` found the line-local multiline-wrapper bypass and the missing
+Git-object-mode check. Follow-up review of `e984004` found that also consulting historical `HEAD`
+incorrectly rejected a currently staged ordinary conversion. The current implementation makes the
+index proposal authoritative when present and keeps the canonical untracked-leaf fallback;
+exact-tip CI and independent re-review remain pending.

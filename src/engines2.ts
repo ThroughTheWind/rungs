@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { TextDecoder } from 'node:util';
+import { resolveEmittedPath } from './emitted-path.ts';
 import { matchAny } from './glob.ts';
 import { readVersionSource } from './version-source.ts';
 import type { Engine, Finding } from './engines.ts';
@@ -429,10 +431,217 @@ const patternList = (value: unknown, allowEmpty = false): value is string[] =>
   Array.isArray(value) && (allowEmpty || value.length > 0) &&
   value.every((pattern) => typeof pattern === 'string' && pattern.trim().length > 0);
 
-const sameLineExemption = (text: string, marker?: string) =>
-  !!marker && text.split(/\r?\n/).some((line) =>
-    line.split(marker).slice(1).some((tail) => /^[ \t]*[\p{L}\p{N}]/u.test(tail)),
+type ExemptionWrapper = { kind: 'plain' | 'line' | 'block' | 'html' | 'quote'; close?: string };
+
+function wrapperCloseAt(reason: string, wrapper: ExemptionWrapper): number {
+  if (!wrapper.close) return -1;
+  if (wrapper.kind !== 'quote') return reason.indexOf(wrapper.close);
+  for (let index = 0; index < reason.length; index++) {
+    if (reason[index] === '\\') {
+      index++;
+    } else if (reason[index] === wrapper.close) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Extract substantive same-line reasons while retaining wrapper state across
+ * the whole document. A marker on the second line of a block, HTML comment or
+ * quoted string must still stop at that wrapper's close token; otherwise an
+ * adjacent code-only edit would be mistaken for a new reason.
+ */
+function exemptionEvidence(text: string, marker: string): string[] {
+  const evidence: string[] = [];
+  let wrapper: ExemptionWrapper = { kind: 'plain' };
+
+  for (let index = 0; index < text.length; index++) {
+    if (text.startsWith(marker, index)) {
+      const reasonAt = index + marker.length;
+      const cr = text.indexOf('\r', reasonAt);
+      const lf = text.indexOf('\n', reasonAt);
+      const lineEnd = cr < 0 ? (lf < 0 ? text.length : lf) :
+        (lf < 0 ? cr : Math.min(cr, lf));
+      const rawTail = text.slice(reasonAt, lineEnd);
+      const leading = rawTail.match(/^[ \t]*/)?.[0].length ?? 0;
+      if (/[\p{L}\p{N}]/u.test(rawTail[leading] ?? '')) {
+        let reason = rawTail.slice(leading);
+        const closeAt = wrapperCloseAt(reason, wrapper);
+        if (closeAt >= 0) reason = reason.slice(0, closeAt);
+        reason = reason.trimEnd();
+        if (reason) evidence.push(reason);
+      }
+    }
+
+    if (wrapper.kind === 'line') {
+      if (text[index] === '\r' || text[index] === '\n') wrapper = { kind: 'plain' };
+      continue;
+    }
+    if (wrapper.kind === 'block') {
+      if (text.startsWith('*/', index)) {
+        wrapper = { kind: 'plain' };
+        index++;
+      }
+      continue;
+    }
+    if (wrapper.kind === 'html') {
+      if (text.startsWith('-->', index)) {
+        wrapper = { kind: 'plain' };
+        index += 2;
+      }
+      continue;
+    }
+    if (wrapper.kind === 'quote') {
+      if (text[index] === '\\') {
+        index++;
+      } else if (text[index] === wrapper.close) {
+        wrapper = { kind: 'plain' };
+      }
+      continue;
+    }
+
+    if (text.startsWith('//', index)) {
+      wrapper = { kind: 'line' };
+      index++;
+    } else if (text.startsWith('/*', index)) {
+      wrapper = { kind: 'block', close: '*/' };
+      index++;
+    } else if (text.startsWith('<!--', index)) {
+      wrapper = { kind: 'html', close: '-->' };
+      index += 3;
+    } else if (text[index] === '"' || text[index] === "'" || text[index] === '`') {
+      wrapper = { kind: 'quote', close: text[index] };
+    }
+  }
+  return evidence;
+}
+
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+type GitTreeEntry = { mode: string; type: string; oid: string };
+
+function gitTreeEntry(root: string, treeish: string, rel: string): GitTreeEntry | undefined {
+  const output = execFileSync(
+    'git',
+    ['--literal-pathspecs', 'ls-tree', '-z', treeish, '--', rel],
+    { cwd: root, stdio: 'pipe' },
   );
+  if (!output.length) return undefined;
+  const records = output.toString('utf8').split('\0').filter(Boolean);
+  if (records.length !== 1) throw new Error(`unexpected tree entry count for ${rel}`);
+  const match = records[0].match(/^([0-7]{6}) ([a-z]+) ([0-9a-f]+)\t/);
+  if (!match) throw new Error(`cannot parse tree entry for ${rel}`);
+  return { mode: match[1], type: match[2], oid: match[3] };
+}
+
+function candidateGitModesAreRegular(root: string, rel: string): boolean {
+  const output = execFileSync(
+    'git',
+    ['--literal-pathspecs', 'ls-files', '--stage', '-z', '--', rel],
+    { cwd: root, stdio: 'pipe' },
+  );
+  const entries = output.toString('utf8').split('\0').filter(Boolean).map((record) => {
+    const match = record.match(/^([0-7]{6}) [0-9a-f]+ ([0-3])\t/);
+    if (!match) throw new Error(`cannot parse index entry for ${rel}`);
+    return { mode: match[1], stage: match[2] };
+  });
+
+  // The index is the current proposed Git object when it has an entry. An
+  // absent entry is an untracked path whose canonical filesystem leaf was
+  // already proven regular above. HEAD is deliberately irrelevant here: its
+  // historical mode must not veto a staged conversion to an ordinary blob.
+  return entries.length === 0 ||
+    (entries.length === 1 && entries[0].stage === '0' &&
+      ['100644', '100755'].includes(entries[0].mode));
+}
+
+function candidateExemptionText(root: string, rel: string): string | undefined {
+  let resolved;
+  try {
+    resolved = resolveEmittedPath(root, 'release exemption evidence', rel);
+    if (resolved.leafAlias || !lstatSync(resolved.absolute).isFile()) return undefined;
+  } catch {
+    return undefined;
+  }
+  if (!candidateGitModesAreRegular(root, rel)) return undefined;
+
+  const attributes = execFileSync(
+    'git',
+    ['check-attr', '-z', 'diff', 'text', 'binary', '--', rel],
+    { cwd: root, stdio: 'pipe' },
+  ).toString().split('\0');
+  for (let index = 0; index + 2 < attributes.length; index += 3) {
+    const attribute = attributes[index + 1];
+    const value = attributes[index + 2];
+    if ((attribute === 'diff' && value === 'unset') || (attribute === 'binary' && value === 'set')) {
+      return undefined;
+    }
+  }
+
+  try {
+    const bytes = readFileSync(resolved.absolute);
+    if (bytes.includes(0)) return undefined;
+    return utf8.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+function inheritedExemptionEvidence(root: string, mergeBase: string, marker: string): Set<string> {
+  let paths = Buffer.alloc(0);
+  try {
+    paths = execFileSync(
+      'git',
+      ['grep', '-I', '-l', '-z', '-F', '-e', marker, mergeBase, '--'],
+      { cwd: root, stdio: 'pipe' },
+    );
+  } catch (error: any) {
+    if (error?.status !== 1) throw error;
+    paths = Buffer.isBuffer(error?.stdout) ? error.stdout : Buffer.from(error?.stdout ?? '');
+  }
+
+  const prefix = `${mergeBase}:`;
+  const inherited = new Set<string>();
+  for (const named of utf8.decode(paths).split('\0').filter(Boolean)) {
+    if (!named.startsWith(prefix)) throw new Error('cannot parse historical exemption path');
+    const rel = named.slice(prefix.length);
+    const entry = gitTreeEntry(root, mergeBase, rel);
+    if (!entry || entry.type !== 'blob') throw new Error(`cannot resolve historical exemption blob for ${rel}`);
+    const bytes = execFileSync('git', ['cat-file', 'blob', entry.oid], { cwd: root, stdio: 'pipe' });
+    if (bytes.includes(0)) throw new Error(`historical exemption blob is not text: ${rel}`);
+    for (const reason of exemptionEvidence(utf8.decode(bytes), marker)) inherited.add(reason);
+  }
+  return inherited;
+}
+
+/**
+ * Return only exemption evidence introduced by the complete current delta.
+ *
+ * Current files are read only through a canonical, regular-file, UTF-8 text
+ * boundary. The caller's complete changed-path set already spans committed,
+ * staged, unstaged and non-ignored untracked work, so staging does not select a
+ * different evidence path.
+ *
+ * A reason must be novel relative to every marker/reason line in the merge-base
+ * tree. That conservative rule makes the otherwise unknowable copy-vs-coincidence
+ * case deterministic in every Git state: reuse or relocation requires rewording
+ * the reason to explain why this branch is safe.
+ */
+function hasBranchLocalExemption(
+  root: string,
+  mergeBase: string,
+  changed: string[],
+  marker: string,
+): boolean {
+  const inherited = inheritedExemptionEvidence(root, mergeBase, marker);
+
+  return changed.some((rel) => {
+    const text = candidateExemptionText(root, rel);
+    return text !== undefined && exemptionEvidence(text, marker)
+      .some((reason) => !inherited.has(reason));
+  });
+}
 
 /**
  * Require a changed companion file when a branch changes a configured path.
@@ -467,6 +676,8 @@ export const changeRequiresFile: Engine = (t, root) => {
 
   const baseName = String(t.base_branch ?? 'main');
   let changed: string[];
+  let mergeBase: string;
+  let untracked: string[];
   try {
     const resolved = resolveIntegrationRef(root, baseName);
     if (!resolved.ref) {
@@ -475,12 +686,13 @@ export const changeRequiresFile: Engine = (t, root) => {
         examined: 0,
       };
     }
-    const mergeBase = gitArgs(root, ['merge-base', 'HEAD', resolved.ref]);
+    mergeBase = gitArgs(root, ['merge-base', 'HEAD', resolved.ref]);
+    untracked = gitPaths(root, ['ls-files', '--others', '--exclude-standard', '-z']);
     changed = [...new Set([
       ...gitPaths(root, ['diff', '--name-only', '--no-renames', '-z', mergeBase, 'HEAD']),
       ...gitPaths(root, ['diff', '--cached', '--name-only', '--no-renames', '-z']),
       ...gitPaths(root, ['diff', '--name-only', '--no-renames', '-z']),
-      ...gitPaths(root, ['ls-files', '--others', '--exclude-standard', '-z']),
+      ...untracked,
     ])].sort();
   } catch {
     return {
@@ -504,10 +716,18 @@ export const changeRequiresFile: Engine = (t, root) => {
   );
   if (companion) return { findings: [], examined };
 
-  const exempt = changed.some(
-    (rel) => existsSync(join(root, rel)) && sameLineExemption(read(root, rel), t.exempt_marker),
-  );
-  if (exempt) return { findings: [], examined };
+  if (t.exempt_marker) {
+    try {
+      if (hasBranchLocalExemption(root, mergeBase, changed, t.exempt_marker)) {
+        return { findings: [], examined };
+      }
+    } catch {
+      return {
+        findings: [{ message: `cannot read git exemption provenance against '${baseName}'; required companion file not evaluated` }],
+        examined: 0,
+      };
+    }
+  }
 
   return {
     findings: [{ message: String(t.message ?? 'changed shipping code requires a companion file').trim() }],

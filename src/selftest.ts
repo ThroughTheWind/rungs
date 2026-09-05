@@ -76,19 +76,31 @@ function build(root: string, table: any, fx: any, input?: string): string[] | nu
   if (Array.isArray(fx.changed) && Array.isArray(fx.fragments)) {
     const git = (...args: string[]) =>
       execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString().trim();
+    const changed = fx.changed.map(String);
     git('init', '-q', '-b', 'main', '.');
     git('config', 'user.email', 'selftest@rungs.local');
     git('config', 'user.name', 'rungs-selftest');
     const written = [write('.fixture-base', 'base\n')];
+    if (changed.length && typeof fx.inherited_exempt === 'string') {
+      written.push(write(
+        changed[0],
+        `// ${fx.inherited_exempt}\nexport const fixtureState = 'base';\n`,
+      ));
+    }
     git('add', '--all');
     git('commit', '-q', '-m', 'base');
     git('switch', '-q', '-c', 'fixture/change');
 
-    for (const [index, rel] of fx.changed.entries()) {
-      const body = index === 0 && typeof fx.exempt === 'string'
-        ? `// ${fx.exempt}\n`
+    for (const [index, rel] of changed.entries()) {
+      const evidence = index === 0 && typeof fx.exempt === 'string'
+        ? fx.exempt
+        : index === 0 && typeof fx.inherited_exempt === 'string'
+          ? fx.inherited_exempt
+          : undefined;
+      const body = evidence
+        ? `// ${evidence}\nexport const fixtureState = 'branch';\n`
         : 'fixture change\n';
-      written.push(write(String(rel), body));
+      written.push(write(rel, body));
     }
     const changelogDir = fx.dir ?? 'changelog.d';
     for (const rel of fx.fragments) {
