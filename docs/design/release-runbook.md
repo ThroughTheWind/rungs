@@ -228,6 +228,27 @@ a CRLF assumption, and an ordering bug in the workflow itself. None of them were
 A red run is not automatically a stop — a known-red cell you have decided to ship past is a choice
 someone can make. Not looking is not.
 
+### Second: prove you can still publish, before anything becomes permanent
+
+```bash
+npm whoami
+```
+
+**This is the other remote fact the irreversible block depends on, and it is the cheapest one to
+check.** No gate can do it for you — the runner does no network, by design — so it sits here beside
+the CI check for the same reason.
+
+Measured 2026-09-05 while cutting v0.4.0: an `_authToken` was configured, `npm whoami` would have
+answered `401 Unauthorized`, and nobody asked. The tag and `release/0.4.0` were pushed first, and
+`npm publish` then failed `404 Not Found - PUT` — npm's reply for an unauthenticated write to a
+scope that exists, which reads as a missing package and sends you to look in the wrong place. The
+release sat tagged and branched with nothing on the registry until a person re-authenticated.
+
+Nothing was lost, because the tag names the commit the publish would have shipped and re-running
+`npm publish` from it is the whole repair. That is the argument for the check rather than against
+it: the recovery is easy *this* time, and the order — tag, branch, publish — guarantees the
+half-shipped state every time the token has quietly expired.
+
 ```bash
 git tag -a v<version> -m "rungs v<version> — <one line>"
 git push origin main --follow-tags
@@ -248,6 +269,20 @@ fails a clean install is exactly the failure v0.1.1 shipped
 npm view @rungs/cli dist-tags
 npm install --prefix "$(mktemp -d)" @rungs/cli && npx --yes @rungs/cli@<version> --help
 ```
+
+### Last: record the publish, in the one place that claims it
+
+The moment that install succeeds, `publishedVersion` and `publishedDate` in
+[`versions.astro`](../../site/src/pages/versions.astro) are wrong — they still name the previous
+release as npm `latest`, and the page renders the version you just shipped as "prepared, not yet
+published". Update both, rebuild, and commit.
+
+This is [T3](#t3) with a name for when it happens. Step 4's table calls `publishedVersion` "the
+version **already on npm**", which is true when a cut *starts* and stops being true the second the
+publish lands — so the update belongs here, not deferred to the next release. It was deferred once:
+the constant read `0.1.2` for two days after 0.1.3 was installable, and v0.3.1 needed its own
+follow-up commit (`6bf59bc`) to say it had shipped. Nothing checks this — `docs-version-claims`
+deliberately does not, because published-ness is a registry fact and the runner does no network.
 
 ## 7. Open the next candidate
 
