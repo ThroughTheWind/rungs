@@ -236,12 +236,11 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
           <div class="card-title">Entries land with the change</div>
           <p>Each release-worthy change adds one fragment to <code>changelog.d/</code> on the same branch. The next version is decided from those fragments, not reconstructed at tag time.</p>
           {/*
-            Was "declared, engine pending" under a review-only tag. Both engines have been
-            implemented for some time — installing the module into a scratch repo on 2026-08-17
-            ran both gates green — so the page was understating its own tool on the page that
-            argues undeclared enforcement is the failure mode (F-021's neighbourhood).
+            WI-070 found that both earlier green results were false-greens: one gate used a table
+            schema its engine never read, while the production runner handed the other engine the
+            whole table. Their fixtures and production dispatch now fail when either path regresses.
           */}
-          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-changelog-fragment · file-population</span></div>
+          <div class="tag-line"><EnforcementTag state="gated" /> <span>release-changelog-fragment · change-requires-file</span></div>
           <div class="tag-line"><EnforcementTag state="gated" /> <span>release-fragment-current · changelog-freshness, new in 0.2.0</span></div>
         </div>
         <div class="card">

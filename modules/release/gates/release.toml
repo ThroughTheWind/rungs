@@ -6,7 +6,8 @@
 # tests and tooling changes do not need release notes, and a gate that demands one for a typo fix
 # is a gate people learn to bypass.
 
-[file_population]
+[change_requires_file]
+base_branch          = "{{stable_branch}}"
 require_when_changed = ["src/**", "lib/**", "app/**", "server/**", "web/**", "packages/**"]
 requires_one_of     = ["{{changelog_dir}}/*.md"]
 ignore_when_only    = ["docs/**", "**/*.test.*", "**/*.spec.*", ".github/**", "*.md"]

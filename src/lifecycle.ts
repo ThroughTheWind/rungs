@@ -212,7 +212,7 @@ export function eject(repoRoot: string, mods: Manifest[], dryRun = false) {
   // The first version copied `check.ts` and `manifest.ts` too, which pull in the
   // TOML parser — so an ejected repo crashed on a module it could not resolve.
   // An exit that does not work is not an exit.
-  const engines = ['glob.ts', 'engines.ts', 'engines2.ts'];
+  const engines = ['glob.ts', 'engine-table.ts', 'engines.ts', 'engines2.ts'];
   const { gates } = loadRegistry(repoRoot);
   const declared = gates.filter((g) => g.kind === 'declared' && g.table);
   const tables = [...new Set(declared.map((g) => g.table!))];
@@ -267,6 +267,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENGINES } from './engines.ts';
+import { selectEngineTable } from './engine-table.ts';
 import { walk } from './glob.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -283,12 +284,7 @@ if (!engine || !ENGINES[engine]) { console.error(\`gate \${id}: engine '\${engin
 // Tables were converted to JSON when this was ejected, so nothing here needs a
 // TOML parser — or any dependency at all beyond Node itself.
 const raw = JSON.parse(readFileSync(join(here, 'tables', table.replace('/', '-').replace(/\\.toml$/, '.json')), 'utf8'));
-const KEYS = { 'file-budget': 'file_budget', 'frontmatter-schema': 'frontmatter_schema', 'link-integrity': 'link_integrity', 'file-population': 'file_population', 'gate-meta': 'gate_meta', 'render-freshness': 'render_freshness', 'register-schema': 'register_schema', 'self-declared-closure': 'self_declared_closure', 'filename-schema': 'filename_schema', 'cross-reference': 'cross_reference', 'git-status-reconcile': 'merged_status', 'computed-claim': 'computed_claim' };
-let section = raw[KEYS[engine] ?? engine] ?? raw;
-if (Array.isArray(section) && section.some((s) => s?.id)) {
-  const mine = section.filter((s) => !s.id || id.includes(s.id));
-  if (mine.length) section = mine;
-}
+const section = selectEngineTable(raw, engine, id);
 const r = ENGINES[engine](section, root, walk(root));
 for (const f of r.findings) console.error(\`  \${f.file ? f.file + ': ' : ''}\${f.message}\`);
 process.exit(r.findings.length ? 1 : 0);

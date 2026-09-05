@@ -84,7 +84,7 @@ created; unresolved template parameters are never silently guessed.
 
 Pin F-041 through the production `check` path over a scratch Rungs registry/table containing a stale
 versioned fragment, not just a direct engine call. Assert that every `ENGINES` key has one shared
-  mapping, unknown or missing-section dispatch throws, and the ejected runner imports that selector rather
+mapping, unknown or missing-section dispatch throws, and the ejected runner imports that selector rather
 than carrying another hand-kept map. Register the new gate locally only once its own shipping change
 and fragment make the real repository pass.
 
@@ -97,8 +97,9 @@ and fragment make the real repository pass.
 3. A reasoned exemption in a changed readable file passes and a bare marker fails.
 4. Branch, staged, unstaged and untracked changes are observed; local, `origin` and sole-other-remote
    bases work, while absent and ambiguous bases return explicit findings with `examined: 0`.
-5. All five `release-changelog-fragment` fixtures execute with their declared outcomes, reducing the
-   known unbuilt-fixture count by five.
+5. All five `release-changelog-fragment` fixtures execute with their declared outcomes and zero
+   unrun fixtures. Registering those five fixtures does not increase the global known-unbuilt count,
+   because the new builder executes all five.
 6. A production runner check fails on a stale versioned fragment and reports a non-zero examined
    count; one strict selector covers every implemented engine and the generated runner contains no
    divergent key map.

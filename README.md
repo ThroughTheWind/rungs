@@ -235,13 +235,12 @@ Whether a release is **pending**, and what npm currently serves, live on
 file and the roadmap both carried their own copy and both said `v0.1.2` for two days after v0.1.3
 went to npm. Cutting the next one follows the [release runbook](docs/design/release-runbook.md).
 
-rungs is installed in its own repo and its 29 gates run on every change — 29 pass,
-0 fail (`rungs check`, 2026-08-17). A clean consumer has installed from the **public
+rungs is installed in its own repo and its 30 gates run on every change — 30 pass,
+0 fail (`rungs check`, 2026-09-05). A clean consumer has installed from the **public
 registry** and run the binary, and another completed the doctor → init → add → check →
 render → upgrade/eject journey from a packed artifact. Detection is
 [verified against all four source repos](docs/design/detection-verification.md).
-Not yet done: a cross-platform release matrix — only Windows is verified — and writing
-to a repo rungs did not scaffold.
+Not yet done: writing to a maintained repo rungs did not scaffold.
 
 Expect module *contents* to move. The command surface is settled.
 
@@ -262,7 +261,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~5,100 lines (`wc -l src/*.ts`, 2026-08-17; held within 10% by `docs-version-claims`) |
+| [`src/`](src/) | The CLI, ~5,700 lines (`wc -l src/*.ts`, 2026-09-05; held within 10% by `docs-version-claims`) |
 
 ## Licence
 

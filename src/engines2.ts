@@ -366,6 +366,13 @@ export const crossReference: Engine = (t, root, files) => {
 const gitArgs = (root: string, args: string[]) =>
   execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString().trim();
 
+const gitPaths = (root: string, args: string[]) =>
+  execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+    .toString()
+    .split('\0')
+    .filter(Boolean)
+    .map((rel) => rel.replace(/\\/g, '/'));
+
 const gitRefExists = (root: string, ref: string): boolean => {
   try {
     gitArgs(root, ['show-ref', '--verify', '--quiet', ref]);
@@ -375,7 +382,7 @@ const gitRefExists = (root: string, ref: string): boolean => {
   }
 };
 
-type IntegrationRefResolution =
+export type IntegrationRefResolution =
   | { ref: string; finding?: never }
   | { ref?: never; finding: string };
 
@@ -388,7 +395,7 @@ type IntegrationRefResolution =
  * exact `origin`, then a sole matching remote. More than one non-origin match
  * is unknown, not permission to choose whichever ref Git happens to prefer.
  */
-function resolveIntegrationRef(root: string, branch: string): IntegrationRefResolution {
+export function resolveIntegrationRef(root: string, branch: string): IntegrationRefResolution {
   const local = `refs/heads/${branch}`;
   if (gitRefExists(root, local)) return { ref: local };
 
@@ -407,13 +414,78 @@ function resolveIntegrationRef(root: string, branch: string): IntegrationRefReso
   if (matches.length === 1) return { ref: matches[0] };
   if (matches.length > 1) {
     return {
-      finding: `integration branch '${branch}' is ambiguous across ${matches.join(', ')}; status not reconciled`,
+      finding: `integration branch '${branch}' is ambiguous across ${matches.join(', ')}`,
     };
   }
   return {
-    finding: `integration branch '${branch}' has no local or remote-tracking ref; status not reconciled`,
+    finding: `integration branch '${branch}' has no local or remote-tracking ref`,
   };
 }
+
+const matchesAny = (rel: string, patterns: string[] | undefined) =>
+  (patterns ?? []).some((pattern) => matchAny([rel], pattern).length > 0);
+
+const sameLineExemption = (text: string, marker?: string) =>
+  !!marker && new RegExp(`${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[ \\t]*\\S[^\\r\\n]*`, 'm').test(text);
+
+/**
+ * Require a changed companion file when a branch changes a configured path.
+ *
+ * A fragment that merely exists is not evidence for this branch: inherited and
+ * deleted fragments must not discharge its release-note obligation. Git state
+ * is read as four explicit sets so the verdict is the same before and after a
+ * developer stages or commits the work.
+ */
+export const changeRequiresFile: Engine = (t, root) => {
+  const baseName = String(t.base_branch ?? 'main');
+  let changed: string[];
+  try {
+    const resolved = resolveIntegrationRef(root, baseName);
+    if (!resolved.ref) {
+      return {
+        findings: [{ message: `${resolved.finding}; required companion file not evaluated` }],
+        examined: 0,
+      };
+    }
+    const mergeBase = gitArgs(root, ['merge-base', 'HEAD', resolved.ref]);
+    changed = [...new Set([
+      ...gitPaths(root, ['diff', '--name-only', '--no-renames', '-z', mergeBase, 'HEAD']),
+      ...gitPaths(root, ['diff', '--cached', '--name-only', '--no-renames', '-z']),
+      ...gitPaths(root, ['diff', '--name-only', '--no-renames', '-z']),
+      ...gitPaths(root, ['ls-files', '--others', '--exclude-standard', '-z']),
+    ])].sort();
+  } catch {
+    return {
+      findings: [{ message: `cannot read git changes against '${baseName}'; required companion file not evaluated` }],
+      examined: 0,
+    };
+  }
+
+  const examined = changed.length;
+  const ignore = t.ignore_when_only as string[] | undefined;
+  if (ignore?.length && changed.length && changed.every((rel) => matchesAny(rel, ignore))) {
+    return { findings: [], examined };
+  }
+
+  if (!changed.some((rel) => matchesAny(rel, t.require_when_changed))) {
+    return { findings: [], examined };
+  }
+
+  const companion = changed.find(
+    (rel) => matchesAny(rel, t.requires_one_of) && existsSync(join(root, rel)),
+  );
+  if (companion) return { findings: [], examined };
+
+  const exempt = changed.some(
+    (rel) => existsSync(join(root, rel)) && sameLineExemption(read(root, rel), t.exempt_marker),
+  );
+  if (exempt) return { findings: [], examined };
+
+  return {
+    findings: [{ message: String(t.message ?? 'changed shipping code requires a companion file').trim() }],
+    examined,
+  };
+};
 
 function landedWork(root: string, branch: string, base: string): boolean {
   const git = (...args: string[]) => gitArgs(root, args);
@@ -437,7 +509,7 @@ export const gitStatusReconcile: Engine = (t, root, files) => {
   try {
     const integration = String(t.integration_branch ?? 'main');
     const resolved = resolveIntegrationRef(root, integration);
-    if (!resolved.ref) return { findings: [{ message: resolved.finding }], examined: 0 };
+    if (!resolved.ref) return { findings: [{ message: `${resolved.finding}; status not reconciled` }], examined: 0 };
     integrationRef = resolved.ref;
     merged = new Set(
       gitArgs(root, ['branch', '--merged', integrationRef, '--format=%(refname:short)'])
