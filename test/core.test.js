@@ -7,7 +7,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { land, sessionStart, worktrees } from '../src/concurrency.ts';
 
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
-import { blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
+import { addModule, blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { changeRequiresFile, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile } from '../src/engines3.ts';
@@ -1083,25 +1083,39 @@ test('release fragment fixtures execute and every engine uses the strict shared 
     selectEngineTable(table, 'change-requires-file', 'release-changelog-fragment'),
     blocks,
   );
-  assert.equal(results.length, 5);
-  assert.deepEqual(results.map((result) => result.outcome), ['ok', 'ok', 'ok', 'ok', 'ok']);
+  assert.equal(results.length, 6);
+  assert.deepEqual(results.map((result) => result.outcome), Array(6).fill('ok'));
+
+  const freshnessBlocks = table.self_test
+    .filter((block) => block.gate === 'release-fragment-current')
+    .map((block) => ({ expect: block.expect, fixture: block.fixture }));
+  const freshness = runSelfTests(
+    'release-fragment-current',
+    'changelog-freshness',
+    selectEngineTable(table, 'changelog-freshness', 'release-fragment-current'),
+    freshnessBlocks,
+  );
+  assert.equal(freshness.length, 12);
+  assert.deepEqual(freshness.map((result) => result.outcome), Array(12).fill('ok'));
 });
 
-test('the production and generated runners select changelog tables without a whole-document fallback', () => {
+test('the production runner rejects the equal-version F-025 shape and eject keeps strict table selection', () => {
   const staleRoot = mkdtempSync(join(tmpdir(), 'rungs-stale-fragment-'));
   const ejectRoot = mkdtempSync(join(tmpdir(), 'rungs-ejected-selector-'));
   try {
     mkdirSync(join(staleRoot, '.ai'), { recursive: true });
     mkdirSync(join(staleRoot, 'changelog.d'), { recursive: true });
     writeFileSync(join(staleRoot, 'package.json'), JSON.stringify({ version: '0.2.0' }));
-    writeFileSync(join(staleRoot, 'changelog.d', '0.1.0.md'), '# stale\n');
+    writeFileSync(join(staleRoot, 'changelog.d', 'CONSUMED_THROUGH'), '0.2.0\n');
+    writeFileSync(join(staleRoot, 'changelog.d', '0.2.0.md'), '# consumed but retained\n');
     writeFileSync(
       join(staleRoot, '.ai', 'gates.toml'),
       '[[gates]]\nid = "release-fragment-current"\nkind = "declared"\nengine = "changelog-freshness"\ntable = "release/release.toml"\n',
     );
     const [stale] = runGates(staleRoot);
     assert.equal(stale.status, 'fail');
-    assert.equal(stale.examined, 1, 'the production path must reach the one stale fragment');
+    assert.equal(stale.examined, 2, 'the production path must examine the boundary and equal fragment');
+    assert.match(stale.findings[0].message, /already-consumed|consumed-through/i);
 
     mkdirSync(join(ejectRoot, '.ai'), { recursive: true });
     writeFileSync(
@@ -1117,6 +1131,89 @@ test('the production and generated runners select changelog tables without a who
   } finally {
     rmSync(staleRoot, { recursive: true, force: true });
     rmSync(ejectRoot, { recursive: true, force: true });
+  }
+});
+
+test('the release consumption marker installs, upgrades red, and remains consumer-owned', () => {
+  const installRoot = mkdtempSync(join(tmpdir(), 'rungs-release-marker-install-'));
+  const upgradeRoot = mkdtempSync(join(tmpdir(), 'rungs-release-marker-upgrade-'));
+  try {
+    const modules = loadAllModules(resolve('modules'));
+    const release = modules.find((mod) => mod.name === 'release');
+    assert.ok(release);
+
+    const installParams = resolveParams(
+      modules,
+      { release: { changelog_dir: 'release-notes' } },
+      installRoot,
+    );
+    const emitted = emittedFiles(release, installParams);
+    assert.equal(emitted.get('release-notes/CONSUMED_THROUGH'), 'UNINITIALIZED\n');
+
+    const actions = addModule(release, installRoot, installParams);
+    const marker = join(installRoot, 'release-notes', 'CONSUMED_THROUGH');
+    assert.equal(readFileSync(marker, 'utf8'), 'UNINITIALIZED\n');
+    assert.ok(actions.some((action) => action.disposition === 'create' && action.target === 'release-notes/CONSUMED_THROUGH'));
+
+    writeFileSync(marker, 'none\n');
+    const repeated = addModule(release, installRoot, installParams);
+    assert.ok(repeated.some((action) => action.disposition === 'skip-exists' && action.target === 'release-notes/CONSUMED_THROUGH'));
+    assert.equal(readFileSync(marker, 'utf8'), 'none\n', 'install never overwrites an existing boundary');
+
+    mkdirSync(join(upgradeRoot, '.ai'), { recursive: true });
+    writeFileSync(join(upgradeRoot, 'package.json'), JSON.stringify({ name: 'consumer', version: '0.3.1' }));
+    writeFileSync(join(upgradeRoot, '.ai', 'gates.toml'), '[runner]\ntiers = ["fast"]\n');
+    writeFileSync(
+      join(upgradeRoot, '.ai', 'rungs.toml'),
+      [
+        '[repo]',
+        'harnesses = ["claude"]',
+        '',
+        '[modules.release]',
+        'version = "1.4.0"',
+        'state = "managed"',
+        'params = { changelog_dir = "release-notes" }',
+        '',
+      ].join('\n'),
+    );
+
+    const oldRecord = readRecord(upgradeRoot);
+    assert.ok(oldRecord);
+    const planned = planUpgrade(upgradeRoot, [release], oldRecord);
+    const missing = planned[0].files.find((file) => file.rel === 'release-notes/CONSUMED_THROUGH');
+    assert.equal(missing?.state, 'missing');
+
+    applyUpgrade(upgradeRoot, [release], oldRecord, planned);
+    const upgradedMarker = join(upgradeRoot, 'release-notes', 'CONSUMED_THROUGH');
+    assert.equal(readFileSync(upgradedMarker, 'utf8'), 'UNINITIALIZED\n');
+    const uninitialized = runGates(
+      upgradeRoot,
+      undefined,
+      () => Date.now(),
+      new Set(['release-fragment-current']),
+    )[0];
+    assert.equal(uninitialized.status, 'fail', 'upgrade stays red until its history is initialized');
+    assert.match(uninitialized.findings[0].message, /UNINITIALIZED/);
+
+    writeFileSync(upgradedMarker, '0.3.1\n');
+    const upgradedRecord = readRecord(upgradeRoot);
+    assert.ok(upgradedRecord);
+    const afterEdit = planUpgrade(upgradeRoot, [release], upgradedRecord);
+    const diverged = afterEdit[0].files.find((file) => file.rel === 'release-notes/CONSUMED_THROUGH');
+    assert.equal(diverged?.state, 'diverged');
+    applyUpgrade(upgradeRoot, [release], upgradedRecord, afterEdit);
+    assert.equal(readFileSync(upgradedMarker, 'utf8'), '0.3.1\n', 'later upgrades preserve the consumer-owned value');
+
+    const reconciled = runGates(
+      upgradeRoot,
+      undefined,
+      () => Date.now(),
+      new Set(['release-fragment-current']),
+    )[0];
+    assert.equal(reconciled.status, 'pass');
+  } finally {
+    rmSync(installRoot, { recursive: true, force: true });
+    rmSync(upgradeRoot, { recursive: true, force: true });
   }
 });
 

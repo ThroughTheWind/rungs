@@ -12,14 +12,25 @@ description: >-
 
 **Every step below is reversible except the tag and the deploy.** Know which one you are on.
 
-## 1. Decide the version
+## 1. Initialise the consumption boundary
+
+Open `{{changelog_dir}}/CONSUMED_THROUGH`. If it says `UNINITIALIZED`, replace it with `none` only
+when no release has ever consumed fragments; otherwise write the exact last version whose fragments
+were assembled. **Do not infer this from a package version, tag or registry.** Those say what was
+versioned or published, not whether its fragments were actually consumed.
+
+This is a changelog-consumption claim, not a publication claim. In a steady tree its concrete value
+equals the package version. During the reversible preparation below it briefly moves ahead, then the
+version bump restores equality before the final gate.
+
+## 2. Decide the version
 
 From the changelog fragments in `{{changelog_dir}}/`, not from memory or from what the last release
 was. A breaking change in any fragment decides the major; a feature decides the minor. If the
 fragments do not support the version you were asked for, **say so before continuing** — that
 mismatch is usually a fragment somebody skipped, not a versioning disagreement.
 
-## 2. Gate
+## 3. Gate the current tree
 
 ```bash
 node .ai/rungs.mjs check
@@ -39,17 +50,31 @@ moment the temptation is highest and the cost of yielding is highest.
 If a gate is red for reasons that predate this work, say so explicitly and get a decision. Shipping
 past a known-red gate is a choice someone should make on purpose.
 
-## 3. Assemble the changelog
+## 4. Assemble the changelog and advance the boundary
 
-Combine the fragments into the release section, then **delete the fragments**. They are consumed,
-not archived — a fragment left behind appears in the next release too.
+As one reversible preparation, combine the fragments into the release section, **delete the
+fragments**, and set `{{changelog_dir}}/CONSUMED_THROUGH` to the version being prepared. Fragments
+are consumed, not archived — a fragment left behind appears in the next release too. Advancing the
+marker in the same change makes a retained equal-version fragment mechanically red (F-025).
 
-## 4. Bump the version
+## 5. Bump the version
 
-In every place it appears. `release-version-consistent` computes this rather than trusting you;
-run it before tagging, because a version that disagrees with itself is discovered by a user.
+In every place it appears. The bump restores equality with the consumption boundary;
+`release-version-consistent` computes agreement across version surfaces rather than trusting you.
 
-## 5. Tag and merge
+## 6. Gate the prepared tree
+
+Run **every** registered gate again. The preliminary gate proved the starting point; this one proves
+the exact tree that will be tagged. It must see the package version and concrete consumption
+boundary agree, with no fragment at or below that boundary.
+
+```bash
+node .ai/rungs.mjs check
+```
+
+Do not tag on red, and require CI to pass at the exact prepared commit.
+
+## 7. Tag and merge
 
 - Annotated tag on the candidate, message naming the release.
 - Merge the candidate into `{{stable_branch}}`.
@@ -57,7 +82,7 @@ run it before tagging, because a version that disagrees with itself is discovere
   roll back to** — a rollback that means reverting commits on the stable line is a rollback nobody
   performs correctly under pressure.
 
-## 6. Open the next candidate
+## 8. Open the next candidate
 
 Cut a new `{{candidate_prefix}}<next>` immediately. A period with no open candidate is a period
 where work lands somewhere improvised.

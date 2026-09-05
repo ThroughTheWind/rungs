@@ -99,8 +99,8 @@ engine = "changelog-freshness"
 table  = "release/release.toml"
 tier   = "fast"
 why    = """A fragment consumed by an earlier release and never deleted reads as unreleased work in the next
-one. `cut-release` §3 said so in prose and prose did not hold it — this repo's own 0.1.1 fragment
-survived two releases and was still present at 0.2.0 preparation (F-022)."""
+one. A tracked consumption boundary catches the equal-version fragment this repo left behind after
+v0.2.0 as well as older fragments; prose alone failed both F-022 and F-025."""
 
 # ── module gates ──────────────────────────────────────────────────────────────
 # Generated. Edit the owning module's parameters, not these entries.

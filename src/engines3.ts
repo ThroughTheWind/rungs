@@ -34,10 +34,15 @@ export function versionCmp(a: number[], b: number[]): number {
  * `changelog.d/0.1.1.md` survived two releases and was still there at 0.2.0
  * preparation (F-022). So the rule becomes mechanical.
  *
- * A fragment is stale when its filename names a version **below** the version
- * being prepared. Files whose names are not versions are ignored rather than
- * reported: the module's own fixtures use `42.feature.md`, and a gate that
- * refuses a naming convention it was not asked about is a gate people disable.
+ * The repository also states the last version whose fragments were consumed.
+ * That boundary must equal the package version in a steady tree, and a fragment
+ * at or below it is stale. Equality is what closes F-025: after a release, the
+ * forgotten fragment and package version are equal, so comparing only those two
+ * values cannot tell preparation from already-consumed work.
+ *
+ * Files whose names are not versions are ignored rather than reported: the
+ * module's own fixtures use `42.feature.md`, and a gate that refuses a naming
+ * convention it was not asked about is a gate people disable.
  */
 export const changelogFreshness: Engine = (t, root, files) => {
   const specs = Array.isArray(t) ? t : [t];
@@ -58,21 +63,82 @@ export const changelogFreshness: Engine = (t, root, files) => {
       }
       if (current) break;
     }
-    // Without a version to compare against there is no claim to make. Saying
-    // nothing is right; passing loudly would not be.
-    if (!current) continue;
+    const marker = spec.consumed_through ?? 'changelog.d/CONSUMED_THROUGH';
+    const markerExists = existsSync(join(root, marker));
+    if (!markerExists) {
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker '${marker}' is missing — create it with 'none' if no release has consumed fragments, or the exact last consumed version`,
+      });
+      continue;
+    }
+
+    examined++;
+    const markerRaw = read(root, marker);
+    const markerValue = markerRaw.endsWith('\r\n')
+      ? markerRaw.slice(0, -2)
+      : markerRaw.endsWith('\n')
+        ? markerRaw.slice(0, -1)
+        : markerRaw;
+
+    if (markerValue === 'UNINITIALIZED') {
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker '${marker}' is UNINITIALIZED — replace it with 'none' if no release has consumed fragments, or the exact last consumed version`,
+      });
+      continue;
+    }
+
+    const firstRelease = markerValue === 'none';
+    const consumed = firstRelease ? null : versionParts(markerValue);
+    if (!firstRelease && !consumed) {
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker '${marker}' must contain exactly 'none' or a three-part numeric version; found ${JSON.stringify(markerValue)}`,
+      });
+      continue;
+    }
+
+    // Without a package version there used to be no claim to make. A concrete
+    // consumption boundary changes that: its steady-state equality cannot be
+    // checked, so reporting green would make the new state assertion vacuous.
+    if (!current) {
+      if (consumed) {
+        findings.push({
+          file: src.file ?? 'package.json',
+          message: `cannot reconcile consumed-through ${markerValue} because the package version is missing or not a three-part numeric version`,
+        });
+      }
+      continue;
+    }
+
+    if (consumed && versionCmp(consumed, current) !== 0) {
+      const relation = versionCmp(consumed, current) < 0 ? 'below' : 'above';
+      findings.push({
+        file: marker,
+        message:
+          `release consumption marker names ${markerValue}, ${relation} package version ${current.join('.')} — they must match in a steady tree; advance both during reversible release preparation`,
+      });
+    }
 
     for (const rel of expand(files, spec.fragments, [])) {
       const name = rel.split('/').pop()!.replace(/\.md$/, '');
       const v = versionParts(name);
       if (!v) continue;
       examined++;
-      if (versionCmp(v, current) < 0) {
+      const belowPackage = versionCmp(v, current) < 0;
+      const alreadyConsumed = consumed ? versionCmp(v, consumed) <= 0 : false;
+      if (belowPackage || alreadyConsumed) {
         findings.push({
           file: rel,
           message:
             spec.message?.trim() ||
-            `fragment names ${name}, below the ${current.join('.')} being prepared — it was consumed by an earlier release and should have been deleted`,
+            (alreadyConsumed
+              ? `fragment names ${name}, at or below consumed-through ${markerValue} — it was already assembled and should have been deleted`
+              : `fragment names ${name}, below package version ${current.join('.')} — it belongs to an earlier release and should have been deleted`),
         });
       }
     }
@@ -339,4 +405,3 @@ export const boardReconcile: Engine = (t, root, _files) => {
 
   return { findings, examined };
 };
-
