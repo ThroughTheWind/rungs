@@ -19,12 +19,42 @@ const FRAGMENT_TARGET: Record<string, string> = {
   gitattributes: '.gitattributes',
 };
 
-const SHARED = new Set(['AGENTS.md', 'CLAUDE.md', '.gitignore', '.gitattributes', '.ai/gates.toml']);
+const RESERVED_SHARED_SINKS = new Set([
+  'AGENTS.md',
+  'CLAUDE.md',
+  '.gitignore',
+  '.gitattributes',
+  '.ai/gates.toml',
+]);
+
+/**
+ * Whole-file sources that establish a shared sink before other phases merge
+ * managed blocks into it.  The source role is deliberately checked before
+ * substitution: a parameterised ordinary file does not become a co-owner just
+ * because its chosen value happens to spell `AGENTS.md` or `.ai/gates.toml`.
+ */
+const SHARED_FILE_OWNERS = new Map<string, ReadonlySet<string>>([
+  ['instructions', new Set(['AGENTS.md', 'CLAUDE.md'])],
+  ['gates', new Set(['.ai/gates.toml'])],
+]);
 
 interface FileEmission {
   target: string;
   content: string;
   disposition: AddAction['disposition'];
+  shared: boolean;
+}
+
+function ownsSharedFile(mod: Manifest, sourceTarget: string, target: string): boolean {
+  return sourceTarget === target && (SHARED_FILE_OWNERS.get(mod.name)?.has(sourceTarget) ?? false);
+}
+
+function reservedSharedSinkCandidates(): EmittedPathCandidate[] {
+  return [...RESERVED_SHARED_SINKS].map((target) => ({
+    moduleName: 'rungs reserved shared sink',
+    target,
+    shared: true,
+  }));
 }
 
 /** One source of truth for the files, rules and skills both add and upgrade emit. */
@@ -39,10 +69,11 @@ function fileEmissions(mod: Manifest, params: Params, skillsDir = '.claude/skill
     const base = join(mod.dir, dir);
     if (!existsSync(base)) continue;
     for (const rel of walk(base)) {
-      const target = sub(prefix + rel).replace(/\\/g, '/');
+      const sourceTarget = (prefix + rel).replace(/\\/g, '/');
+      const target = sub(sourceTarget).replace(/\\/g, '/');
       let content = sub(readFileSync(join(base, rel), 'utf8'));
       if (dir === 'skills') content = withOptedInExtensions(mod, rel, content);
-      out.push({ target, content, disposition });
+      out.push({ target, content, disposition, shared: ownsSharedFile(mod, sourceTarget, target) });
     }
   }
   return out;
@@ -61,7 +92,7 @@ function moduleTargets(
   files = fileEmissions(mod, params, skillsDir),
 ): EmittedPathCandidate[] {
   return [
-    ...files.map((file) => ({ moduleName: mod.name, target: file.target, shared: SHARED.has(file.target) })),
+    ...files.map((file) => ({ moduleName: mod.name, target: file.target, shared: file.shared })),
     ...fragmentTargets(mod).map((target) => ({ moduleName: mod.name, target, shared: true, writeExisting: true })),
     ...(mod.gates.length
       ? [{ moduleName: mod.name, target: '.ai/gates.toml', shared: true, writeExisting: true }]
@@ -75,7 +106,10 @@ export function moduleEmissionCandidates(
   params: Params,
   skillsDir = '.claude/skills',
 ): EmittedPathCandidate[] {
-  return mods.flatMap((mod) => moduleTargets(mod, params, skillsDir));
+  return [
+    ...reservedSharedSinkCandidates(),
+    ...mods.flatMap((mod) => moduleTargets(mod, params, skillsDir)),
+  ];
 }
 
 export function preflightModuleEmissions(
@@ -124,7 +158,8 @@ export function addModule(
   const skillsDir = opts.skillsDir ?? '.claude/skills';
   const files = fileEmissions(mod, params, skillsDir);
   const targets = moduleTargets(mod, params, skillsDir, files);
-  const resolved = preflightEmittedPaths(repoRoot, targets);
+  const reservations = reservedSharedSinkCandidates();
+  const resolved = preflightEmittedPaths(repoRoot, [...reservations, ...targets]).slice(reservations.length);
   const destinations = new Map(targets.map((candidate, index) => [candidate.target, resolved[index].absolute]));
   const write = (rel: string, content: string, disposition: AddAction['disposition']) => {
     const full = destinations.get(rel)!;
@@ -425,7 +460,7 @@ function withOptedInExtensions(mod: Manifest, rel: string, content: string): str
 export function emittedFiles(mod: Manifest, params: Params, skillsDir = '.claude/skills'): Map<string, string> {
   const out = new Map<string, string>();
   for (const file of fileEmissions(mod, params, skillsDir)) {
-    if (!SHARED.has(file.target)) out.set(file.target, file.content);
+    if (!file.shared) out.set(file.target, file.content);
   }
   return out;
 }

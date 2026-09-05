@@ -45,6 +45,20 @@ export interface EmittedPathCandidate {
 const missingEntry = (error: unknown) =>
   error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR');
 
+function hasUnpairedUtf16Surrogate(value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const unit = value.charCodeAt(i);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(i + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      i++;
+      continue;
+    }
+    if (unit >= 0xdc00 && unit <= 0xdfff) return true;
+  }
+  return false;
+}
+
 /**
  * Realpath the deepest existing ancestor, then append the still-missing suffix.
  * `resolve()` alone cannot see an in-repository symlink or junction that points
@@ -113,6 +127,13 @@ export function resolveEmittedPath(repoRoot: string, moduleName: string, target:
   if (segments.some((segment) => segment === '' || segment === '.')) {
     throw new UnsafeEmittedPathError(moduleName, target, "empty and current-directory ('.') path segments are not allowed");
   }
+  if (segments.some(hasUnpairedUtf16Surrogate)) {
+    throw new UnsafeEmittedPathError(
+      moduleName,
+      target,
+      'unpaired UTF-16 surrogate code units are not allowed in path segments',
+    );
+  }
   if (segments.some((segment) => /[\u0000-\u001f<>:"|?*]/.test(segment) || /[ .]$/.test(segment))) {
     throw new UnsafeEmittedPathError(
       moduleName,
@@ -165,13 +186,23 @@ export function preflightEmittedPaths(
       // Every overwrite/merge sink ultimately uses writeFileSync.  Prove an
       // existing leaf is a regular file now, during the complete-operation
       // preflight, so a later directory/FIFO/socket cannot fail after an
-      // earlier candidate has already been written.
+      // earlier candidate has already been written. A hard-linked file is also
+      // refused: replacing it would mutate every other name for the same inode,
+      // including a name outside the consumer repository.
       try {
-        if (!lstatSync(destination.absolute).isFile()) {
+        const leaf = lstatSync(destination.absolute);
+        if (!leaf.isFile()) {
           throw new UnsafeEmittedPathError(
             candidate.moduleName,
             candidate.target,
             'the existing destination is not a regular file',
+          );
+        }
+        if (leaf.nlink > 1) {
+          throw new UnsafeEmittedPathError(
+            candidate.moduleName,
+            candidate.target,
+            'the existing destination has multiple hard links and this operation will not overwrite it',
           );
         }
       } catch (error) {

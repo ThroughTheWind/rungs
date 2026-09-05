@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -74,6 +75,42 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
           error.message.includes("module 'demo'") &&
           error.message.includes(JSON.stringify(target)),
         target,
+      );
+    }
+
+    const loneHigh = `safe/${String.fromCharCode(0xd800)}.md`;
+    const loneLow = `safe/${String.fromCharCode(0xdc00)}.md`;
+    for (const target of [loneHigh, loneLow]) {
+      assert.throws(
+        () => resolveEmittedPath(root, 'demo', target),
+        (error) =>
+          error instanceof UnsafeEmittedPathError &&
+          error.target === target &&
+          /unpaired UTF-16 surrogate/.test(error.reason),
+        'an unpaired surrogate must be refused before the host replaces or aliases it',
+      );
+    }
+
+    const astral = resolveEmittedPath(root, 'demo', 'safe/astral-\u{1f680}.md');
+    assert.equal(relative(realpathSync.native(root), astral.absolute).replace(/\\/g, '/'), 'safe/astral-\u{1f680}.md');
+
+    for (const candidates of [
+      [
+        { moduleName: 'replacement', target: 'safe/\ufffd.md' },
+        { moduleName: 'surrogate', target: loneHigh },
+      ],
+      [
+        { moduleName: 'replacement', target: 'safe/\ufffd' },
+        { moduleName: 'surrogate', target: `safe/${String.fromCharCode(0xd800)}/child.md` },
+      ],
+    ]) {
+      assert.throws(
+        () => preflightEmittedPaths(root, candidates),
+        (error) =>
+          error instanceof UnsafeEmittedPathError &&
+          error.moduleName === 'surrogate' &&
+          /unpaired UTF-16 surrogate/.test(error.reason),
+        'a lone surrogate cannot become an exact or structural alias of U+FFFD',
       );
     }
 
@@ -231,6 +268,66 @@ test('stored unsafe parameters fail both upgrade planning and mixed-plan applica
   }
 });
 
+test('stored parameters cannot impersonate a reserved shared sink during plan or apply', () => {
+  const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-stored-reserved-'));
+  const moduleDir = join(base, 'module');
+  const consumer = join(base, 'consumer');
+  mkdirSync(join(consumer, '.ai'), { recursive: true });
+  write(moduleDir, 'files/a-safe.md', 'new safe\n');
+  write(moduleDir, 'files/{{path}}', 'not a gate registry\n');
+  const mod = fixtureModule(moduleDir, 'session');
+  const recordText = [
+    '[repo]',
+    'harnesses = ["claude"]',
+    '',
+    '[modules.session]',
+    'version = "1.0.0"',
+    'state = "managed"',
+    'params = { path = ".ai/gates.toml" }',
+    '',
+    '[modules.session.hashes]',
+    `"a-safe.md" = "${contentHash('old safe\n')}"`,
+    '',
+  ].join('\n');
+  writeFileSync(join(consumer, '.ai', 'rungs.toml'), recordText);
+
+  try {
+    const record = readRecord(consumer);
+    assert.ok(record);
+    assert.throws(
+      () => planUpgrade(consumer, [mod], record),
+      (error) =>
+        error instanceof UnsafeEmittedPathError &&
+        error.moduleName === 'session' &&
+        error.target === '.ai/gates.toml' &&
+        /collides/.test(error.reason),
+    );
+
+    const plan = [{
+      module: 'session',
+      from: '1.0.0',
+      to: '2.0.0',
+      files: [
+        { rel: 'a-safe.md', state: 'missing' },
+        { rel: '.ai/gates.toml', state: 'missing' },
+      ],
+    }];
+    assert.throws(
+      () => applyUpgrade(consumer, [mod], record, plan),
+      (error) =>
+        error instanceof UnsafeEmittedPathError &&
+        error.moduleName === 'session' &&
+        error.target === '.ai/gates.toml' &&
+        /collides/.test(error.reason),
+    );
+    assert.equal(existsSync(join(consumer, 'a-safe.md')), false, 'the earlier safe plan entry was not written');
+    assert.equal(existsSync(join(consumer, '.ai', 'gates.toml')), false, 'the reserved sink was not created');
+    assert.equal(readFileSync(join(consumer, '.ai', 'rungs.toml'), 'utf8'), recordText);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test('valid nested files and alternate skills retain dry-run, record and upgrade semantics', () => {
   const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-valid-'));
   const moduleDir = join(base, 'module');
@@ -303,6 +400,15 @@ test('CLI add preflights later modules, render-derived, fixed-sink and structura
 
     const collision = run('collision', ['add', 'session', '--set', 'session.path=.ai/rungs.toml']);
     assert.match(collision, /collides with module/);
+
+    for (const [name, target] of [
+      ['reserved-gates', '.ai/gates.toml'],
+      ['reserved-agents', 'AGENTS.md'],
+      ['reserved-agents-case', 'agents.md'],
+    ]) {
+      const reserved = run(name, ['add', 'session', '--set', `session.path=${target}`]);
+      assert.match(reserved, /collides with module/);
+    }
 
     const structural = run('structural', [
       'add',
@@ -432,6 +538,74 @@ test('upgrade preflights a forged later directory target before writing an earli
     assert.throws(() => applyUpgrade(consumer, [mod], record, plan), /later\.md.*not a regular file/);
     assert.equal(existsSync(join(consumer, 'a-safe.md')), false, 'the earlier plan target was not written');
     assert.equal(existsSync(join(consumer, 'later.md')), true, 'the obstructing directory is untouched');
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('upgrade refuses an existing hard-linked writable leaf before touching outside bytes', () => {
+  const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-hardlink-upgrade-'));
+  const moduleDir = join(base, 'module');
+  const consumer = join(base, 'consumer');
+  const outside = join(base, 'outside');
+  mkdirSync(join(consumer, '.ai'), { recursive: true });
+  mkdirSync(outside);
+  write(moduleDir, 'files/a-safe.md', 'new safe\n');
+  write(moduleDir, 'files/managed.md', 'new managed\n');
+  const mod = fixtureModule(moduleDir);
+  const outsideFile = join(outside, 'sentinel.md');
+  const managedFile = join(consumer, 'managed.md');
+  writeFileSync(outsideFile, 'old managed\n');
+  linkSync(outsideFile, managedFile);
+  const recordText = [
+    '[repo]',
+    'harnesses = ["claude"]',
+    '',
+    '[modules.demo]',
+    'version = "1.0.0"',
+    'state = "managed"',
+    '',
+    '[modules.demo.hashes]',
+    `"managed.md" = "${contentHash('old managed\n')}"`,
+    '',
+  ].join('\n');
+  writeFileSync(join(consumer, '.ai', 'rungs.toml'), recordText);
+
+  try {
+    const record = readRecord(consumer);
+    const plan = planUpgrade(consumer, [mod], record);
+    assert.equal(plan[0].files.find((file) => file.rel === 'managed.md').state, 'stale');
+    assert.throws(
+      () => applyUpgrade(consumer, [mod], record, plan),
+      /managed\.md.*multiple hard links/,
+    );
+    assert.equal(existsSync(join(consumer, 'a-safe.md')), false, 'the earlier safe target was not written');
+    assert.equal(readFileSync(outsideFile, 'utf8'), 'old managed\n');
+    assert.equal(readFileSync(managedFile, 'utf8'), 'old managed\n');
+    assert.equal(readFileSync(join(consumer, '.ai', 'rungs.toml'), 'utf8'), recordText);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('cross-phase hard-linked fixed sinks refuse the complete add atomically', () => {
+  const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-hardlink-fixed-'));
+  const consumer = join(base, 'consumer');
+  mkdirSync(join(consumer, '.ai'), { recursive: true });
+  const registry = join(consumer, '.ai', 'gates.toml');
+  const record = join(consumer, '.ai', 'rungs.toml');
+  writeFileSync(registry, 'untouched shared bytes\n');
+  linkSync(registry, record);
+
+  try {
+    const result = spawnSync(process.execPath, [bin, 'add', 'adr', '--into', consumer], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout || result.stderr);
+    assert.match(result.stdout + result.stderr, /gates\.toml.*multiple hard links/);
+    assert.match(result.stdout + result.stderr, /Nothing was written/);
+    assert.equal(readFileSync(registry, 'utf8'), 'untouched shared bytes\n');
+    assert.equal(readFileSync(record, 'utf8'), 'untouched shared bytes\n');
+    assert.equal(existsSync(join(consumer, 'AGENTS.md')), false, 'the fragment phase never began');
+    assert.equal(existsSync(join(consumer, 'docs', 'decisions')), false, 'the module file phase never began');
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
