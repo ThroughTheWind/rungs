@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-084 -->
+<!-- NEXT-ID: WI-085 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress

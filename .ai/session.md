@@ -7,25 +7,23 @@ Keep it short. This document is read at the start of every session, and a long o
 
 ## Current objective
 
-Execute WI-009's public-framework research corpus sequentially. WI-010 established the fixed
-method; WI-011 through WI-015 validated it against a coding-agent loop, durable graph execution,
-a small primitive surface, typed/testable agents, and enterprise workflow controls. WI-016 now
-tests a shipped product's sandbox, concurrency, recovery, repository ingress/egress, and run UI.
+Use the [existing-promises remediation prompt](../docs/design/existing-promises-remediation-prompt.md)
+as the next implementation handoff when execution is requested.
 
 ## In progress
 
-WI-016 — pin OpenHands and trace one run from request through sandbox execution to a committed
-change, with a deliberately narrow product boundary.
+No remediation implementation is active in this task. The assessment and its companion prompt are
+complete; [WI-084](../docs/backlog/archive/WI-084-tool-evaluation.md) records the merge closeout.
 
 ## Resume from
 
-Clone the canonical source outside this repository, pin its SHA and licence, then find the runtime,
-sandbox, event/session, version-control, and run-control paths before following one run.
+Read the remediation prompt, re-derive its baseline from implementation/tests/Git, then open WI-077
+if the user requests execution of that programme.
 
 ## Up next
 
-1. Execute WI-016 for OpenHands.
-2. Continue the remaining extraction children in numeric order.
+1. Begin the prepared remediation task when requested.
+2. Reuse WI-077 and WI-061; promote only findings still supported by fresh evidence.
 
 ## Active constraints — do not reopen
 
@@ -48,14 +46,15 @@ sandbox, event/session, version-control, and run-control paths before following 
 <!-- Things believed true and not verified this session. Being wrong here is normal; the value is
      that the next session knows which claims to distrust first. -->
 
-- The eight-section template was validated by WI-011 and remains sufficient after the materially
-  different LangGraph state/persistence extraction.
+- A static local inspector may improve evidence review; demand and repeated use remain untested.
+- The backlog's active implementation statuses require fresh artifact/Git verification before reuse.
 
 ## Open questions
 
 <!-- Blocking and non-blocking, marked. "None blocking" is a useful thing to state. -->
 
-- None blocking.
+- None blocking the merged documentation. Preparing the prompt did not execute remediation or
+  authorize publication or a maintained downstream-repository change.
 
 ## Archive
 
