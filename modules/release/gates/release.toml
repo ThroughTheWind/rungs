@@ -38,7 +38,7 @@ rule    = "all-agree"
 # version is a judgement about *your* repo, and the engine guessing it is how a healthy layout gets
 # a red gate. rungs' own docs site is the case that found this — a private, never-published package
 # sitting at its own version beside the CLI (F-023).
-exclude = []
+exclude = ["{{version_exclude}}"]
 
 # No `autofix` key. It named a "rungs release sync-version" command that does not exist and never
 # has, so the message told whoever hit this gate to run something that would fail. The engine now
@@ -139,16 +139,68 @@ gate    = "release-version-consistent"
 expect  = "pass"
 fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "1.2.0" } }
 
-# The F-023 case: a sibling deliberately versioned on its own is excluded and the gate stays green,
-# rather than reporting a healthy layout as a disagreement.
+# All three advertised ecosystems contribute to one comparison. Equal values pass; changing only
+# Python fails and the engine's finding names every contributing file beside its value.
 [[self_test]]
 gate    = "release-version-consistent"
 expect  = "pass"
-fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "0.0.1" }, exclude = ["web/package.json"] }
+fixture = { versions = { "package.json" = "1.2.0", "pyproject.toml" = "1.2.0", "Directory.Build.props" = "1.2.0" } }
 
-# …and excluding one sibling must not blind the gate to a different one. An `exclude` that
-# silently widened would be worse than no gate, because it would still report green.
 [[self_test]]
 gate    = "release-version-consistent"
 expect  = "fail"
-fixture = { packages = { "package.json" = "1.2.0", "web/package.json" = "0.0.1", "api/package.json" = "9.9.9" }, exclude = ["web/package.json"] }
+fixture = { versions = { "package.json" = "1.2.0", "pyproject.toml" = "2.0.0", "Directory.Build.props" = "1.2.0" } }
+
+# A matched source is evidence even when it is broken: malformed documents, missing configured
+# locations and unusable values all fail rather than disappearing from the comparison.
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "package.json" = "{" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "pyproject.toml" = "[project" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "package.json" = "{\"name\":\"fixture\"}" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "pyproject.toml" = "[project]\nname = \"fixture\"\n" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "Directory.Build.props" = "<Project><PropertyGroup><VersionPrefix>1.2.0</VersionPrefix></PropertyGroup></Project>" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "Directory.Build.props" = "<Project><Version>1.2.0</Version>" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "Directory.Build.props" = "<Project><![CDATA[<Version>1.2.0</Version>]]></Project>" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "package.json" = "{\"version\":{}}" } }
+
+# Unmatched sources are optional when one valid source participates. When none of the configured
+# globs contributes a file, the gate refuses to manufacture a green result from zero evidence.
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "pass"
+fixture = { versions = { "package.json" = "1.2.0" } }
+
+[[self_test]]
+gate    = "release-version-consistent"
+expect  = "fail"
+fixture = { version_files = { "README.md" = "# no version source\n" } }

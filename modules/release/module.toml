@@ -1,6 +1,6 @@
 [module]
 name    = "release"
-version = "1.4.0"
+version = "1.5.0"
 rung    = 3
 summary = "Candidate, stable and deploy branch lines; one procedure for cutting a release, hotfixing and rolling back; changelog fragments instead of a shared file."
 
@@ -41,6 +41,10 @@ default     = "changelog.d"
 description = "semver | calver"
 default     = "semver"
 consumed_by = "render"
+
+[params.version_exclude]
+description = "One glob for files versioned independently of this release. Use a brace group for several paths; empty excludes nothing."
+default     = ""
 
 [[gates]]
 id     = "release-changelog-fragment"
