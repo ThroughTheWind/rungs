@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-075 -->
+<!-- NEXT-ID: WI-076 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -26,6 +26,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
+| [WI-075](items/WI-075-land-checked-out-integration.md) | Refuse landing while the integration branch is checked out | feature | — |
 
 ## Accepted
 
