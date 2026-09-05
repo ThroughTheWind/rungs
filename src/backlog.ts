@@ -1,5 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import {
+  preflightEmittedPaths,
+  resolveEmittedPath,
+  UnsafeEmittedPathError,
+  type ResolvedEmittedPath,
+} from './emitted-path.ts';
 import { walk } from './glob.ts';
 
 /**
@@ -36,6 +42,74 @@ export interface ArchivePlan {
   held: { file: string; reason: string }[];
 }
 
+export interface ResolvedArchiveTree {
+  /** Normalized portable path recorded in the archive plan. */
+  root: string;
+  items: ResolvedEmittedPath;
+  archive: ResolvedEmittedPath;
+  itemsExists: boolean;
+  archiveExists: boolean;
+}
+
+interface PreparedArchiveMove {
+  move: ArchiveMove;
+  from: ResolvedEmittedPath;
+  to: ResolvedEmittedPath;
+}
+
+interface PreparedArchiveRewrite {
+  file: string;
+  path: ResolvedEmittedPath;
+  original: string;
+  updated: string;
+  links: number;
+}
+
+interface PreparedArchive {
+  moves: PreparedArchiveMove[];
+  rewrites: PreparedArchiveRewrite[];
+}
+
+const ARCHIVE_OPERATION = 'backlog archive';
+
+const missingEntry = (error: unknown) =>
+  error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR');
+
+function existingDirectory(path: ResolvedEmittedPath): boolean {
+  try {
+    if (!statSync(path.absolute).isDirectory()) {
+      throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, 'the existing archive tree entry is not a directory');
+    }
+    return true;
+  } catch (error) {
+    if (error instanceof UnsafeEmittedPathError) throw error;
+    if (missingEntry(error)) return false;
+    throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, 'the archive tree entry cannot be inspected');
+  }
+}
+
+/**
+ * Resolve the two archive-tree directories before callers inspect either one.
+ * Appending the fixed names also validates the configured root as portable
+ * repository-relative data without treating the root and its children as
+ * conflicting file emissions.
+ */
+export function resolveArchiveTree(repoRoot: string, backlogRoot = 'docs/backlog'): ResolvedArchiveTree {
+  const [items, archive] = preflightEmittedPaths(repoRoot, [
+    { moduleName: ARCHIVE_OPERATION, target: `${backlogRoot}/items` },
+    { moduleName: ARCHIVE_OPERATION, target: `${backlogRoot}/archive` },
+  ]);
+  const suffix = '/items';
+  const root = items.target.slice(0, -suffix.length);
+  return {
+    root,
+    items,
+    archive,
+    itemsExists: existingDirectory(items),
+    archiveExists: existingDirectory(archive),
+  };
+}
+
 /** Statuses whose work can no longer change. Mirrors backlog README §8. */
 const FINISHED = new Set(['done', 'rejected']);
 
@@ -47,13 +121,22 @@ const posix = (p: string) => p.split(sep).join('/');
 const LINK = /\]\((?!https?:|#|mailto:)([^)\s#]+)((?:#[^)\s]*)?)\)/g;
 
 export function planArchive(repoRoot: string, backlogRoot = 'docs/backlog'): ArchivePlan {
-  const itemsDir = join(repoRoot, ...backlogRoot.split('/'), 'items');
-  const archiveDir = join(repoRoot, ...backlogRoot.split('/'), 'archive');
+  const tree = resolveArchiveTree(repoRoot, backlogRoot);
   const moves: ArchiveMove[] = [];
   const held: ArchivePlan['held'] = [];
 
-  const files = walk(repoRoot);
-  const items = files.filter((f) => posix(f).startsWith(posix(relative(repoRoot, itemsDir)) + '/') && f.endsWith('.md'));
+  if (!tree.itemsExists) return { root: tree.root, moves, rewrites: [], held };
+
+  // Walk the canonical contained directories directly. The repository-wide
+  // walker intentionally does not follow directory aliases; an inward alias
+  // is nevertheless a valid archive tree and must retain normal behavior.
+  const beneath = (directory: ResolvedEmittedPath) =>
+    walk(directory.absolute)
+      .filter((file) => file.endsWith('.md'))
+      .map((file) => `${directory.target}/${posix(file)}`)
+      .sort();
+  const items = beneath(tree.items);
+  const archived = tree.archiveExists ? beneath(tree.archive) : [];
 
   for (const rel of items) {
     // The **basename**, exactly — not a suffix of the path. `/TEMPLATE\.md$/i`
@@ -64,7 +147,8 @@ export function planArchive(repoRoot: string, backlogRoot = 'docs/backlog'): Arc
     // to the wrong end reads as careful and is not.
     const base = posix(rel).split('/').pop()!;
     if (/^(README|TEMPLATE)\.md$/i.test(base)) continue;
-    const text = readFileSync(join(repoRoot, rel), 'utf8');
+    const source = resolveEmittedPath(repoRoot, ARCHIVE_OPERATION, rel);
+    const text = readFileSync(source.absolute, 'utf8');
     const status = field(text, 'status');
     const id = field(text, 'id');
     if (!FINISHED.has(status)) continue;
@@ -82,12 +166,14 @@ export function planArchive(repoRoot: string, backlogRoot = 'docs/backlog'): Arc
       // as unfinished, so an epic whose children had all landed could never be
       // archived and the hold message named five done items as outstanding. The
       // more finished an epic got, the more stuck it became.
-      const archived = files.filter((f) => posix(f).startsWith(posix(relative(repoRoot, archiveDir)) + '/') && f.endsWith('.md'));
       const unfinished = children.filter((c) => {
         const f = items.find((i) => i.includes(`${c}-`)) ?? archived.find((i) => i.includes(`${c}-`));
         // Still `!f` → genuinely unknown, and an unknown holds. A child nobody
         // can find is not evidence that it finished.
-        return !f || !FINISHED.has(field(readFileSync(join(repoRoot, f), 'utf8'), 'status'));
+        return (
+          !f ||
+          !FINISHED.has(field(readFileSync(resolveEmittedPath(repoRoot, ARCHIVE_OPERATION, f).absolute, 'utf8'), 'status'))
+        );
       });
       if (unfinished.length) {
         held.push({ file: rel, reason: `epic with unfinished children: ${unfinished.join(', ')}` });
@@ -102,22 +188,16 @@ export function planArchive(repoRoot: string, backlogRoot = 'docs/backlog'): Arc
       id,
       status,
       from: rel,
-      to: posix(join(relative(repoRoot, archiveDir), posix(rel).split('/').pop()!)),
+      to: `${tree.archive.target}/${posix(rel).split('/').pop()!}`,
     });
   }
 
-  // Where each moved file ends up, keyed by its absolute old path, so a link can
-  // be looked up by what it resolves to rather than by how it was spelled.
-  const moved = new Map(moves.map((m) => [resolve(repoRoot, m.from), m.to]));
-  const rewrites: ArchivePlan['rewrites'] = [];
-
-  for (const rel of files) {
-    if (!isRewritable(rel)) continue;
-    const links = retargets(repoRoot, rel, moved).length;
-    if (links || moved.has(resolve(repoRoot, rel))) rewrites.push({ file: rel, links });
-  }
-
-  return { root: backlogRoot, moves, rewrites, held };
+  const provisional = { root: tree.root, moves, rewrites: [], held };
+  const prepared = prepareArchive(repoRoot, provisional);
+  return {
+    ...provisional,
+    rewrites: prepared.rewrites.map(({ file, links }) => ({ file, links })),
+  };
 }
 
 /**
@@ -145,13 +225,18 @@ function isRewritable(rel: string): boolean {
  * of those were equivalent spellings of an unmoved target. Rewriting them would
  * have been a repo-wide reflow disguised as an archive.
  */
-function retargets(repoRoot: string, rel: string, moved: Map<string, string>): { href: string; to: string }[] {
+function retargets(
+  repoRoot: string,
+  rel: string,
+  moved: Map<string, string>,
+  source = readFileSync(join(repoRoot, ...rel.split('/')), 'utf8'),
+): { href: string; to: string }[] {
   const oldDir = dirname(resolve(repoRoot, rel));
   const selfMoved = moved.get(resolve(repoRoot, rel));
   const newDir = dirname(resolve(repoRoot, selfMoved ?? rel));
   const out: { href: string; to: string }[] = [];
 
-  for (const m of readFileSync(join(repoRoot, rel), 'utf8').matchAll(LINK)) {
+  for (const m of source.matchAll(LINK)) {
     const href = m[1];
     if (href.includes('{{')) continue; // a template link, resolved at install
     const target = resolve(oldDir, decodeURIComponent(href));
@@ -168,30 +253,195 @@ function retargets(repoRoot: string, rel: string, moved: Map<string, string>): {
   return out;
 }
 
-export function applyArchive(repoRoot: string, plan: ArchivePlan): void {
-  const moved = new Map(plan.moves.map((m) => [resolve(repoRoot, m.from), m.to]));
+function requireRegularFile(path: ResolvedEmittedPath, purpose: string): void {
+  if (path.leafAlias) {
+    throw new UnsafeEmittedPathError(
+      ARCHIVE_OPERATION,
+      path.target,
+      `the ${purpose} is a symlink or junction leaf`,
+    );
+  }
+  try {
+    if (!lstatSync(path.absolute).isFile()) {
+      throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, `the ${purpose} is not a regular file`);
+    }
+  } catch (error) {
+    if (error instanceof UnsafeEmittedPathError) throw error;
+    if (missingEntry(error)) {
+      throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, `the ${purpose} no longer exists`);
+    }
+    throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, `the ${purpose} cannot be inspected`);
+  }
+}
 
-  // Rewrite before moving. Every path is computed from the plan rather than from
-  // the filesystem, so the order is a choice — and this order means a crash
-  // halfway leaves the files still where the links say they are.
-  for (const rel of walk(repoRoot)) {
-    if (!isRewritable(rel)) continue;
-    const edits = retargets(repoRoot, rel, moved);
-    if (!edits.length) continue;
-    const path = join(repoRoot, rel);
-    let text = readFileSync(path, 'utf8');
-    // Replace through the same matcher that found them, so a href appearing in
-    // prose as well as in a link cannot be hit by a bare string replace.
-    text = text.replace(LINK, (whole, href: string, anchor: string) => {
-      const edit = edits.find((e) => e.href === href);
-      return edit ? `](${edit.to}${anchor})` : whole;
+function requireMissingDestination(path: ResolvedEmittedPath): void {
+  if (path.leafAlias) {
+    throw new UnsafeEmittedPathError(
+      ARCHIVE_OPERATION,
+      path.target,
+      'the archive destination is an existing symlink or junction leaf',
+    );
+  }
+  try {
+    lstatSync(path.absolute);
+    throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, 'the archive destination already exists');
+  } catch (error) {
+    if (error instanceof UnsafeEmittedPathError) throw error;
+    if (!missingEntry(error)) {
+      throw new UnsafeEmittedPathError(ARCHIVE_OPERATION, path.target, 'the archive destination cannot be inspected');
+    }
+  }
+}
+
+function prepareMoves(repoRoot: string, plan: ArchivePlan, tree: ResolvedArchiveTree): PreparedArchiveMove[] {
+  if (plan.root !== tree.root) {
+    throw new UnsafeEmittedPathError(
+      ARCHIVE_OPERATION,
+      plan.root,
+      `the plan root does not match its normalized archive root '${tree.root}'`,
+    );
+  }
+
+  const itemsPrefix = `${tree.items.target}/`;
+  const archivePrefix = `${tree.archive.target}/`;
+  for (const move of plan.moves) {
+    if (!move.from.startsWith(itemsPrefix)) {
+      throw new UnsafeEmittedPathError(
+        ARCHIVE_OPERATION,
+        move.from,
+        `an archive source must be below '${tree.items.target}'`,
+      );
+    }
+    const expected = `${archivePrefix}${move.from.split('/').pop()!}`;
+    if (move.to !== expected) {
+      throw new UnsafeEmittedPathError(
+        ARCHIVE_OPERATION,
+        move.to,
+        `the archive destination for '${move.from}' must be '${expected}'`,
+      );
+    }
+  }
+
+  const resolved = preflightEmittedPaths(
+    repoRoot,
+    plan.moves.flatMap((move) => [
+      { moduleName: ARCHIVE_OPERATION, target: move.from },
+      { moduleName: ARCHIVE_OPERATION, target: move.to },
+    ]),
+  );
+
+  return plan.moves.map((move, index) => {
+    const from = resolved[index * 2];
+    const to = resolved[index * 2 + 1];
+    requireRegularFile(from, 'archive source');
+    requireMissingDestination(to);
+
+    const source = readFileSync(from.absolute, 'utf8');
+    if (field(source, 'id') !== move.id || field(source, 'status') !== move.status || !FINISHED.has(move.status)) {
+      throw new UnsafeEmittedPathError(
+        ARCHIVE_OPERATION,
+        move.from,
+        'the archive plan is stale or does not match the source item frontmatter',
+      );
+    }
+    return { move, from, to };
+  });
+}
+
+function preparedText(source: string, edits: { href: string; to: string }[]): string {
+  // Replace through the same matcher that found the links, so an href appearing
+  // in prose as well as in a link cannot be hit by a bare string replace.
+  return source.replace(LINK, (whole, href: string, anchor: string) => {
+    const edit = edits.find((candidate) => candidate.href === href);
+    return edit ? `](${edit.to}${anchor})` : whole;
+  });
+}
+
+function rewriteSummary(rewrites: PreparedArchiveRewrite[]): ArchivePlan['rewrites'] {
+  return rewrites
+    .map(({ file, links }) => ({ file, links }))
+    .sort((left, right) => left.file.localeCompare(right.file));
+}
+
+function prepareArchive(repoRoot: string, plan: ArchivePlan, verifyRecordedRewrites = false): PreparedArchive {
+  const tree = resolveArchiveTree(repoRoot, plan.root);
+  const moves = prepareMoves(repoRoot, plan, tree);
+
+  if (verifyRecordedRewrites) {
+    const recorded = preflightEmittedPaths(
+      repoRoot,
+      plan.rewrites.map((rewrite) => ({
+        moduleName: ARCHIVE_OPERATION,
+        target: rewrite.file,
+        writeExisting: true,
+      })),
+    );
+    recorded.forEach((path) => requireRegularFile(path, 'recorded rewrite target'));
+  }
+
+  // Where each moved file ends up, keyed by its lexical old path, so a link is
+  // selected by what its written spelling resolves to. Actual I/O below uses
+  // the canonical paths that were validated for this operation.
+  const moved = new Map(moves.map(({ move }) => [resolve(repoRoot, ...move.from.split('/')), move.to]));
+  const candidates = new Set([...walk(repoRoot), ...moves.map(({ move }) => move.from)]);
+  if (verifyRecordedRewrites) for (const rewrite of plan.rewrites) candidates.add(rewrite.file);
+
+  const drafts = [...candidates]
+    .filter(isRewritable)
+    .sort()
+    .flatMap((file) => {
+      const path = resolveEmittedPath(repoRoot, ARCHIVE_OPERATION, file);
+      const original = readFileSync(path.absolute, 'utf8');
+      const edits = retargets(repoRoot, file, moved, original);
+      if (!edits.length) return [];
+      return [{ file, original, updated: preparedText(original, edits), links: edits.length }];
     });
-    writeFileSync(path, text);
+
+  const paths = preflightEmittedPaths(
+    repoRoot,
+    drafts.map((rewrite) => ({
+      moduleName: ARCHIVE_OPERATION,
+      target: rewrite.file,
+      writeExisting: true,
+    })),
+  );
+  const rewrites = drafts.map((rewrite, index) => ({ ...rewrite, path: paths[index] }));
+  rewrites.forEach(({ path }) => requireRegularFile(path, 'rewrite target'));
+
+  if (verifyRecordedRewrites) {
+    const expected = [...plan.rewrites].sort((left, right) => left.file.localeCompare(right.file));
+    const actual = rewriteSummary(rewrites);
+    if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+      throw new UnsafeEmittedPathError(
+        ARCHIVE_OPERATION,
+        plan.root,
+        'the archive plan is stale: its complete rewrite set no longer matches the repository',
+      );
+    }
   }
 
-  for (const m of plan.moves) {
-    const to = join(repoRoot, ...m.to.split('/'));
-    mkdirSync(dirname(to), { recursive: true });
-    renameSync(join(repoRoot, m.from), to);
+  return { moves, rewrites };
+}
+
+export function applyArchive(repoRoot: string, plan: ArchivePlan): void {
+  const prepared = prepareArchive(repoRoot, plan, true);
+
+  // Check every captured source again before the first mutation. This catches
+  // ordinary stale-plan edits without allowing an earlier rewrite to land.
+  for (const rewrite of prepared.rewrites) {
+    if (readFileSync(rewrite.path.absolute, 'utf8') !== rewrite.original) {
+      throw new UnsafeEmittedPathError(
+        ARCHIVE_OPERATION,
+        rewrite.file,
+        'the rewrite target changed after archive preflight',
+      );
+    }
   }
+
+  // Rewrite before moving. Every mutation uses the canonical paths carried by
+  // the validated operation, so an inward alias works and an outward alias can
+  // never be followed during application.
+  for (const move of prepared.moves) mkdirSync(dirname(move.to.absolute), { recursive: true });
+  for (const rewrite of prepared.rewrites) writeFileSync(rewrite.path.absolute, rewrite.updated);
+  for (const move of prepared.moves) renameSync(move.from.absolute, move.to.absolute);
 }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   linkSync,
@@ -17,6 +18,8 @@ import test from 'node:test';
 
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { UnsafeEmittedPathError } from '../src/emitted-path.ts';
+
+const bin = join(import.meta.dirname, '..', 'dist', 'cli.js');
 
 function write(root, relativePath, content) {
   const path = join(root, ...relativePath.split('/'));
@@ -56,6 +59,17 @@ test('archive planning refuses portable escapes and outward backlog aliases befo
       );
     }
 
+    write(
+      root,
+      '.ai/rungs.toml',
+      '[repo]\nharnesses = []\n\n[modules.backlog]\nversion = "1.0.0"\nparams = { root = "../outside" }\n',
+    );
+    const stored = spawnSync(process.execPath, [bin, 'backlog', 'archive', root, '--dry-run'], {
+      encoding: 'utf8',
+    });
+    assert.equal(stored.status, 1, stored.stdout + stored.stderr);
+    assert.match(stored.stdout + stored.stderr, /refused:.*parent traversal/is);
+
     const items = join(root, 'docs', 'backlog', 'items');
     rmSync(items, { recursive: true });
     write(outside, 'WI-002-done.md', '---\nid: WI-002\nstatus: done\ntype: feature\n---\n');
@@ -80,6 +94,49 @@ test('archive planning refuses portable escapes and outward backlog aliases befo
   }
 });
 
+test('outward aliases at the backlog root and an archive leaf are refused', (t) => {
+  const root = fixture('rungs-archive-root-alias-');
+  const outside = mkdtempSync(join(tmpdir(), 'rungs-archive-root-outside-'));
+  const backlog = join(root, 'docs', 'backlog');
+
+  try {
+    rmSync(backlog, { recursive: true });
+    write(outside, 'items/WI-001-done.md', '---\nid: WI-001\nstatus: done\ntype: feature\n---\n');
+    try {
+      symlinkSync(outside, backlog, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+      if (process.platform === 'win32' && error && ['EPERM', 'EACCES'].includes(error.code)) {
+        t.skip('this host does not permit a directory junction');
+        return;
+      }
+      throw error;
+    }
+    assert.throws(
+      () => planArchive(root),
+      (error) => error instanceof UnsafeEmittedPathError && /items/.test(error.target),
+      'the configured backlog root may not redirect item discovery outside the repository',
+    );
+
+    rmSync(backlog, { recursive: true });
+    write(
+      root,
+      'docs/backlog/items/WI-001-done.md',
+      '---\nid: WI-001\nstatus: done\ntype: feature\n---\n',
+    );
+    mkdirSync(join(root, 'docs', 'backlog', 'archive'), { recursive: true });
+    const leaf = join(root, 'docs', 'backlog', 'archive', 'WI-001-done.md');
+    symlinkSync(outside, leaf, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(
+      () => planArchive(root),
+      (error) => error instanceof UnsafeEmittedPathError && /WI-001-done\.md/.test(error.target),
+      'an occupied archive leaf may not redirect the move outside the repository',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
 test('the exact outward archive junction is refused before dry-run or apply can claim success', (t) => {
   const root = fixture();
   const outside = mkdtempSync(join(tmpdir(), 'rungs-archive-f049-'));
@@ -88,6 +145,7 @@ test('the exact outward archive junction is refused before dry-run or apply can 
   const board = join(root, 'docs', 'backlog', 'BACKLOG.md');
   const itemBefore = readFileSync(item);
   const boardBefore = readFileSync(board);
+  const safePlan = planArchive(root);
 
   try {
     try {
@@ -103,6 +161,17 @@ test('the exact outward archive junction is refused before dry-run or apply can 
     assert.throws(
       () => planArchive(root),
       (error) => error instanceof UnsafeEmittedPathError && /archive/.test(error.target),
+    );
+    const dryRun = spawnSync(process.execPath, [bin, 'backlog', 'archive', root, '--dry-run'], {
+      encoding: 'utf8',
+    });
+    assert.equal(dryRun.status, 1, dryRun.stdout + dryRun.stderr);
+    assert.match(dryRun.stdout + dryRun.stderr, /refused:.*backlog archive.*archive/is);
+    assert.match(dryRun.stdout + dryRun.stderr, /Nothing was written/);
+    assert.throws(
+      () => applyArchive(root, safePlan),
+      (error) => error instanceof UnsafeEmittedPathError && /archive/.test(error.target),
+      'application must revalidate an archive alias created after planning',
     );
     assert.deepEqual(readFileSync(item), itemBefore);
     assert.deepEqual(readFileSync(board), boardBefore);
