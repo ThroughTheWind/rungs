@@ -23,7 +23,7 @@ id      = "rules"
 sources = [".ai/rules/**/*.md"]
 exclude = [".ai/rules/README.md"]   # the scaffold doc is not a rule
 targets = [".claude/rules/**/*.md", ".github/instructions/**/*.instructions.md", ".cursor/rules/**/*.mdc"]
-command = "rungs render"
+command = "node .ai/rungs.mjs render"
 # Targets are checked only for harnesses in the installed matrix; the rest are ignored rather
 # than reported missing.
 
@@ -34,7 +34,7 @@ id      = "repo-map"
 block   = { file = "AGENTS.md", marker = "repo-map" }
 derives = "directory-tree"
 depth   = 2
-command = "rungs render"
+command = "node .ai/rungs.mjs render"
 
 # ── instructions-shell-backticks (hook: pre-tool-use) ─────────────────────────
 #

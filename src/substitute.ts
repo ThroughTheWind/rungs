@@ -1,4 +1,6 @@
-import { basename, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Manifest } from './types.ts';
 
 export type Params = Record<string, Record<string, unknown>>;
@@ -43,6 +45,20 @@ function repoFacts(repoRoot?: string): Record<string, unknown> {
 }
 
 /**
+ * Facts about the Rungs artifact doing the rendering. Source execution and the
+ * published bundle live in `src/` and `dist/` respectively, so the package
+ * manifest is one directory above `import.meta.url` in both cases.
+ *
+ * This is deliberately not a module parameter. Parameters are copied into an
+ * install record and retained on upgrade; a CLI version must instead advance
+ * when the consumer explicitly invokes a newer artifact.
+ */
+function rungsFacts(): Record<string, unknown> {
+  const packageJson = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
+  return { version: JSON.parse(readFileSync(packageJson, 'utf8')).version };
+}
+
+/**
  * Defaults from every manifest, with explicit overrides applied on top.
  *
  * `repoRoot` is optional only so a caller with no repository in hand can still read defaults. When
@@ -51,7 +67,7 @@ function repoFacts(repoRoot?: string): Record<string, unknown> {
  * the reason a missing root shows up as a wrong-looking file instead of a silently blank heading.
  */
 export function resolveParams(mods: Manifest[], overrides: Params = {}, repoRoot?: string): Params {
-  const out: Params = { repo: repoFacts(repoRoot) };
+  const out: Params = {};
   for (const m of mods) {
     out[m.name] = {};
     for (const [k, spec] of Object.entries(m.params)) out[m.name][k] = spec.default;
@@ -67,6 +83,11 @@ export function resolveParams(mods: Manifest[], overrides: Params = {}, repoRoot
   for (const [mod, vals] of Object.entries(overrides)) {
     out[mod] = { ...(out[mod] ?? {}), ...vals };
   }
+
+  // Facts win over manifests and overrides: both namespaces describe the
+  // execution context, not consumer configuration.
+  out.repo = repoFacts(repoRoot);
+  out.rungs = rungsFacts();
 
   // A default may reference another module's parameter, e.g. findings' register
   // living at `docs/{{backlog.root}}/FINDINGS.md`. One level only — a chain

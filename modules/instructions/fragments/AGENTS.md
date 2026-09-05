@@ -1,8 +1,8 @@
-<!-- rungs:begin instructions@1.1.0 -->
+<!-- rungs:begin instructions@1.2.0 -->
 ## Repo map
 
 <!-- rungs:begin repo-map -->
-<!-- Generated. Run `rungs render` after moving directories. -->
+<!-- Generated. Run `node .ai/rungs.mjs render` after moving directories. -->
 <!-- rungs:end repo-map -->
 ## Execution boundary
 

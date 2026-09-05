@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { delimiter, dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
@@ -16,6 +16,115 @@ test('the published bin points at a built executable and answers help', () => {
   const run = spawnSync(process.execPath, [bin, '--help'], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /installs and maintains a repository's agentic development system/);
+});
+
+test('a consumer gets one exact launcher shared by local instructions and CI', () => {
+  const bin = resolve(root, manifest.bin.rungs);
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-exact-launcher-'));
+
+  try {
+    assert.equal(spawnSync('git', ['init', '-q', '-b', 'main', dir], { encoding: 'utf8' }).status, 0);
+    writeFileSync(join(dir, 'README.md'), '# Consumer\n');
+    assert.equal(spawnSync('git', ['-C', dir, 'add', 'README.md'], { encoding: 'utf8' }).status, 0);
+    assert.equal(
+      spawnSync(
+        'git',
+        ['-C', dir, '-c', 'user.name=rungs-test', '-c', 'user.email=rungs@localhost', 'commit', '-q', '-m', 'seed'],
+        { encoding: 'utf8' },
+      ).status,
+      0,
+    );
+
+    const installed = spawnSync(process.execPath, [bin, 'init', dir, 'disciplined'], { encoding: 'utf8' });
+    assert.equal(installed.status, 0, installed.stdout || installed.stderr);
+
+    const launcherPath = join(dir, '.ai', 'rungs.mjs');
+    const launcher = readFileSync(launcherPath, 'utf8');
+    const exact = `@rungs/cli@${manifest.version}`;
+    assert.equal(launcher.split(exact).length - 1, 1);
+
+    const instructions = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+    assert.match(instructions, /node \.ai\/rungs\.mjs check/);
+
+    const workflow = readFileSync(join(dir, '.github', 'workflows', 'checks.yml'), 'utf8');
+    assert.match(workflow, /run: node \.ai\/rungs\.mjs check/);
+    assert.doesNotMatch(workflow, /npx @rungs\/cli check/);
+
+    const record = readFileSync(join(dir, '.ai', 'rungs.toml'), 'utf8');
+    assert.match(record, /"\.ai\/rungs\.mjs" = "[a-f0-9]{12}"/);
+
+    const fakeNpm = join(dir, 'fake-npm.mjs');
+    const log = join(dir, 'fake-npm-args.json');
+    writeFileSync(
+      fakeNpm,
+      [
+        "import { writeFileSync } from 'node:fs';",
+        "writeFileSync(process.env.RUNGS_LAUNCHER_LOG, JSON.stringify(process.argv.slice(2)));",
+        'process.exit(Number(process.env.RUNGS_LAUNCHER_EXIT));',
+        '',
+      ].join('\n'),
+    );
+    const run = spawnSync(process.execPath, [launcherPath, 'check', 'fast', 'literal&not-shell'], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        npm_execpath: fakeNpm,
+        PATH: `${dirname(fakeNpm)}${delimiter}${process.env.PATH ?? ''}`,
+        RUNGS_LAUNCHER_LOG: log,
+        RUNGS_LAUNCHER_EXIT: '23',
+      },
+    });
+    assert.equal(run.status, 23, run.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(log, 'utf8')), [
+      'exec',
+      '--yes',
+      `--package=${exact}`,
+      '--',
+      'rungs',
+      'check',
+      'fast',
+      'literal&not-shell',
+    ]);
+
+    const upgradeLog = join(dir, 'fake-npm-upgrade-args.json');
+    const upgrade = spawnSync(process.execPath, [launcherPath, 'upgrade', '--to', '2.0.0-beta.1', '--apply'], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        npm_execpath: fakeNpm,
+        RUNGS_LAUNCHER_LOG: upgradeLog,
+        RUNGS_LAUNCHER_EXIT: '0',
+      },
+    });
+    assert.equal(upgrade.status, 0, upgrade.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(upgradeLog, 'utf8')), [
+      'exec',
+      '--yes',
+      '--package=@rungs/cli@2.0.0-beta.1',
+      '--',
+      'rungs',
+      'upgrade',
+      '--apply',
+    ]);
+
+    const mutable = spawnSync(process.execPath, [launcherPath, 'upgrade', '--to', 'latest', '--apply'], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...process.env, npm_execpath: fakeNpm, RUNGS_LAUNCHER_LOG: join(dir, 'must-not-run.json') },
+    });
+    assert.equal(mutable.status, 1);
+    assert.match(mutable.stderr, /requires an exact version/);
+    assert.equal(existsSync(join(dir, 'must-not-run.json')), false, 'a mutable selector never reaches npm');
+
+    const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
+    assert.equal(manifest.dependencies['smol-toml'], '1.8.0');
+    assert.equal(lock.packages[''].dependencies['smol-toml'], '1.8.0');
+    assert.equal(lock.packages['node_modules/smol-toml'].version, '1.8.0');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // F-020 / ADR-0008. `cut-release` told every consumer to gate a release with `--tier full`, which

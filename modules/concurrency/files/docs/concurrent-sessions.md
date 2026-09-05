@@ -14,11 +14,11 @@ branch, and they cannot see each other's work.**
 
 | | |
 | --- | --- |
-| `rungs session start <branch>` | Cuts from `{{green_prefix}}<branch>` — the last merge that was actually verified — not the tip. Falls back to the tip and **says so** |
-| `rungs check` | The fast tier. Run it constantly |
-| `rungs preflight` | The integration branch moved: did it change files *you* changed? That, not the commit count, predicts a conflict |
-| `rungs land <branch>` | merge → verify **the merged tree** → fast-forward → move the green ref |
-| `rungs worktrees` | What is finished and prunable. **Reports only** — removing someone else's worktree is not a script's call |
+| `node .ai/rungs.mjs session start <branch>` | Cuts from `{{green_prefix}}<branch>` — the last merge that was actually verified — not the tip. Falls back to the tip and **says so** |
+| `node .ai/rungs.mjs check` | The fast tier. Run it constantly |
+| `node .ai/rungs.mjs preflight` | The integration branch moved: did it change files *you* changed? That, not the commit count, predicts a conflict |
+| `node .ai/rungs.mjs land <branch>` | merge → verify **the merged tree** → fast-forward → move the green ref |
+| `node .ai/rungs.mjs worktrees` | What is finished and prunable. **Reports only** — removing someone else's worktree is not a script's call |
 
 ## Do not run the full tier before landing
 
@@ -88,6 +88,6 @@ scheduling instead.
 
 ## Worktree lifetime is item lifetime
 
-Delete the branch when it lands. `rungs worktrees` measures whether that happened and flags
+Delete the branch when it lands. `node .ai/rungs.mjs worktrees` measures whether that happened and flags
 worktrees that are merged and clean — and, more usefully, ones that are merged **and dirty**, where
 uncommitted work is sitting in a branch that has already landed.

@@ -1,6 +1,6 @@
 [module]
 name    = "specs"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 2
 summary = "Behaviour specifications with stable feature and story ids, per-story status, a mandatory scope section, and a gate against overclaiming."
 

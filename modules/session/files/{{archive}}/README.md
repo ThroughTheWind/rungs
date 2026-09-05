@@ -9,7 +9,7 @@ Closed sessions, one file each, newest first in the index generated into
 
 The filename does the work. Someone scanning this directory should be able to find the session
 that closed a given piece of work without opening anything — which is why the name carries both
-halves, not just a number. `rungs check` refuses a name that does not.
+halves, not just a number. `node .ai/rungs.mjs check` refuses a name that does not.
 
 ## What an archive note holds
 

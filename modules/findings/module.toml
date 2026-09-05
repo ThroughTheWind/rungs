@@ -1,6 +1,6 @@
 [module]
 name    = "findings"
-version = "1.1.0"
+version = "1.2.0"
 rung    = 1
 summary = "A register for what is noticed before it is decided, with a triage path into work items."
 

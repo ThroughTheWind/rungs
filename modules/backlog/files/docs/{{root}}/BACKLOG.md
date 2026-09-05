@@ -7,7 +7,7 @@ The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
 <!-- NEXT-ID: {{id_prefix}}-001 -->
-<!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
+<!-- Claim from this marker and bump it on your own branch. `node .ai/rungs.mjs check` refuses a duplicate. -->
 
 ## In progress
 

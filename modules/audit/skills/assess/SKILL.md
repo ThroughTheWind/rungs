@@ -39,7 +39,7 @@ Each failure is one row: severity from the criteria table, what specifically fai
 (a path, a symbol, a command), when to act, how to fix.
 
 **Do not produce an audit document.** One repo in the corpus generated 268 of them and still cannot
-say which findings are open — the prompt was fine, the output form was the defect. `rungs check`
+say which findings are open — the prompt was fine, the output form was the defect. `node .ai/rungs.mjs check`
 refuses the document tree from re-forming.
 
 ## 4. Report the run itself

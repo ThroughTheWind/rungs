@@ -1,6 +1,6 @@
 # Gate registry.
 #
-# Every gate this repo runs is declared here, and `rungs check` runs them. Modules add their own
+# Every gate this repo runs is declared here, and `node .ai/rungs.mjs check` runs them. Modules add their own
 # entries on install — those live inside marked blocks and are regenerated; anything outside a
 # block is yours and is never touched.
 

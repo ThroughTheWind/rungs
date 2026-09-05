@@ -28,7 +28,7 @@ jobs:
           node-version: '22'
 
       # Runs every gate in .ai/gates.toml — the same set, in the same order, as
-      # `rungs check` locally. A CI-only gate is one nobody can reproduce.
+      # `node .ai/rungs.mjs check` locally. A CI-only gate is one nobody can reproduce.
       #
       # Plain `check`, no flags. This said `check --tier full --reporter github`:
       # `--tier` is not a flag the CLI accepts and `--reporter` does not exist at
@@ -38,7 +38,7 @@ jobs:
       # that installed `ci` had a job that failed on every push and blamed the
       # repo for it (F-030).
       - name: Run gates
-        run: npx @rungs/cli check
+        run: node .ai/rungs.mjs check
 
   # Add a matrix job per package here rather than a workflow per package.
   # A checklist step that creates a file creates N files:
@@ -47,5 +47,5 @@ jobs:
   #     matrix:
   #       package: [a, b, c]
   #
-  # `rungs check` reports the workflow count and fails past the threshold in
+  # `node .ai/rungs.mjs check` reports the workflow count and fails past the threshold in
   # .ai/gates.toml, for exactly that reason.

@@ -22,7 +22,7 @@ mismatch is usually a fragment somebody skipped, not a versioning disagreement.
 ## 2. Gate
 
 ```bash
-rungs check
+node .ai/rungs.mjs check
 ```
 
 Run **every** registered gate. This step used to name a "--tier full" flag that the CLI does not
@@ -30,7 +30,8 @@ accept, so both words were parsed as positionals and the run checked a directory
 exist — reporting no gates rather than a pass. A release step that gates on nothing while looking
 green is worse than one that is skipped, because nobody goes back to check it.
 
-Narrow to a tier (`rungs check --fast`) only when you know the tier holds what you meant to run.
+Narrow to a tier (`node .ai/rungs.mjs check fast`) only when you know the tier holds what you meant
+to run.
 
 **Do not proceed on a red gate**, and do not weaken one to get through. A release is exactly the
 moment the temptation is highest and the cost of yielding is highest.

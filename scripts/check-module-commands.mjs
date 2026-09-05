@@ -14,19 +14,23 @@
  * cannot drift the way a hand-kept list would — which is the failure it exists
  * to catch, one level up.
  *
- * Three things are checked, and the second and third were added after the first
+ * Four things are checked, and the second through fourth were added after the first
  * version missed a live defect:
  *
  *   1. **Commands.** In `.md`/`.toml`, code-span mentions only — prose says
  *      "rungs installs modules" and that is not a command claim.
  *   2. **Template files.** Anything else under `modules/` is a file that gets
- *      *executed*, so a bare `rungs …` or `npx @rungs/cli …` in it is a command
- *      claim with no backticks to look for. The `ci` module's workflow shipped
+ *      *executed*, so a bare `rungs …`, `npx @rungs/cli …`, or
+ *      `node .ai/rungs.mjs …` in it is a command claim with no backticks to look
+ *      for. The `ci` module's workflow shipped
  *      `check --tier full --reporter github` to three of five profiles and the
  *      first version of this gate could not see it (F-030).
  *   3. **Flags**, against the `FLAGS` table in `src/cli.ts`. Both real defects
  *      here were flag defects, not command defects — `--tier` is not a flag and
  *      `--reporter` does not exist, and each was parsed as a positional instead.
+ *   4. **Consumer pinning.** A command emitted into a consumer must go through
+ *      `.ai/rungs.mjs`; a bare/global command silently bypasses the exact version
+ *      that repository reviewed.
  *
  * What it still cannot see: a claim about *behaviour* of a command that does
  * exist. F-029 is exactly that, and this gate is no help with it.
@@ -82,20 +86,34 @@ for (const file of walk(join(root, 'modules'))) {
   const text = readFileSync(file, 'utf8');
   const rel = relative(root, file).replace(/\\/g, '/');
   const prose = /\.(md|toml)$/.test(file);
+  const emittedToConsumer = /^modules\/[^/]+\/(?:files|fragments|gates|rules|skills)\//.test(rel);
 
   // Prose needs the backticks to tell a command from a sentence. A template is
   // executed, so the bare string is the claim.
   const pattern = prose
-    ? /`(?:npx @rungs\/cli|rungs) ([a-z][a-z-]*)([^`]*)`/g
-    : /(?:npx @rungs\/cli|\brungs) ([a-z][a-z-]*)([^\n]*)/g;
+    ? /`(?:npx @rungs\/cli|rungs|node \.ai\/rungs\.mjs) ([a-z][a-z-]*)([^`]*)`/g
+    : /(?:npx @rungs\/cli|\brungs|node \.ai\/rungs\.mjs) ([a-z][a-z-]*)([^\n]*)/g;
+  const matches = [...text.matchAll(pattern)];
+  if (file.endsWith('.toml')) {
+    matches.push(
+      ...text.matchAll(
+        /^\s*(?:command|install_command)\s*=\s*"(?:npx @rungs\/cli|rungs|node \.ai\/rungs\.mjs) ([a-z][a-z-]*)([^"]*)"/gm,
+      ),
+    );
+  }
 
-  for (const m of text.matchAll(pattern)) {
+  for (const m of matches) {
     const [, cmd, rest] = m;
+    const viaLauncher = m[0].includes('node .ai/rungs.mjs');
     const line = text.slice(0, m.index).split('\n').length;
     // In a template, `rungs` also appears in prose comments. Only judge a token
     // that is actually a command — anything else is a word in a sentence.
     if (!prose && !commands.has(cmd)) continue;
     spans++;
+
+    if (emittedToConsumer && !viaLauncher) {
+      problems.push(`${rel}:${line}: \`rungs ${cmd}\` bypasses the consumer's pinned .ai/rungs.mjs launcher`);
+    }
 
     if (!commands.has(cmd)) {
       problems.push(`${rel}:${line}: \`rungs ${cmd}\` is not a command the CLI dispatches`);
@@ -103,7 +121,10 @@ for (const file of walk(join(root, 'modules'))) {
     }
 
     for (const f of rest.match(/--[a-z][a-z-]*/g) ?? []) {
-      if (!flags.has(f)) problems.push(`${rel}:${line}: \`rungs ${cmd} … ${f}\` — no such flag; it is parsed as a positional`);
+      const launcherUpgradeSelector = viaLauncher && cmd === 'upgrade' && f === '--to';
+      if (!flags.has(f) && !launcherUpgradeSelector) {
+        problems.push(`${rel}:${line}: \`rungs ${cmd} … ${f}\` — no such flag; it is parsed as a positional`);
+      }
     }
 
     const required = subcommands.get(cmd);

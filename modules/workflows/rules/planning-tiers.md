@@ -35,7 +35,7 @@ Any one of these is enough:
 
 ## Tier is declared, not inferred
 
-Every plan carries `tier:` in its frontmatter. `rungs check` reads it and checks that tier's
+Every plan carries `tier:` in its frontmatter. `node .ai/rungs.mjs check` reads it and checks that tier's
 required sections are present and non-empty. A plan with no tier cannot be checked, and tiering
 degrades back into "write whatever felt right" — which is the judgement call this table replaces.
 

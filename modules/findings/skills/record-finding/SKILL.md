@@ -54,7 +54,7 @@ Every finding leaves **Open** by exactly one disposition, each with a written re
 
 **Dismissal is the one that matters.** It is the disposition people skip, and its reason is what
 stops the same observation being recorded again next month by someone who cannot tell it was
-already considered. `rungs check` refuses a closed finding with no reason.
+already considered. `node .ai/rungs.mjs check` refuses a closed finding with no reason.
 
 ## Before triaging, re-check
 

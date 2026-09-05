@@ -9,7 +9,7 @@ before any content is written.** If the answer is missing, add the row before wr
 ## The registry
 
 The third column is what makes this enforceable rather than aspirational: it converts "one source
-of truth" from a principle into a lookup, and it is what `rungs check` reads.
+of truth" from a principle into a lookup, and it is what `node .ai/rungs.mjs check` reads.
 
 | Topic | Owner | Must NOT appear in |
 | --- | --- | --- |

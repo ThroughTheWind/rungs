@@ -91,14 +91,14 @@ An epic (`type: epic`) has no branch of its own. Membership is a **two-way link*
 ## 8. Archiving
 
 `items/` should hold only work that can still change. Move finished items to `archive/` with
-`rungs backlog archive` — it recomputes every link repo-wide, so archived ids still resolve and
+`node .ai/rungs.mjs backlog archive` — it recomputes every link repo-wide, so archived ids still resolve and
 stay permanently spent.
 
 **Never edit an archived item.** If archived work turns out to be wrong, that is a *new* item.
 
 ## 9. What keeps this true
 
-Three gates, run by `rungs check`:
+Three gates, run by `node .ai/rungs.mjs check`:
 
 | Gate | Refuses |
 | --- | --- |

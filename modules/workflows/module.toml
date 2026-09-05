@@ -1,6 +1,6 @@
 [module]
 name    = "workflows"
-version = "1.1.0"
+version = "1.2.0"
 rung    = 2
 summary = "Decision procedures: how to decompose work, whether to reuse or build, and how much planning a piece of work earns."
 
