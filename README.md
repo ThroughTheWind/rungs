@@ -221,7 +221,7 @@ Four promises that shape everything else:
 
 ## Status
 
-**Current release: v0.3.1** — that number is checked against [`package.json`](package.json) by the
+**Current release: v0.4.0** — that number is checked against [`package.json`](package.json) by the
 `docs-version-claims` gate, so this sentence cannot drift from what ships — and the gate fails if
 the sentence is reworded out of existence, because a claim nothing checks any more should not look
 the same as a claim that passes.
@@ -261,7 +261,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~7,100 lines (`wc -l src/*.ts`, 2026-09-05; held within 10% by `docs-version-claims`) |
+| [`src/`](src/) | The CLI, ~7,847 lines (`wc -l src/*.ts`, 2026-09-05; held within 10% by `docs-version-claims`) |
 
 ## Licence
 

@@ -1,6 +1,6 @@
 {
   "name": "@rungs/cli",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Installs and maintains a repository's agentic development system, composed from modules.",
   "author": "Antoine Dancre",
   "repository": {

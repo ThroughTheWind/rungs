@@ -24,6 +24,8 @@ const packageVersion = packageJson.version as string;
 // The registry is the authority, not this file. Verified 2026-08-17 with
 // `npm view @rungs/cli dist-tags` → { latest: "0.3.1" }, published 2026-08-17T13:23:00Z,
 // and a clean consumer installed it from the public registry and ran the binary.
+// Re-verified 2026-09-05 during the 0.4.0 cut, same command, still `{ latest: '0.3.1' }` —
+// which is what makes 0.4.0 render as pending below rather than as the published latest.
 // This constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
 // "0.1.3 · npm publication pending" above a version anyone could already install.
 const publishedVersion = "0.3.1";
@@ -49,6 +51,29 @@ const status = (v: string) =>
       : "npm publication pending";
 
 const releases = [
+  {
+    version: "0.4.0",
+    date: "2026-09-05",
+    kind: "minor",
+    entries: [
+      ["added", "Generated repositories share one managed .ai/rungs.mjs launcher pinned to an exact @rungs/cli version — local instructions and generated CI run the same one, and upgrade --to an exact version is the bounded path for advancing the pin."],
+      ["added", "Module provenance can state that work was designed rather than extracted, with a first-person rationale instead of an invented source incident."],
+      ["added", "The package suite runs a packed CLI against an isolated existing Git repository: authority preservation, origin-only stable refs, repeated checks, same-version upgrades and rollback."],
+      ["fixed", "Module emission, upgrade and harness rendering preflight one canonical consumer-repository boundary before writing. Traversal, outward aliases, unpaired surrogates, hard-linked leaves, reserved-sink impersonation, cross-phase collisions and leaf-symlink redirects fail closed with no partial install, and missing-path comparison applies the same NFKD, full-case storage key as managed refs so APFS cannot collapse an alias past it."],
+      ["fixed", "rungs land refuses before locks, gates or ref updates when any worktree holds the integration branch, names every holding path, and parks a verified merge when a holder appears mid-gate."],
+      ["fixed", "rungs land advances integration and green in one no-dereference, expected-old transaction or writes neither, and a refusal parks the work on a collision-free recovery branch it never overwrites."],
+      ["fixed", "rungs land proves inherited red against a clean detached checkout at the exact integration commit: a gate that passes only with the invoking checkout's ignored runtime is reported unverified and cannot advance."],
+      ["fixed", "rungs backlog archive validates its root, move sources, destinations and every Markdown rewrite as one contained mutation set, so a forged or stale plan fails closed before anything is written."],
+      ["fixed", "Both release-fragment gates now execute the contracts they declare — shipping code needs a fragment changed by the same branch or a same-line reasoned exemption, and stale versioned fragments reach the production runner through one strict table selector."],
+      ["fixed", "changelog.d/CONSUMED_THROUGH records the version whose fragments were assembled, so an equal-version fragment left behind after a cut fails rather than reading as unreleased work."],
+      ["fixed", "A release-note exemption counts only when the branch needing it wrote it. An inherited, duplicated, moved or copied changelog-ok: reason can remain as history but cannot waive unrelated work."],
+      ["fixed", "release-version-consistent reads dotted values from JSON and TOML plus the configured XML element in Directory.Build.props, fails explicitly on a matched source that is malformed, missing or unsupported, and takes a real release.version_exclude parameter for independently versioned manifests."],
+      ["fixed", "Consumer text gates and neutral-rule rendering read LF, CRLF and lone-CR checkouts with the same semantics; re-registering an unchanged managed gate block preserves surrounding bytes and line endings, and a semantic no-op no longer rewrites the install record."],
+      ["fixed", "Declared module conflicts are enforced symmetrically and propagate through dependency edges; an explicit override names what it overruled."],
+      ["fixed", "A freshly generated findings register passes its own schema instead of reading its visible empty placeholder as a malformed finding."],
+      ["fixed", "Backlog branch reconciliation resolves a local stable branch, an exact origin ref or a sole remote-tracking ref deterministically, and fails closed on absence or ambiguity."],
+    ],
+  },
   {
     version: "0.3.1",
     date: "2026-08-17",
@@ -141,7 +166,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
       title="Versions & changelog"
       fields={[
         { label: "Latest", value: `${publishedVersion} · published ${publishedDate}` },
-        { label: "Next", value: pending ? `${packageVersion} · prepared, not yet published` : "candidate/0.3.0 open · nothing pending" },
+        { label: "Next", value: pending ? `${packageVersion} · prepared, not yet published` : "candidate/0.4.1 open · nothing pending" },
         { label: "Updated", value: SITE.asOf },
       ]}
     />
@@ -182,7 +207,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
           <span class="next-label">Nothing pending</span>
           <p>
             <code>v{publishedVersion}</code> is tagged, deployable from <code>release/{publishedVersion}</code>, and on npm as <code>latest</code>. Work for the
-            next release lands on <code>candidate/0.3.0</code>, and the version it becomes is
+            next release lands on <code>candidate/0.4.1</code>, and the version it becomes is
             decided from the fragments in <code>changelog.d/</code> at cut time — not from this
             sentence, and not from the branch name.
           </p>
@@ -246,7 +271,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
         </div>
         <div class="card">
           <div class="card-title">The version agrees with itself</div>
-          <p><code>release-version-consistent</code> compares configured JSON and XML version sources rather than trusting the releaser. TOML participation is a 0.4.0 release blocker and is not claimed here yet.</p>
+          <p><code>release-version-consistent</code> compares configured JSON, TOML and XML version sources rather than trusting the releaser. TOML participation shipped in 0.4.0, which is why this sentence no longer holds it back; a matched source that is malformed, missing or unsupported fails explicitly rather than dropping out of the comparison and leaving a green built on fewer files than you think.</p>
           <div class="tag-line"><EnforcementTag state="gated" /> <span>release-version-consistent · computed-claim</span></div>
         </div>
       </div>
