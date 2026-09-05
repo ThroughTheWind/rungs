@@ -21,6 +21,7 @@ import { addModule, contentHash, emittedFiles, writeInstallRecord } from '../src
 import { UnsafeEmittedPathError, preflightEmittedPaths, resolveEmittedPath } from '../src/emitted-path.ts';
 import { applyUpgrade, planUpgrade, readRecord } from '../src/lifecycle.ts';
 import { ownedState } from '../src/detect.ts';
+import { loadManifest } from '../src/manifest.ts';
 
 const bin = resolve(import.meta.dirname, '..', 'dist', 'cli.js');
 
@@ -46,6 +47,18 @@ function fixtureModule(dir, name = 'demo') {
     dir,
   };
 }
+
+const portableStorageAliases = [
+  { label: 'sharp-s', left: 'ß', right: 'ss' },
+  { label: 'ligature', left: 'ﬁ', right: 'fi' },
+];
+
+const compatibilitySeparators = [
+  { label: 'fullwidth-reverse-solidus', character: '\uff3c' },
+  { label: 'fullwidth-solidus', character: '\uff0f' },
+];
+
+const bundledSession = () => loadManifest(resolve(import.meta.dirname, '..', 'modules', 'session'));
 
 test('emitted paths reject either platform\'s escape syntax and non-portable aliases', () => {
   const root = mkdtempSync(join(tmpdir(), 'rungs-emitted-lexical-'));
@@ -120,7 +133,7 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
         { moduleName: 'precomposed', target: 'safe/\u01f0.md' },
       ]),
       /collides with module/,
-      'canonical simple case folding catches an exact J+caron/U+01F0 alias',
+      'canonical storage comparison catches an exact J+caron/U+01F0 alias',
     );
     assert.throws(
       () => preflightEmittedPaths(root, [
@@ -128,7 +141,7 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
         { moduleName: 'precomposed', target: 'safe/\u01f0/child.md' },
       ]),
       /file\/descendant collision/,
-      'canonical simple case folding catches a structural J+caron/U+01F0 alias',
+      'canonical storage comparison catches a structural J+caron/U+01F0 alias',
     );
     assert.throws(
       () => preflightEmittedPaths(root, [
@@ -136,7 +149,7 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
         { moduleName: 'final-sigma', target: 'safe/\u03c2.md' },
       ]),
       /collides with module/,
-      'Unicode simple case folding catches exact capital-sigma/final-sigma aliases',
+      'full-case storage comparison catches exact capital-sigma/final-sigma aliases',
     );
     assert.throws(
       () => preflightEmittedPaths(root, [
@@ -144,8 +157,38 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
         { moduleName: 'final-sigma', target: 'safe/\u03c2/child.md' },
       ]),
       /file\/descendant collision/,
-      'Unicode simple case folding catches structural capital-sigma/final-sigma aliases',
+      'full-case storage comparison catches structural capital-sigma/final-sigma aliases',
     );
+
+    for (const { label, left, right } of portableStorageAliases) {
+      for (const targets of [
+        [`safe/${left}.md`, `safe/${right}.md`],
+        [`safe/${right}.md`, `safe/${left}.md`],
+      ]) {
+        assert.throws(
+          () => preflightEmittedPaths(
+            root,
+            targets.map((target, index) => ({ moduleName: `${label}-${index}`, target })),
+          ),
+          /collides with module/,
+          `${label} exact storage collision is order independent: ${targets.join(', ')}`,
+        );
+      }
+
+      for (const [ancestor, descendant] of [[left, right], [right, left]]) {
+        const targets = [`safe/${ancestor}`, `safe/${descendant}/child.md`];
+        for (const ordered of [targets, [...targets].reverse()]) {
+          assert.throws(
+            () => preflightEmittedPaths(
+              root,
+              ordered.map((target, index) => ({ moduleName: `${label}-${index}`, target })),
+            ),
+            /file\/descendant collision/,
+            `${label} structural storage collision is order independent: ${ordered.join(', ')}`,
+          );
+        }
+      }
+    }
 
     const valid = resolveEmittedPath(root, 'demo', 'docs\\nested/file.md');
     assert.equal(valid.target, 'docs/nested/file.md');
@@ -169,6 +212,63 @@ test('emitted paths reject either platform\'s escape syntax and non-portable ali
     }
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('compatibility folds cannot manufacture emitted-path structure', (t) => {
+  const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-compat-separator-'));
+
+  try {
+    for (const { label, character } of compatibilitySeparators) {
+      const root = join(base, label);
+      const flatTarget = `safe${character}file.md`;
+      const nestedTarget = 'safe/file.md';
+      mkdirSync(root);
+
+      for (const targets of [
+        [flatTarget, nestedTarget],
+        [nestedTarget, flatTarget],
+      ]) {
+        const resolved = preflightEmittedPaths(
+          root,
+          targets.map((target, index) => ({ moduleName: `${label}-${index}`, target })),
+        );
+        assert.deepEqual(
+          resolved.map((entry) => entry.target),
+          targets,
+          `${label} remains a filename character in either candidate order`,
+        );
+      }
+
+      const [flat, nested] = preflightEmittedPaths(root, [
+        { moduleName: `${label}-flat`, target: flatTarget },
+        { moduleName: `${label}-nested`, target: nestedTarget },
+      ]);
+
+      try {
+        mkdirSync(dirname(nested.absolute), { recursive: true });
+        writeFileSync(flat.absolute, 'flat\n');
+        writeFileSync(nested.absolute, 'nested\n');
+
+        const flatReal = realpathSync.native(flat.absolute);
+        const nestedReal = realpathSync.native(nested.absolute);
+        if (flatReal === nestedReal) {
+          t.diagnostic(`${label} does not coexist as a distinct filename on this filesystem`);
+          continue;
+        }
+
+        assert.equal(readFileSync(flat.absolute, 'utf8'), 'flat\n');
+        assert.equal(readFileSync(nested.absolute, 'utf8'), 'nested\n');
+      } catch (error) {
+        if (['EEXIST', 'EINVAL', 'ENOENT', 'ENOTDIR', 'EPERM'].includes(error?.code)) {
+          t.diagnostic(`${label} coexistence is unavailable on this filesystem: ${error.code}`);
+          continue;
+        }
+        throw error;
+      }
+    }
+  } finally {
+    rmSync(base, { recursive: true, force: true });
   }
 });
 
@@ -361,6 +461,60 @@ test('stored parameters cannot impersonate a reserved shared sink during plan or
   }
 });
 
+test('stored APFS-alias parameters fail planning and forged application before mutation', () => {
+  const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-stored-apfs-'));
+  const mod = bundledSession();
+
+  try {
+    for (const { label, left, right } of portableStorageAliases) {
+      for (const [orientation, pathPart, archivePart] of [
+        ['left-right', left, right],
+        ['right-left', right, left],
+      ]) {
+        for (const shape of ['exact', 'structural']) {
+          const consumer = join(base, `${label}-${orientation}-${shape}`);
+          mkdirSync(consumer);
+          const path = shape === 'exact' ? `docs/${pathPart}/README.md` : `docs/${pathPart}`;
+          const archive = `docs/${archivePart}`;
+          const archiveReadme = `${archive}/README.md`;
+          const record = {
+            harnesses: [],
+            modules: {
+              session: {
+                version: '1.2.0',
+                params: { path, archive },
+              },
+            },
+          };
+          const expected = shape === 'exact' ? /collides with module/ : /file\/descendant collision/;
+
+          assert.throws(
+            () => planUpgrade(consumer, [mod], record),
+            expected,
+            `${label} ${orientation} ${shape} stored parameters must fail during planning`,
+          );
+          assert.throws(
+            () => applyUpgrade(consumer, [mod], record, [{
+              module: 'session',
+              from: '1.2.0',
+              to: mod.version,
+              files: [
+                { rel: path, state: 'missing' },
+                { rel: archiveReadme, state: 'missing' },
+              ],
+            }]),
+            expected,
+            `${label} ${orientation} ${shape} forged plan must fail again during application`,
+          );
+          assert.deepEqual(readdirSync(consumer), [], `${label} ${orientation} ${shape} consumer remains empty`);
+        }
+      }
+    }
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test('valid nested files and alternate skills retain dry-run, record and upgrade semantics', () => {
   const base = mkdtempSync(join(tmpdir(), 'rungs-emitted-valid-'));
   const moduleDir = join(base, 'module');
@@ -452,6 +606,33 @@ test('CLI add preflights later modules, render-derived, fixed-sink and structura
       'session.archive=foo/bar',
     ]);
     assert.match(structural, /file\/descendant collision/);
+
+    for (const { label, left, right } of portableStorageAliases) {
+      for (const [orientation, pathPart, archivePart] of [
+        ['left-right', left, right],
+        ['right-left', right, left],
+      ]) {
+        const exact = run(`${label}-${orientation}-exact`, [
+          'add',
+          'session',
+          '--set',
+          `session.path=docs/${pathPart}/README.md`,
+          '--set',
+          `session.archive=docs/${archivePart}`,
+        ]);
+        assert.match(exact, /collides with module/);
+
+        const apfsStructural = run(`${label}-${orientation}-structural`, [
+          'add',
+          'session',
+          '--set',
+          `session.path=docs/${pathPart}`,
+          '--set',
+          `session.archive=docs/${archivePart}`,
+        ]);
+        assert.match(apfsStructural, /file\/descendant collision/);
+      }
+    }
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
