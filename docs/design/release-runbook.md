@@ -22,6 +22,12 @@ prevent.
 
 ## 1. Decide the version
 
+First read [`changelog.d/CONSUMED_THROUGH`](../../changelog.d/CONSUMED_THROUGH). It records the
+last version whose fragments were assembled, not what npm says is public. In a steady tree it must
+equal the package version. `UNINITIALIZED` is a deliberate stop: choose `none` only when no release
+has consumed fragments, or write the exact last consumed version. Never infer that history from a
+tag or manifest.
+
 From the fragments in [`changelog.d/`](../../changelog.d), not from the last release and not from
 what someone asked for. The rule, from the skill: **a breaking change decides the major; a feature
 decides the minor.**
@@ -64,6 +70,9 @@ that predate the release, say so explicitly and get a decision from a person.
    [`site/src/pages/versions.astro`](../../site/src/pages/versions.astro), newest first, with
    `kind` set to `major` / `minor` / `patch`.
 3. **Delete every consumed fragment.** They are consumed, not archived — see [T2](#t2).
+4. In the same reversible change, advance `changelog.d/CONSUMED_THROUGH` to the version being
+   prepared. It will be temporarily ahead of the package version until step 4; that red state is
+   intentional and must not be committed or tagged on its own.
 
 ## 4. Bump the version, everywhere
 
@@ -71,6 +80,10 @@ that predate the release, say so explicitly and get a decision from a person.
 npm version <version> --no-git-tag-version
 cd site && npm version <version> --no-git-tag-version && cd ..
 ```
+
+Now run the complete step 2 gate set again. The first pass proved the starting tree; this pass is
+the release authority. It must see the consumption boundary and package version equal, every
+consumed fragment absent, and CI green at the exact commit that will be tagged.
 
 **Both packages.** The docs site is versioned in lockstep with the CLI rather than excluded from
 the check: `release-version-consistent` compares them and fails if you bump only one. It sat at
@@ -116,8 +129,10 @@ was still sitting there at v0.2.0 preparation — through two releases — where
 work. The v0.1.3 fragment *was* deleted, so the discipline existed and was simply skipped once,
 which is the argument for a gate rather than a louder sentence.
 
-Closed 2026-08-17 by `release-fragment-current`: a fragment naming a version below the one being
-prepared now fails `rungs check`.
+Partly closed 2026-08-17 by `release-fragment-current`: a fragment naming a version below the one
+being prepared fails `rungs check`. Fully closed 2026-09-05 by its tracked consumption boundary:
+an equal-version fragment left behind after assembly now fails too, reproducing and preventing
+F-025 rather than relying on the deletion sentence again.
 
 ### T3
 **`publishedVersion` in `versions.astro` is hand-typed and drifts.** It read `0.1.2` while npm

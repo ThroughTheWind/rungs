@@ -2,7 +2,7 @@
 id: WI-072
 title: Track the consumed release boundary
 type: feature
-status: in_progress
+status: done
 branch: feature/WI-072-release-consumption-boundary
 created: 2026-09-05
 updated: 2026-09-05
@@ -110,8 +110,27 @@ actually assembled.
 
 ## Execution
 
-Not started.
+Implemented the tracked `CONSUMED_THROUGH` state, strict marker/package/fragment reconciliation,
+release-module emission and consumer-owned upgrade behavior. The exact F-025 shape now fails through
+production `runGates`: a package, boundary and retained fragment all at `0.2.0` cannot report green.
+Seventeen freshness fixtures cover missing, malformed, uninitialized, first-release, unequal and
+consumed-fragment states, including a non-default changelog directory.
+
+Independent review of `658b0d7f4a76a0543e621c255ef6b0ae0c434c32` found that its branch-local
+version parser had survived the merge with WI-074 and could accept malformed XML that the new shared
+reader rejected. Commit `ad33ad52e87fb9af669ad57671f8a79269d1c33d` removed that duplicate parser,
+routed freshness through `readVersionSource`, and added the malformed `Directory.Build.props` and
+invalid descriptor regressions. GitHub Actions run 33970134787 passed all six OS/Node cells and the
+site job at that exact code SHA.
+
+After merging verified `main` at `0833172a780da6377da081e7423c46d7bc370186`, the combined tree
+reports 89 pass, 0 fail and 3 platform-capability skips across 92 tests; all 30 registered gates pass,
+`git diff --check` is clean, and the package dry-run contains 111 entries.
 
 ## Review
 
-Not started.
+Independent re-review approved `ad33ad52e87fb9af669ad57671f8a79269d1c33d` with no findings. It
+confirmed the malformed XML case fails through production `runGates`, all 17 marker fixtures execute,
+the extensionless marker cannot impersonate a changelog fragment, non-default directories work, and
+fresh install plus 1.4.0 upgrade preserve consumer ownership. The later main merge adds only the
+independently approved WI-076 archive containment change and the derived CLI-size claim adjustment.

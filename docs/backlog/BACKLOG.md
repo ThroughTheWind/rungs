@@ -11,7 +11,6 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
-| [WI-072](items/WI-072-release-consumption-boundary.md) | Track the consumed release boundary | feature | `feature/WI-072-release-consumption-boundary` |
 
 ## Review
 
