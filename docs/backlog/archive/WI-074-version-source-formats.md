@@ -2,7 +2,7 @@
 id: WI-074
 title: Make release version sources format-aware and fail closed
 type: feature
-status: review
+status: done
 branch: feature/WI-074-version-source-formats
 created: 2026-09-05
 updated: 2026-09-05
@@ -134,3 +134,15 @@ Acceptance evidence on 2026-09-05:
    zero broken.
 6. GitHub Actions run 33957818667 passes exact code SHA `140d38a`: Node 22.18 and Node 22 on Ubuntu,
    macOS and Windows plus the site job all succeed.
+
+## Landing
+
+Lifecycle tip `b29d597` records the approved acceptance evidence and passes GitHub Actions run
+33958213138 across the same six OS/Node cells plus the site job. `rungs land` verified the candidate
+in its detached integration worktree and created merge `5f24b9b` on `main`.
+
+That first real landing also exposed [F-048](../FINDINGS.md): the command advanced a branch checked
+out in another worktree without updating that worktree's index or files. The previously clean main
+worktree was recovered by restoring only the 13 paths in the verified merge from its new `HEAD`;
+the landing defect is recorded separately and blocks another use of `rungs land`. It does not alter
+WI-074's reviewed code or exact-tip evidence.
