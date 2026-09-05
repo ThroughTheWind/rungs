@@ -12,7 +12,6 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- | --- |
 | [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
 | [WI-072](items/WI-072-release-consumption-boundary.md) | Track the consumed release boundary | feature | `feature/WI-072-release-consumption-boundary` |
-| [WI-076](items/WI-076-backlog-archive-containment.md) | Contain backlog archival inside the repository | feature | `feature/WI-076-backlog-archive-containment` |
 
 ## Review
 
