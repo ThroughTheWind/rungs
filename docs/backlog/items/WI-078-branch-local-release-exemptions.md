@@ -46,6 +46,9 @@ in the merge-base tree supplies no evidence for new shipping work; rewording is 
 - Read candidate evidence only from canonically contained regular UTF-8 text that Git attributes do
   not declare binary; aliases, symlinks (including mode `120000` entries materialized as ordinary
   files by Git), invalid text and binary files cannot waive a fragment.
+- When a candidate has an index entry, require exactly one stage-zero ordinary blob mode; allow an
+  index-absent candidate only after validating its untracked filesystem leaf. Historical `HEAD`
+  mode does not override the current index proposal.
 - Carry block-comment, HTML-comment and quoted-string state across document lines so a marker in a
   multiline wrapper ends at its actual close token and cannot absorb adjacent implementation text.
 - Preserve NUL-safe path handling, deterministic local/origin/sole-remote integration resolution,
@@ -66,8 +69,10 @@ reason text with a document-aware scanner for common comment/string wrappers so 
 formatting is not mistaken for a reason edit. Read the full matching merge-base blobs rather than
 context-free grep lines. Build one conservative set of all substantive reason strings present in
 the merge-base tree, then accept only contained regular UTF-8 text whose reason is absent from that
-set. Inspect both index and `HEAD` object modes and accept only ordinary blob modes, even when a
-platform configured with `core.symlinks=false` exposes a mode `120000` entry as a regular file.
+set. When the path is present in the index, accept only a single stage-zero ordinary blob mode, even
+when a platform configured with `core.symlinks=false` exposes a mode `120000` entry as a regular
+file. An absent index entry delegates to the already validated untracked leaf. Do not consult
+historical `HEAD` mode: a staged `120000` to `100644` conversion is current ordinary evidence.
 This deliberately resolves an unknowable copied-versus-coincidentally-identical sentence the same
 way before and after staging: historical wording must be reworded for the current branch.
 
@@ -90,8 +95,10 @@ means no exemption, not a guessed pass.
    state spanning lines isolates the reason from adjacent code in block comments, HTML comments and
    quoted strings, while a genuinely new multiline-wrapped reason passes. A valid branch-local
    reason still satisfies only a branch that also changes a configured shipping path.
-5. Git mode `120000` evidence fails in staged/index and committed/tree states even when Git checks it
-   out as an ordinary file; ordinary untracked, staged and committed blob evidence remains valid.
+5. Git mode `120000` evidence fails in staged/index and committed states even when Git checks it out
+   as an ordinary file; ordinary untracked, staged and committed blob evidence remains valid. A
+   `120000` to `100644` conversion passes once the ordinary mode is staged and after commit, while
+   the inverse passes only before its proposed `120000` mode reaches the index and then fails.
 6. Local, exact `origin` and sole-other-remote bases produce identical provenance decisions;
    ambiguous or absent refs fail closed with the existing actionable result.
 7. Every release self-test still executes in both directions with zero newly unrun fixtures.
@@ -111,19 +118,21 @@ Started from verified `green/main` at `0833172a780da6377da081e7423c46d7bc370186`
 landed.
 
 The final review hardening replaces line-local wrapper inference with full-document state and reads
-the original matching blobs from the merge-base tree. It also verifies ordinary Git object modes in
-both the index and `HEAD`, closing the `core.symlinks=false` representation gap without selecting a
-different content source when work is staged or committed. Regression fixtures exercise all three
-multiline wrapper families and create a mode `120000` index entry through Git plumbing, so the
-Windows path requires no symlink privilege.
+the original matching blobs from the merge-base tree. It also verifies the current index proposal
+when present, closing the `core.symlinks=false` representation gap without letting historical
+`HEAD` mode veto a staged ordinary conversion. Regression fixtures exercise all three multiline
+wrapper families and create both directions of `120000`/`100644` mode transitions through Git
+plumbing, so the Windows path requires no symlink privilege.
 
 Local verification after that hardening: 11 focused `change-requires-file`/exemption groups passed;
 the full suite passed 93 of 96 tests with the three expected platform skips; all 30 registered gates
-passed; and `npm pack --dry-run --json` produced 110 entries (360,011-byte archive, 1,226,610 bytes
+passed; and `npm pack --dry-run --json` produced 110 entries (360,302-byte archive, 1,227,099 bytes
 unpacked). `git diff --check` was clean.
 
 ## Review
 
 Independent final review of `fb81f76` found the line-local multiline-wrapper bypass and the missing
-Git-object-mode check described above. Both are addressed in the current hardening; exact-tip CI and
-independent re-review remain pending.
+Git-object-mode check. Follow-up review of `e984004` found that also consulting historical `HEAD`
+incorrectly rejected a currently staged ordinary conversion. The current implementation makes the
+index proposal authoritative when present and keeps the canonical untracked-leaf fallback;
+exact-tip CI and independent re-review remain pending.

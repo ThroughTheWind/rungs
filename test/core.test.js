@@ -1219,6 +1219,67 @@ test('Git object modes reject symlink evidence even when checkout materializes a
   } finally {
     rmSync(linked.root, { recursive: true, force: true });
   }
+
+  const linkToFile = releaseDeltaRepo();
+  try {
+    linkToFile.write('src/a.ts', 'export const changed = true;\n');
+    linkToFile.git('add', 'src/a.ts');
+    linkToFile.git('config', 'core.symlinks', 'false');
+    mkdirSync(join(linkToFile.root, 'notes'), { recursive: true });
+    const linkTarget = 'changelog-ok: initial tracked link is not release evidence\n';
+    const linkOid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: linkToFile.root,
+      encoding: 'utf8',
+      input: linkTarget,
+    }).trim();
+    linkToFile.git('update-index', '--add', '--cacheinfo', '120000', linkOid, 'notes/mode-change');
+    linkToFile.git('checkout-index', '--force', '--', 'notes/mode-change');
+    linkToFile.git('commit', '-q', '-m', 'commit link before conversion');
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 1, 'committed link before conversion');
+
+    const fileText = 'changelog-ok: converted ordinary file is branch-local evidence\n';
+    linkToFile.write('notes/mode-change', fileText);
+    assert.equal(lstatSync(join(linkToFile.root, 'notes', 'mode-change')).isFile(), true);
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 1, 'unstaged conversion still has a symlink index entry');
+    const fileOid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: linkToFile.root,
+      encoding: 'utf8',
+      input: fileText,
+    }).trim();
+    linkToFile.git('update-index', '--cacheinfo', '100644', fileOid, 'notes/mode-change');
+    assert.match(linkToFile.git('ls-files', '--stage', '--', 'notes/mode-change'), /^100644 /);
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 0, 'staged ordinary mode overrides historical HEAD link mode');
+    linkToFile.git('commit', '-q', '-m', 'convert link to file');
+    assert.equal(changeRequiresFile(releaseChangeTable, linkToFile.root, []).findings.length, 0, 'committed ordinary conversion');
+  } finally {
+    rmSync(linkToFile.root, { recursive: true, force: true });
+  }
+
+  const fileToLink = releaseDeltaRepo();
+  try {
+    fileToLink.write('src/a.ts', 'export const changed = true;\n');
+    fileToLink.write('notes/mode-change', 'changelog-ok: initial ordinary evidence\n');
+    fileToLink.git('add', '--all');
+    fileToLink.git('commit', '-q', '-m', 'commit ordinary evidence before conversion');
+    fileToLink.git('config', 'core.symlinks', 'false');
+
+    const target = 'changelog-ok: proposed link target is not release evidence\n';
+    fileToLink.write('notes/mode-change', target);
+    assert.equal(changeRequiresFile(releaseChangeTable, fileToLink.root, []).findings.length, 0, 'unstaged regular leaf retains ordinary index mode');
+    const targetOid = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+      cwd: fileToLink.root,
+      encoding: 'utf8',
+      input: target,
+    }).trim();
+    fileToLink.git('update-index', '--cacheinfo', '120000', targetOid, 'notes/mode-change');
+    assert.equal(lstatSync(join(fileToLink.root, 'notes', 'mode-change')).isFile(), true, 'staged link remains a regular Windows working leaf');
+    assert.match(fileToLink.git('ls-files', '--stage', '--', 'notes/mode-change'), /^120000 /);
+    assert.equal(changeRequiresFile(releaseChangeTable, fileToLink.root, []).findings.length, 1, 'staged conversion to link');
+    fileToLink.git('commit', '-q', '-m', 'convert file to link');
+    assert.equal(changeRequiresFile(releaseChangeTable, fileToLink.root, []).findings.length, 1, 'committed conversion to link');
+  } finally {
+    rmSync(fileToLink.root, { recursive: true, force: true });
+  }
 });
 
 test('release exemption provenance rejects moved and copied history but accepts new untracked evidence', () => {

@@ -541,15 +541,19 @@ function candidateGitModesAreRegular(root: string, rel: string): boolean {
     ['--literal-pathspecs', 'ls-files', '--stage', '-z', '--', rel],
     { cwd: root, stdio: 'pipe' },
   );
-  for (const record of output.toString('utf8').split('\0').filter(Boolean)) {
+  const entries = output.toString('utf8').split('\0').filter(Boolean).map((record) => {
     const match = record.match(/^([0-7]{6}) [0-9a-f]+ ([0-3])\t/);
     if (!match) throw new Error(`cannot parse index entry for ${rel}`);
-    if (match[2] !== '0' || !['100644', '100755'].includes(match[1])) return false;
-  }
+    return { mode: match[1], stage: match[2] };
+  });
 
-  const committed = gitTreeEntry(root, 'HEAD', rel);
-  return !committed ||
-    (committed.type === 'blob' && ['100644', '100755'].includes(committed.mode));
+  // The index is the current proposed Git object when it has an entry. An
+  // absent entry is an untracked path whose canonical filesystem leaf was
+  // already proven regular above. HEAD is deliberately irrelevant here: its
+  // historical mode must not veto a staged conversion to an ordinary blob.
+  return entries.length === 0 ||
+    (entries.length === 1 && entries[0].stage === '0' &&
+      ['100644', '100755'].includes(entries[0].mode));
 }
 
 function candidateExemptionText(root: string, rel: string): string | undefined {
