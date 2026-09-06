@@ -91,7 +91,7 @@ Note `rungs check --json` does not exist; option 1 implies adding it.
 - **Research snapshot numbers** — `3,585 commits`, `433 branches`. Those are dated historical
   measurements of other repos, correctly labelled as snapshots, and deriving them would mean
   re-measuring four repos at build time. Nothing deferred; they are correct as they are.
-- **The release-state ambiguity** on the versions page. [WI-035](../items/WI-035-public-release.md).
+- **The release-state ambiguity** on the versions page. [WI-035](WI-035-public-release.md).
 
 ## Execution
 

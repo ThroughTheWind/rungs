@@ -2,10 +2,10 @@
 id: WI-060
 title: Prepare the v0.2.0 release and close the release-integrity findings it surfaced
 type: chore
-status: review
+status: done
 branch: feature/WI-060-release-0.2.0
 created: 2026-08-17
-updated: 2026-08-17
+updated: 2026-09-06
 related: [WI-035, WI-051, F-020, F-021, F-022, ADR-0008]
 epic:
 children: []
@@ -138,3 +138,9 @@ and left open.
 
 Not done, by design: tagging, `release/0.2.0`, and `npm publish` — the irreversible steps, left for
 the release cut. `candidate/0.1.4` is still misnamed and 46 commits behind `main`.
+
+**Closed 2026-09-06, at the user's request.** The branch `feature/WI-060-release-0.2.0` is an ancestor
+of `main` (`git merge-base --is-ancestor`, 2026-09-06); the release cut it left for later happened the
+same day it was merged — `docs: record v0.2.0 as published (WI-060)` is on `main` dated 2026-08-17 —
+and `release/0.2.0` exists on `origin`. Every criterion above was verified in that Review; the item
+sat at `review` for twenty days only because nobody moved the status.

@@ -2,10 +2,10 @@
 id: WI-035
 title: Prepare and execute the public rungs release
 type: chore
-status: review
-branch: feature/WI-035-public-release
+status: rejected
+branch:
 created: 2026-08-15
-updated: 2026-08-15
+updated: 2026-09-06
 related: [WI-033, WI-034]
 epic:
 children: []
@@ -103,3 +103,12 @@ Ready for review as a release candidate. All local acceptance checks and the aut
 the only unmet external step is npm publication, blocked by missing credentials. The branch must not
 be tagged or merged as a public release until an authenticated maintainer reruns `npm publish`, then
 verifies `npm view @rungs/cli@0.1.1` and a fresh registry consumer. No public-release claim is made.
+
+**Retired 2026-09-06 as superseded, at the user's request.** The 0.1.1 candidate this item prepared
+was never published from this branch; the public release it was for happened through later items —
+v0.2.0 ([WI-060](WI-060-release-0.2.0.md)), v0.3.1 and v0.4.0 are recorded as published on `main` —
+and the credentials gap it was waiting on was resolved by whoever published them. The branch
+`feature/WI-035-public-release` no longer exists locally or on `origin`, so there is nothing left to
+merge. Status `rejected` rather than `done` because its own acceptance criteria were met by other
+work, not by this item. Kept for the record: the dry-run evidence above is the first end-to-end
+consumer verification this repository did.

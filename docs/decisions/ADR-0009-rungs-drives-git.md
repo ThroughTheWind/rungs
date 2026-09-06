@@ -9,7 +9,7 @@ date: 2026-08-17
 
 - **Status:** accepted
 - **Date:** 2026-08-17
-- **Phase:** post-6, from [WI-062](../backlog/items/WI-062-concurrency-phantom-commands.md), closing
+- **Phase:** post-6, from [WI-062](../backlog/archive/WI-062-concurrency-phantom-commands.md), closing
   [F-026](../backlog/FINDINGS.md)
 - Extends [ADR-0005](ADR-0005-self-instrumentation.md) (what the runner may do and record).
 

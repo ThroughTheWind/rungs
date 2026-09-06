@@ -75,7 +75,7 @@ restated per item.
   (WI-052). This is the only structural change and it may want an ADR.
 - **Evidence:** a false-positive census across every repo available locally (WI-053).
 - **Release state** is *not* impacted: the 0.1.2/0.1.3 ambiguity the review flags is already
-  [WI-035](../items/WI-035-public-release.md)'s, which is `planned`. Opening a second item for it would be
+  [WI-035](WI-035-public-release.md)'s, which is `planned`. Opening a second item for it would be
   the duplicate-tracking failure this repo exists to argue against.
 
 ### Approach
@@ -108,7 +108,7 @@ ADR-0003 territory. WI-052 decides against its own diff.
 
 - **The fleet / multi-repo product.** ADR-0005 Tier C; [WI-041](WI-041-decide-cross-repo-evidence.md)
   holds the question and stays `proposed`. Nothing deferred here.
-- **Publishing 0.1.3 or resolving the release-state ambiguity.** [WI-035](../items/WI-035-public-release.md).
+- **Publishing 0.1.3 or resolving the release-state ambiguity.** [WI-035](WI-035-public-release.md).
 - **New detectors.** WI-053 may *report* that a class of problem is undetected; adding one is a
   separate item, and only once independent repos show it recurring — the review's own rule.
 - **Anything verdicted `noted`.** On record in the adjudication; produces no work.

@@ -9,7 +9,7 @@ date: 2026-08-17
 
 - **Status:** accepted
 - **Date:** 2026-08-17
-- **Phase:** post-6, from [WI-060](../backlog/items/WI-060-release-0.2.0.md), closing
+- **Phase:** post-6, from [WI-060](../backlog/archive/WI-060-release-0.2.0.md), closing
   [F-020](../backlog/FINDINGS.md)
 - Constrains [ADR-0005](ADR-0005-self-instrumentation.md) (what the runner may record).
 

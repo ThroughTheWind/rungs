@@ -2,10 +2,10 @@
 id: WI-062
 title: Decide what the concurrency module is — four commands, or the manual protocol it actually documents
 type: chore
-status: review
+status: done
 branch: feature/WI-062-concurrency-loop
 created: 2026-08-17
-updated: 2026-08-17
+updated: 2026-09-06
 related: [F-026, ADR-0005]
 epic:
 children: []
@@ -159,3 +159,9 @@ hints · 2,130 links, 0 broken.
 Not done, by design: failure attribution ([F-029](../FINDINGS.md)), and `land` still does not push —
 [ADR-0009](../../decisions/ADR-0009-rungs-drives-git.md) draws that boundary deliberately and makes
 crossing it a separate decision.
+
+**Closed 2026-09-06, at the user's request.** The branch `feature/WI-062-concurrency-loop` is an
+ancestor of `main` (`git merge-base --is-ancestor`, 2026-09-06). The attribution it deferred was built
+afterwards and F-029 was closed on 2026-09-05 by WI-084's reconciliation; `land` still does not push,
+as ADR-0009 intends. Every criterion above was verified in that Review; the item sat at `review` for
+twenty days only because nobody moved the status.
