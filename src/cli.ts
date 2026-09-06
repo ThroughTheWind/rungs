@@ -7,7 +7,7 @@ import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, module
 import { preflightRender, render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { checkCommand, type GateRun, ledgerBudget, ledgerQuestions, loadRegistry, runGates } from './check.ts';
-import { applyUpgrade, eject, EjectRefusal, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
+import { applyUpgrade, eject, EJECTED_RETAINED, EjectRefusal, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { c } from './ansi.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive, resolveArchiveTree } from './backlog.ts';
@@ -973,7 +973,9 @@ function cmdEject(root: string, dryRun: boolean, stamp: string) {
     `\n  ${result.gates} declared gate(s) rewritten as commands` +
       (result.unchanged ? c.dim(' — already ejected; nothing changed.') : '.') +
       c.dim(`\n  \`node .ai/rungs.mjs check\` now runs from .rungs/ with this Node alone: no npm, no package.`) +
-      c.dim('\n  Only `check` survives ejection; add, upgrade, render and the rest are gone until you re-adopt.') +
+      // Derived from the retained list: the sentence said only `check` survived for a release after
+      // `hook` did too, and the Arena Lab canary read it back (2026-09-06, WI-092).
+      c.dim(`\n  Only ${EJECTED_RETAINED.map((cmd) => `\`${cmd}\``).join(' and ')} survive ejection; add, upgrade, render and the rest are gone until you re-adopt.`) +
       c.dim('\n  Engine fixes stop arriving with a version bump — these files are yours now. See .rungs/README.md.\n'),
   );
   return 0;

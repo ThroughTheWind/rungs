@@ -853,6 +853,9 @@ test('a packed candidate retrofits an existing repository without taking over it
     // command gates legitimately need the runtimes they invoke, so PATH keeps the Node directory.
     const ejected = expectOk(candidate('eject', consumer), 'packed eject');
     assert.match(withoutAnsi(ejected.stdout), /declared gate\(s\) rewritten as commands/);
+    // The summary names every retained command: it said only `check` survived after `hook` did too,
+    // and the Arena Lab canary read that back (WI-092).
+    assert.match(withoutAnsi(ejected.stdout), /Only `check` and `hook` survive ejection/);
     const ejectedLauncher = readFileSync(join(consumer, '.ai', 'rungs.mjs'), 'utf8');
     assert.doesNotMatch(ejectedLauncher, /@rungs\/cli|npm/, 'the ejected launcher names no package and no package manager');
     // Compared as digests: an equality failure on two 186 KB strings makes the
