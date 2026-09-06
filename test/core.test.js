@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import assert from './assert.js';
 import test from 'node:test';
 import {
   existsSync,
@@ -4372,6 +4372,56 @@ test('check takes the same [path] [tier] grammar through the CLI and the ejected
   } finally {
     rmSync(dir, { recursive: true, force: true });
     rmSync(elsewhere, { recursive: true, force: true });
+  }
+});
+
+/**
+ * F-059 / WI-095. The guarded assert refuses to diff two large values that
+ * differ, at once and naming the digest form; everything else is untouched.
+ * The gate that holds every test file to it is exercised against copies.
+ */
+test('the guarded assert fails fast on large differing values and the gate holds test files to it', () => {
+  const big = 'x'.repeat(64 * 1024);
+  const bigButOne = `${big.slice(0, -1)}y`;
+  const started = Date.now();
+  assert.throws(
+    () => assert.equal(big, bigButOne, 'artefact bytes'),
+    (error) => error instanceof assert.AssertionError && /artefact bytes: assert\.equal on 65,536 bytes/.test(error.message) && /compare digests/.test(error.message) && /F-059/.test(error.message),
+  );
+  assert.throws(() => assert.deepEqual(Buffer.from(big), big), /Buffer vs string/, 'a Buffer against a string is the F-059 shape');
+  assert.ok(Date.now() - started < 1000, 'the refusal costs nothing measurable');
+  assert.equal(big, `${big}`, 'equal large strings pass as before');
+  assert.deepEqual(Buffer.from(big), Buffer.from(big), 'equal large buffers pass as before');
+  assert.throws(() => assert.equal('small', 'smal'), (error) => error instanceof assert.AssertionError && /'small'/.test(error.message), 'small mismatches keep the ordinary diff');
+  assert.notEqual(big, bigButOne, 'a negative assertion on differing large values passes without a diff');
+
+  const root = resolve(import.meta.dirname, '..');
+  // The copied script, so it resolves its root to the copy rather than to this repository.
+  const gate = (dir) => spawnSync(process.execPath, [join(dir, 'scripts', 'check-test-assert-guard.mjs')], { cwd: dir, encoding: 'utf8' });
+  const copy = mkdtempSync(join(tmpdir(), 'rungs-assert-guard-'));
+  try {
+    mkdirSync(join(copy, 'scripts'));
+    mkdirSync(join(copy, 'test'));
+    writeFileSync(join(copy, 'scripts', 'check-test-assert-guard.mjs'), readFileSync(join(root, 'scripts', 'check-test-assert-guard.mjs'), 'utf8'));
+    writeFileSync(join(copy, 'package.json'), JSON.stringify({ scripts: { test: 'node --max-old-space-size=2048 --test test/*.test.js' } }));
+    writeFileSync(join(copy, 'test', 'a.test.js'), "import assert from './assert.js';\nimport test from 'node:test';\n");
+    const clean = gate(copy);
+    assert.equal(clean.status, 0, clean.stdout + clean.stderr);
+    assert.match(clean.stdout, /1 test file\(s\) import the guarded assert/);
+
+    writeFileSync(join(copy, 'test', 'b.test.js'), "import assert from 'node:assert/strict';\nimport test from 'node:test';\n");
+    const bypass = gate(copy);
+    assert.equal(bypass.status, 1);
+    assert.match(bypass.stderr, /test\/b\.test\.js: does not import assert from '\.\/assert\.js'/);
+    assert.match(bypass.stderr, /imports 'node:assert\/strict' directly/);
+    rmSync(join(copy, 'test', 'b.test.js'));
+
+    writeFileSync(join(copy, 'package.json'), JSON.stringify({ scripts: { test: 'node --test test/*.test.js' } }));
+    const uncapped = gate(copy);
+    assert.equal(uncapped.status, 1);
+    assert.match(uncapped.stderr, /no --max-old-space-size cap/);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
   }
 });
 

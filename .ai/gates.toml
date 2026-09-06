@@ -436,3 +436,17 @@ why     = """F-011 / WI-046. The `Console` component renders its `source` as the
 on the landing page were fabricated — one showed `doctor` emitting defect lines it did not emit until
 `--explain` shipped weeks later, and an outside reviewer read it as a shipped capability. Every
 displayed line must now appear in output captured against a fixture the capture script builds."""
+
+[[gates]]
+id      = "tests-guard-large-equality"
+kind    = "command"
+module  = "adopted"
+tier    = "fast"
+command = "node scripts/check-test-assert-guard.mjs"
+why     = """F-059 / WI-095. One `assert.equal` on a 186 KB artefact — a Buffer against a string — made the
+test process build a character-level diff for 221 s, then throw `RangeError: Array buffer allocation
+failed`; the host went down three times before the cause was read from the log. The repair compared
+digests and left a comment at two call sites, which is a rule on rung 1 that had already been broken
+once. Every test file now takes its assert from `test/assert.js`, whose equality methods refuse to diff
+two large values that differ, and the test script runs under a heap cap so a runaway allocation fails
+the process instead of the machine."""

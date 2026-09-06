@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import assert from './assert.js';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,

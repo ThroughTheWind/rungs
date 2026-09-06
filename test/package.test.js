@@ -15,7 +15,7 @@ import { basename, delimiter, dirname, isAbsolute, parse, relative, resolve, joi
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import assert from './assert.js';
 
 const root = resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
