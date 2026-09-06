@@ -76,25 +76,35 @@ because it kept one of these.
 
 # ── self-tests ────────────────────────────────────────────────────────────────
 
+# Each fixture states the registry row it is judged against — the rule and its
+# retired wording — so the runner builds the same registry and surface for every
+# direction and only the sentence differs (WI-087).
 [[self_test]]
-gate   = "docauth-working-rules"
-expect = "fail"
-input  = "Claim the id on the integration branch before starting."
+gate    = "docauth-working-rules"
+expect  = "fail"
+input   = "Claim the id on the integration branch before starting."
+fixture = { rule = "id-claiming", retired = "claim the id on the integration branch" }
 
 [[self_test]]
-gate   = "docauth-working-rules"
-expect = "pass"
-input  = "Do not claim the id on the integration branch; claim it on your own."
+gate    = "docauth-working-rules"
+expect  = "pass"
+input   = "Do not claim the id on the integration branch; claim it on your own."
+fixture = { rule = "id-claiming", retired = "claim the id on the integration branch" }
 
 [[self_test]]
-gate   = "docauth-working-rules"
-expect = "pass"
-input  = "We used to claim on the integration branch. <!-- working-rule-ok: id-claiming — quotes the retired wording to explain the change -->"
+gate    = "docauth-working-rules"
+expect  = "pass"
+input   = "We used to claim the id on the integration branch. <!-- working-rule-ok: id-claiming — quotes the retired wording to explain the change -->"
+fixture = { rule = "id-claiming", retired = "claim the id on the integration branch" }
 
+# A bare marker exempts nothing. The sentence is present tense on purpose: the
+# earlier fixture said "we used to", which the negation window rightly permits
+# regardless of the marker, so it could never have failed for the stated reason.
 [[self_test]]
-gate   = "docauth-working-rules"
-expect = "fail"
-input  = "We used to claim on the integration branch. <!-- working-rule-ok: -->"
+gate    = "docauth-working-rules"
+expect  = "fail"
+input   = "Claim the id on the integration branch before starting. <!-- working-rule-ok: -->"
+fixture = { rule = "id-claiming", retired = "claim the id on the integration branch" }
 
 [[self_test]]
 gate    = "docauth-scope-headers"

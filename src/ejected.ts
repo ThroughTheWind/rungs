@@ -24,14 +24,24 @@ export interface EjectedRoots {
 }
 
 let ejected: EjectedRoots | null = null;
+let modulesOverride: string | null = null;
 
 /** Point the engines at materialized metadata. `null` restores the package's own module set. */
 export function setEjectedRoots(roots: EjectedRoots | null): void {
   ejected = roots;
 }
 
+/**
+ * Point only the module set somewhere else, without freezing tables. The
+ * self-test runner uses it so the meta-gate's own fixtures can execute against a
+ * module directory the fixture built; a test resets it in `finally`.
+ */
+export function setModulesRootOverride(dir: string | null): void {
+  modulesOverride = dir;
+}
+
 export function modulesRoot(): string {
-  return ejected?.modulesRoot ?? DEFAULT_MODULES;
+  return modulesOverride ?? ejected?.modulesRoot ?? DEFAULT_MODULES;
 }
 
 export function frozenTablesDir(): string | null {

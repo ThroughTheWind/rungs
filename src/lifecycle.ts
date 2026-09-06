@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { parse } from 'smol-toml';
 import type { Manifest } from './types.ts';
-import { contentHash, emittedFiles, moduleEmissionCandidates, preflightModuleEmissions, registerGates } from './add.ts';
+import { contentHash, emittedFiles, moduleEmissionCandidates, ownershipHash, preflightModuleEmissions, registerGates } from './add.ts';
 import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadRegistry } from './check.ts';
 import { preflightEmittedPaths, resolveEmittedPath, UnsafeEmittedPathError } from './emitted-path.ts';
@@ -94,10 +94,15 @@ export function planUpgrade(repoRoot: string, mods: Manifest[], record: InstallR
         files.push({ rel, state: 'missing' });
         continue;
       }
-      const onDisk = contentHash(readFileSync(full, 'utf8'));
+      // Ownership ignores generated block bodies (WI-087). Records written
+      // before that hashed the raw bytes, so a recorded hash still matches
+      // through either reading.
+      const raw = readFileSync(full, 'utf8');
+      const onDisk = ownershipHash(raw);
       const recorded = installed.hashes?.[rel];
-      if (onDisk === contentHash(wouldEmit)) files.push({ rel, state: 'current' });
-      else if (recorded && onDisk === recorded) files.push({ rel, state: 'stale' });
+      const recordedMatches = !!recorded && (onDisk === recorded || contentHash(raw) === recorded);
+      if (onDisk === ownershipHash(wouldEmit)) files.push({ rel, state: 'current' });
+      else if (recordedMatches) files.push({ rel, state: 'stale' });
       else files.push({ rel, state: 'diverged' });
     }
     items.push({ module: mod.name, from: installed.version, to: mod.version, files });
@@ -160,7 +165,7 @@ export function applyUpgrade(repoRoot: string, mods: Manifest[], record: Install
       mkdirSync(dirname(f.absolute), { recursive: true });
       writeFileSync(f.absolute, content);
       if (!rewritten.has(mod.name)) rewritten.set(mod.name, new Map());
-      rewritten.get(mod.name)!.set(f.target, contentHash(content));
+      rewritten.get(mod.name)!.set(f.target, ownershipHash(content));
       written++;
     }
   }
@@ -428,7 +433,7 @@ export function eject(
   if (existsSync(launcherPath)) {
     const current = readFileSync(launcherPath, 'utf8');
     const recorded = record?.modules.instructions?.hashes?.['.ai/rungs.mjs'];
-    const managed = recorded !== undefined && contentHash(current) === recorded;
+    const managed = recorded !== undefined && (contentHash(current) === recorded || ownershipHash(current) === recorded);
     if (!managed && !current.includes(EJECTED_LAUNCHER_MARKER)) {
       throw new EjectRefusal(
         '.ai/rungs.mjs has been edited since rungs wrote it (its hash no longer matches .ai/rungs.toml), so eject will not replace it — ' +

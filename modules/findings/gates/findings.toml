@@ -41,7 +41,9 @@ open_heading            = "Open"
 closed_heading          = "Closed"
 detail_heading          = "Detail"
 id_pattern              = "{{id_prefix}}-\\d{1,4}"
-open_row_pattern        = "^\\|\\s*\\[?({{id_prefix}}-\\d{1,4})\\]"
+# The bracket is optional: rows read `| F-054 | …`. Requiring it meant no real row
+# ever matched and this gate examined nothing on any consumer until its fixture ran (WI-087).
+open_row_pattern        = "^\\|\\s*\\[?({{id_prefix}}-\\d{1,4})\\]?"
 detail_heading_pattern  = "^###\\s+({{id_prefix}}-\\d{1,4})\\s+—\\s+"
 exempt_marker           = "closure-ok:"
 declares_fixed          = [

@@ -80,10 +80,14 @@ gate   = "gates-links-resolve"
 expect = "fail"
 input  = "See [the plan](./does-not-exist.md)."
 
+# A link that resolves passes. The fixture states the file it resolves to, so the
+# runner writes it rather than guessing — context is declared, never inferred
+# from the expected verdict (WI-087).
 [[self_test]]
-gate   = "gates-links-resolve"
-expect = "pass"
-input  = "See [this table](./structural.toml)."
+gate    = "gates-links-resolve"
+expect  = "pass"
+input   = "See [this table](./structural.toml)."
+fixture = { file = "docs/a.md", exists = ["docs/structural.toml"] }
 
 # WI-008. A `${{token}}` used to exempt the whole file, so a document explaining templating stopped
 # being link-checked entirely — 16 files here, eight of them shipped. These two fix the boundary:
@@ -104,9 +108,10 @@ input  = "The module writes [its readme](${{path}}/README.md) once installed."
 # link findings. Both directions, because the strip must narrow what is reported and never widen it:
 # an existing file with a line number passes, a missing one with a line number still fails.
 [[self_test]]
-gate   = "gates-links-resolve"
-expect = "pass"
-input  = "The store is built in [forge-store](./structural.toml:222)."
+gate    = "gates-links-resolve"
+expect  = "pass"
+input   = "The store is built in [forge-store](./structural.toml:222)."
+fixture = { file = "docs/a.md", exists = ["docs/structural.toml"] }
 
 [[self_test]]
 gate   = "gates-links-resolve"
