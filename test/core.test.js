@@ -4275,6 +4275,54 @@ test('eject refuses an edited launcher or a foreign .rungs directory before writ
 });
 
 /**
+ * F-061 / WI-093. `add` on an initialised repo used to rewrite `.ai/rungs.toml`
+ * with that run's dependency closure only, so every other installed module
+ * vanished from the record along with the launcher hash: `doctor` then called
+ * them someone else's, `upgrade` skipped them, `eject` refused the launcher.
+ */
+test('add after init extends the install record instead of replacing it', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-add-after-init-'));
+  const cli = (...args) => spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), ...args], { encoding: 'utf8', env: { ...process.env, RUNGS_DATE: '2026-09-06' } });
+  const plain = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
+  const modulesOf = (text) => [...text.matchAll(/^\[modules\.([^\].\s]+)\]/gm)].map((m) => m[1]);
+  try {
+    const init = cli('init', dir, 'tracked');
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    const recordPath = join(dir, '.ai', 'rungs.toml');
+    const before = readFileSync(recordPath, 'utf8');
+    const recordedBefore = modulesOf(before);
+    assert.ok(recordedBefore.length >= 5 && !recordedBefore.includes('ci'), recordedBefore.join(','));
+    assert.match(before, /^"\.ai\/rungs\.mjs" = "[0-9a-f]+"$/m, 'init records the launcher hash');
+
+    const added = cli('add', 'ci', '--into', dir);
+    assert.equal(added.status, 0, added.stdout + added.stderr);
+    const after = readFileSync(recordPath, 'utf8');
+    assert.ok(after.startsWith(before.replace(/\s+$/, '')), 'every recorded line survives byte for byte');
+    assert.deepEqual(modulesOf(after), [...recordedBefore, 'ci']);
+    assert.equal(parseToml(after).modules.ci.version, loadManifest(join(root, 'modules', 'ci')).version);
+    assert.match(after, /^"\.ai\/rungs\.mjs" = "[0-9a-f]+"$/m, 'the launcher hash is still recorded');
+
+    const doctor = cli('doctor', dir);
+    assert.equal(doctor.status, 0, doctor.stdout + doctor.stderr);
+    for (const name of [...recordedBefore, 'ci']) {
+      assert.match(plain(doctor.stdout), new RegExp(`^\\s+${name}\\s+ours`, 'm'), `${name} is still ours after add`);
+    }
+    const upgrade = cli('upgrade', dir);
+    assert.equal(upgrade.status, 0, upgrade.stdout + upgrade.stderr);
+    for (const name of recordedBefore) {
+      assert.match(plain(upgrade.stdout), new RegExp(`^\\s+${name}\\s+\\d+\\.\\d+\\.\\d+`, 'm'), `upgrade still sees ${name}`);
+    }
+
+    const again = cli('add', 'ci', '--into', dir);
+    assert.equal(again.status, 0, again.stdout + again.stderr);
+    assert.equal(readFileSync(recordPath, 'utf8'), after, 'a repeated add changes nothing');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/**
  * WI-086 (F-054, ADR-0010). The `instructions` module declared a shell-safety hook
  * with four fixtures since it shipped and no engine implemented the name, so the
  * registry entry reached every consumer and the protection reached none.

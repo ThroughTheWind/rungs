@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   readFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -669,6 +670,21 @@ test('a packed candidate retrofits an existing repository without taking over it
     assert.match(record, /\[modules\.findings\][\s\S]*?params\s*=\s*\{[^}]*id_prefix = "AF"/);
     assert.match(registry, /id\s*=\s*"adopted-check-existing"/);
     assert.match(registry, /command\s*=\s*"node \.github\/scripts\/check-existing\.mjs"/);
+
+    // F-061 / WI-093. Growing the scaffold with `add` must extend the record, not replace it —
+    // through the packed candidate, on a copy so the journey below keeps its module set.
+    const grown = join(temporaryRoot, 'consumer-grown');
+    cpSync(consumer, grown, { recursive: true });
+    const addedCi = expectOk(candidate('add', 'ci', '--into', grown), 'packed add after init');
+    assert.match(addedCi.stdout, /rungs add ci/);
+    const grownRecord = readFileSync(join(grown, '.ai', 'rungs.toml'), 'utf8');
+    assert.ok(grownRecord.startsWith(record.replace(/\s+$/, '')), 'add keeps every recorded line byte for byte');
+    assert.match(grownRecord, /^\[modules\.ci\]$/m);
+    const grownDoctor = withoutAnsi(expectOk(candidate('doctor', grown), 'doctor after add').stdout);
+    for (const name of ['instructions', 'gates', 'backlog', 'findings', 'ci']) {
+      assert.match(grownDoctor, new RegExp(`^\\s+${name}\\s+ours`, 'm'), `${name} stays ours after add`);
+    }
+    rmSync(grown, { recursive: true, force: true });
 
     // WI-086 / ADR-0010. The declared shell-safety hook reaches the Claude harness as one
     // settings entry naming the pinned launcher, and the installed CLI dispatches it.
