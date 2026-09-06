@@ -16,7 +16,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | `feature/WI-077-standalone-ejected-checks` |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
 | [WI-060](items/WI-060-release-0.2.0.md) | Prepare the v0.2.0 release and close the release-integrity findings it surfaced | chore | `feature/WI-060-release-0.2.0` |
 | [WI-062](items/WI-062-concurrency-phantom-commands.md) | Decide what the concurrency module is — four commands, or the manual protocol it actually documents | chore | `feature/WI-062-concurrency-loop` |
@@ -49,7 +48,7 @@ completes what the tool already claims.** [WI-084](archive/WI-084-tool-evaluatio
 promises a consumer can read today and not rely on: an `eject` whose runner cannot load, a hook
 declared and never dispatched, fixtures that never execute, accepted detectors with a corpus and no
 engine, a budget parameter nothing reads, and a worktree row that calls an unreadable state clean.
-Five children plus the reused [WI-077](items/WI-077-standalone-ejected-checks.md) and
+Five children plus the reused [WI-077](archive/WI-077-standalone-ejected-checks.md) and
 [WI-061](items/WI-061-imperative-staleness-detection.md); the assessment's new proposals are
 deliberately not among them. Recomputing the fixture inventory before opening anything found what the
 assessment's dated 45 could not: **147 fixtures, 7 of which disagree with their engine**, all seven in

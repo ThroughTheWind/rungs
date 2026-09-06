@@ -2,7 +2,7 @@
 id: WI-077
 title: Make ejected checks genuinely package-independent
 type: feature
-status: review
+status: done
 branch: feature/WI-077-standalone-ejected-checks
 created: 2026-09-05
 updated: 2026-09-06
@@ -116,7 +116,7 @@ table inventory.
 ## Execution
 
 Executed 2026-09-06 on `feature/WI-077-standalone-ejected-checks`, cut from `main`
-`3de9111` under the [WI-085](WI-085-existing-promises-remediation.md) programme, after WI-073's
+`3de9111` under the [WI-085](../items/WI-085-existing-promises-remediation.md) programme, after WI-073's
 path boundary had landed (2026-09-05). Baseline reproduction before any change: the built CLI's
 `eject` failed before writing (it resolved `dist/glob.ts`), and the source CLI's ejected gate failed
 with `ERR_MODULE_NOT_FOUND` for `smol-toml` — `engines.ts` imports the TOML parser, the self-test
@@ -157,7 +157,7 @@ What was built, following the Approach:
    ejection, so re-substituting is impossible), the raw TOML is what the meta-gate's fixtures and the
    skill-extension lookup read. One source of truth per question.
 2. The retained launcher surface is declared as a list (`EJECTED_RETAINED`, currently `check`)
-   rather than hard-coded, because [WI-086](WI-086-consumer-hook-delivery.md) dispatches the
+   rather than hard-coded, because [WI-086](../items/WI-086-consumer-hook-delivery.md) dispatches the
    shell-safety hook through the same launcher and must add `hook` to it; a hook adapter that points
    at a command ejection removed would block every tool call in an ejected repo.
 3. Ejection adds one markdown file, `.rungs/README.md`, so `gates-links-resolve` examines one file

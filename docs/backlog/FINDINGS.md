@@ -71,7 +71,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | --- | --- | --- | --- |
 | F-043 | `change-requires-file` lets an unchanged historical marker exempt unrelated work on every later branch touching that file | promoted | WI-078 scopes the existing substantive same-line escape hatch to marker/reason lines added or modified in the complete current branch/worktree delta, rejects inherited/renamed/copied evidence and preserves deterministic ref and NUL-safe path handling |
 
-## Closed — 2026-09-05 by [WI-077](items/WI-077-standalone-ejected-checks.md)
+## Closed — 2026-09-05 by [WI-077](archive/WI-077-standalone-ejected-checks.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
