@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { Manifest } from './types.ts';
@@ -152,7 +152,7 @@ export function addModule(
   mod: Manifest,
   repoRoot: string,
   params: Params,
-  opts: { dryRun?: boolean; skillsDir?: string } = {},
+  opts: { dryRun?: boolean; skillsDir?: string; resume?: Set<string> } = {},
 ): AddAction[] {
   const actions: AddAction[] = [];
   const skillsDir = opts.skillsDir ?? '.claude/skills';
@@ -163,14 +163,18 @@ export function addModule(
   const destinations = new Map(targets.map((candidate, index) => [candidate.target, resolved[index].absolute]));
   const write = (rel: string, content: string, disposition: AddAction['disposition']) => {
     const full = destinations.get(rel)!;
-    if (existsSync(full)) {
+    // F-058 / WI-098: a file the *interrupted* run created is ours to finish, not
+    // the user's to keep. The journal says which those are; anything else that
+    // already exists is left alone, as ADR-0004 requires.
+    const resumed = opts.resume?.has(rel) === true;
+    if (existsSync(full) && !resumed) {
       actions.push({ disposition: 'skip-exists', target: rel, note: 'already present — left alone' });
       return;
     }
-    actions.push({ disposition, target: rel });
+    actions.push(resumed ? { disposition, target: rel, note: 'rewritten — created by the interrupted install' } : { disposition, target: rel });
     if (opts.dryRun) return;
     mkdirSync(dirname(full), { recursive: true });
-    writeFileSync(full, content);
+    atomicWrite(full, content, rel);
   };
 
   const sub = (text: string) => substitute(text, mod.name, params);
@@ -197,7 +201,7 @@ export function addModule(
       });
       if (!opts.dryRun) {
         mkdirSync(dirname(full), { recursive: true });
-        writeFileSync(full, merged);
+        atomicWrite(full, merged, target);
       }
     }
   }
@@ -549,6 +553,75 @@ export function writeInstallRecord(
   if (!lines.length) return;
   const newline = existing.match(/\r\n|\r|\n/)?.[0] ?? '\n';
   writeFileSync(record.absolute, `${existing.replace(/\s+$/, '')}${newline}${newline}${lines.join(newline)}`);
+}
+
+// ── Recoverable installs (F-058 / WI-098) ─────────────────────────────────────
+//
+// `add` and `init` write module files one by one and save the install record
+// last. An interruption used to leave the files written so far with no record;
+// a retry then saw them as "already present", classified them as kept, and never
+// hashed them — the module's own files became the user's forever. Three small
+// mechanics, none of them a transaction: a journal written before the first
+// file, an atomic write for every file, and a retry that reads the journal.
+
+/** Where an in-flight install records itself. Absent means "nothing in flight". */
+export const INSTALL_JOURNAL = '.ai/rungs-install.journal.json';
+
+export interface InstallJournal {
+  started: string;
+  modules: string[];
+  harnesses: string[];
+  /** Every planned module file: created by this run, or pre-existing and kept. */
+  files: Record<string, 'create' | 'kept'>;
+}
+
+const journalPath = (repoRoot: string) =>
+  preflightEmittedPaths(repoRoot, [{ moduleName: 'rungs', target: INSTALL_JOURNAL, writeExisting: true }])[0].absolute;
+
+export function readJournal(repoRoot: string): InstallJournal | null {
+  const p = journalPath(repoRoot);
+  if (!existsSync(p)) return null;
+  try {
+    const raw = JSON.parse(readFileSync(p, 'utf8'));
+    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.modules) || typeof raw.files !== 'object') return null;
+    return { started: String(raw.started ?? ''), modules: raw.modules.map(String), harnesses: (raw.harnesses ?? []).map(String), files: raw.files };
+  } catch {
+    return null;
+  }
+}
+
+export function writeJournal(repoRoot: string, journal: InstallJournal): void {
+  const p = journalPath(repoRoot);
+  mkdirSync(dirname(p), { recursive: true });
+  atomicWrite(p, `${JSON.stringify(journal, null, 2)}\n`, INSTALL_JOURNAL);
+}
+
+export function clearJournal(repoRoot: string): void {
+  rmSync(journalPath(repoRoot), { force: true });
+}
+
+/** The module files a run would write, and whether each already exists — the journal's rows. */
+export function plannedFiles(mod: Manifest, repoRoot: string, params: Params, skillsDir = '.claude/skills'): { target: string; exists: boolean }[] {
+  return [...emittedFiles(mod, params, skillsDir).keys()].map((rel) => ({
+    target: rel,
+    exists: existsSync(resolveEmittedPath(repoRoot, mod.name, rel).absolute),
+  }));
+}
+
+/**
+ * Write to a sibling temporary name, then rename into place, so a process that
+ * dies mid-write leaves either the old file or the new one — never a truncated
+ * one for the retry to keep. `RUNGS_FAULT_INJECT_WRITE=<target>` makes the write
+ * of that one target throw, for the regression that drives an interruption; it
+ * is test scaffolding and does nothing unless set.
+ */
+function atomicWrite(full: string, content: string, target: string): void {
+  if (process.env.RUNGS_FAULT_INJECT_WRITE && process.env.RUNGS_FAULT_INJECT_WRITE === target) {
+    throw new Error(`injected write failure for ${target} (RUNGS_FAULT_INJECT_WRITE)`);
+  }
+  const tmp = `${full}.rungs-tmp`;
+  writeFileSync(tmp, content);
+  renameSync(tmp, full);
 }
 
 export interface AdoptedGate {
