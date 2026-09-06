@@ -6,7 +6,7 @@ status: in_progress
 branch:
 created: 2026-08-17
 updated: 2026-08-17
-related: [WI-038, WI-042, WI-046, WI-052, WI-053, ADR-0007, F-015]
+related: [WI-038, WI-042, WI-046, WI-052, WI-053, WI-085, ADR-0007, F-015]
 epic:
 children: []
 ---

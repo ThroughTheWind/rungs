@@ -6,7 +6,7 @@ status: planned
 branch:
 created: 2026-09-05
 updated: 2026-09-05
-related: [WI-045, WI-066, WI-068, WI-070, WI-073, F-042, F-045, ADR-0002]
+related: [WI-045, WI-066, WI-068, WI-070, WI-073, WI-085, WI-086, F-042, F-045, ADR-0002]
 epic: WI-064
 children: []
 ---

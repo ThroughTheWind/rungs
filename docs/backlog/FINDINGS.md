@@ -4,16 +4,22 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-058 -->
+<!-- NEXT-ID: F-059 -->
+<!-- F-058 is claimed by an uncommitted row that predates the WI-085 programme; the marker skips it. -->
 
 ## Open
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-054 | medium | now | The instructions module declares shell-safety hook protection but a fresh tracked consumer receives neither a Claude hook configuration nor a hook-degradation report | [WI-084 assessment](../design/tool-evaluation-2026-09-05.md), 2026-09-05: built/source tracked init exit 0; registry contains `instructions-shell-backticks`, `.claude/settings.json` and `.claude/hooks` are absent, render report has no hook row; [engine map](../../src/engines.ts) lacks `shell-safety` | Before recommending the instructions module's hook protection or the next release claiming it | Implement and test consumer hook installation and dispatch for supported targets; explicitly report degradation for unsupported targets; test rejection and safe acceptance through the installed adapter |
-| F-055 | low | next | The gates module promises comparison of `fast_budget_ms` against observed durations, but the runner does not consume the setting | [Manifest parameter](../../modules/gates/module.toml), [runner and ledger questions](../../src/check.ts); source search on 2026-09-05 found no runtime consumer, under [WI-084](archive/WI-084-tool-evaluation.md) | Before claiming fast-tier budget reporting or making execution cost a UI feature | Specify and implement local observed-duration comparison, or explicitly narrow the parameter's documented behavior; handle cancellation/timeouts as a separately specified execution concern |
 | F-056 | medium | next | A session can name a completed work item as active while all session gates pass | At inspected commit `69b6059`, `git show 69b6059:.ai/session.md` names WI-016 in progress; [its archived item](archive/WI-016-extract-openhands.md) is done; [session gate](../../modules/session/gates/session.toml) checks section presence only; WI-084 recorded 30 passing aggregate checks | Before relying on a generated current-work view, or when extending the session module | Add optional explicit active-item references and reconcile their status against the configured local backlog; do not infer staleness from age or score narrative quality; the live handoff is refreshed separately at this session's close |
-| F-057 | medium | next | Worktree inspection reports `dirty = false` when reading Git status fails, conflating unknown state with confirmed clean | Source inspection, 2026-09-05: `worktrees()` catch in [concurrency.ts](../../src/concurrency.ts) sets false; not runtime-reproduced, recorded during [WI-084](archive/WI-084-tool-evaluation.md) | Before displaying worktree state in a local interface or extending its automation | Preserve an explicit unknown/error result and surface its reason; add a failing-status-read regression without treating that state as clean |
+
+## Closed — 2026-09-06 by [WI-085](items/WI-085-existing-promises-remediation.md)
+
+| Id | What | Disposition | Reason |
+| --- | --- | --- | --- |
+| F-054 | The instructions module declares shell-safety hook protection but a fresh tracked consumer receives neither a Claude hook configuration nor a hook-degradation report | promoted | [WI-086](items/WI-086-consumer-hook-delivery.md) implements the `shell-safety` engine, a `rungs hook` dispatch command reached through the pinned launcher, the `.claude/settings.json` merge for the `claude` harness, the render-report degradation row for harnesses without hooks, and the ejected runner's retained `hook` surface |
+| F-055 | The gates module promises comparison of `fast_budget_ms` against observed durations, but the runner does not consume the setting | promoted | [WI-088](items/WI-088-observed-fast-budget-reporting.md) brings the ledger to ADR-0005's schema (tier and a run id per row) and reports observed fast-tier wall-clock against the budget from `doctor`, as a measurement with no verdict; timeouts and cancellation stay out of scope |
+| F-057 | Worktree inspection reports `dirty = false` when reading Git status fails, conflating unknown state with confirmed clean | promoted | [WI-089](items/WI-089-truthful-worktree-state.md) replaces the boolean with clean/dirty/unknown carrying Git's reason, keeps `prunable` off unknown rows, and reproduces the failing read with a worktree whose directory was removed |
 
 ## Closed — 2026-09-05 by [WI-084](archive/WI-084-tool-evaluation.md)
 

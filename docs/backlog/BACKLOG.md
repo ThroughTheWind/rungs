@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-085 -->
+<!-- NEXT-ID: WI-091 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -25,18 +25,36 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
 | [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | — |
+| [WI-086](items/WI-086-consumer-hook-delivery.md) | Deliver the declared shell-safety hook to consumers, or report that a harness cannot carry it | feature | — |
+| [WI-087](items/WI-087-executable-self-test-coverage.md) | Make every shipped self-test fixture execute, or state exactly why it cannot | feature | — |
+| [WI-088](items/WI-088-observed-fast-budget-reporting.md) | Report observed fast-tier wall-clock against the declared budget | feature | — |
+| [WI-089](items/WI-089-truthful-worktree-state.md) | Keep a failed worktree status read unknown instead of reporting it clean | feature | — |
+| [WI-090](items/WI-090-integrated-consumer-verification.md) | Verify the integrated candidate as a packed consumer and hand the canary step to WI-064 | chore | — |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-064](items/WI-064-arena-lab-dogfood-bootstrap.md) | Bootstrap Arena Lab as the first direct Rungs consumer | epic |
+| [WI-085](items/WI-085-existing-promises-remediation.md) | Complete the consumer promises rungs already ships or has accepted | epic |
 
 ## Proposed
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-063](items/WI-063-external-module-roots.md) | Resolve modules from roots outside the package, and record where each installed module came from | feature |
+
+[WI-085](items/WI-085-existing-promises-remediation.md), accepted 2026-09-06 — **the programme that
+completes what the tool already claims.** [WI-084](archive/WI-084-tool-evaluation.md) found six
+promises a consumer can read today and not rely on: an `eject` whose runner cannot load, a hook
+declared and never dispatched, fixtures that never execute, accepted detectors with a corpus and no
+engine, a budget parameter nothing reads, and a worktree row that calls an unreadable state clean.
+Five children plus the reused [WI-077](items/WI-077-standalone-ejected-checks.md) and
+[WI-061](items/WI-061-imperative-staleness-detection.md); the assessment's new proposals are
+deliberately not among them. Recomputing the fixture inventory before opening anything found what the
+assessment's dated 45 could not: **147 fixtures, 7 of which disagree with their engine**, all seven in
+modules this repo does not install, so no gate had ever run them — and four of the seven are rules a
+shipped table configures that no engine reads.
 
 [WI-061](items/WI-061-imperative-staleness-detection.md), accepted 2026-08-17 — **the first
 capability here opened because outsiders assumed it already existed.** A third external review, a

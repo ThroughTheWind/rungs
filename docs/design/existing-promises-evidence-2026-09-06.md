@@ -1,0 +1,47 @@
+# Existing promises — evidence matrix, 2026-09-06
+
+**Authoritative for:** the executable evidence behind each consumer promise
+[WI-085](../backlog/items/WI-085-existing-promises-remediation.md) completes, and the baseline it
+started from.
+**Not authoritative for:** product behaviour (the code and its tests), decisions (ADRs), or the
+assessment's proposals ([`tool-evaluation-2026-09-05.md`](tool-evaluation-2026-09-05.md)).
+
+Every row names what was run and what it proved. A command is evidence only for the property it
+tests, so where a check measures something adjacent to the claim, the gap is stated in the row.
+
+## Baseline — reconciled 2026-09-06 before any implementation
+
+| Fact | Value | How it was read |
+| --- | --- | --- |
+| Starting commit | `bb0bf2bbac5eac0c3fb4893a4d2f242f95817291` on `main` | `git rev-parse HEAD`, `git branch --show-current` |
+| Remote state | `main` 2 commits ahead of `origin/main`, nothing pushed | `git status -sb` |
+| Dirty state | one unrelated uncommitted edit: an F-058 row in `docs/backlog/FINDINGS.md` dated 2026-09-06, added outside this task; stashed as `stash@{0}` during the programme's commits and restored after, never committed by it | `git diff`, `git stash list` |
+| Runtime | Node `v22.22.3`, npm `10.9.8`, Windows 11 (`win32`) | `node --version`, `npm --version` |
+| Execution boundary | this checkout only; no push, tag, publish, or write to Arena Lab (`C:\Development\Repositories\arena-lab`, HEAD `e927d5feb845c9e678e914fed6e4563d4cb8bd96`, branch `feature/NEXT-002-unity-fixture-playback`, clean, launcher pinned `@rungs/cli@0.4.0`) | read-only `git` in that checkout |
+| Gates | 30 pass · 0 fail · 0 unimplemented · 0 error; 45 fixtures unrun (10.5 s) | `node src/cli.ts check` |
+| Module audit | 15 modules, audit clean | `node src/cli.ts modules` |
+| F-029 attribution | 1 selected test, 1 pass | `node --test --test-name-pattern 'land distinguishes an inherited failure' test/core.test.js` — proves the inherited/introduced/unattributable regression passes; it does not re-verify `land` end to end |
+| Fixture inventory, all fifteen modules | 147 fixtures: 71 ok · 69 unrun · 7 mismatch | `node .scratch/fixture-inventory.mjs` (scratch, gitignored); the 7 mismatches sit in modules this repo does not install and are invisible to its meta-gate |
+
+## Promises
+
+Status vocabulary: **implemented** (code merged), **verified** (the named command ran here with the
+stated result), **released** (on npm — nothing in this programme is). A row is not verified until
+its command column names an actual run.
+
+| Promise | Authoritative claim | Implementation | Verification | Owning item | Status · remaining limitation |
+| --- | --- | --- | --- | --- | --- |
+| Ejected checks run without rungs | README § Design commitments: "`eject` is a promise, not a courtesy"; ADR-0002 § lock-in escape hatch | `src/lifecycle.ts` `eject` copies five source files whose imports (`smol-toml`, `selftest.ts`, `manifest.ts`, …) are not copied; built CLI resolves assets from `dist/` | Reproduced 2026-09-05 (WI-084): built `eject` exits 1 before writing; source `eject` exits 0 and the direct gate exits 1 `ERR_MODULE_NOT_FOUND` | [WI-077](../backlog/items/WI-077-standalone-ejected-checks.md) | **open** — see WI-077 rows below as they land |
+| Shell-safety hook reaches consumers | `modules/README.md` § Anatomy: emitted into supporting harnesses, degraded for the rest; `modules/instructions/module.toml` gate `instructions-shell-backticks` | no `shell-safety` engine (`src/engines.ts` ENGINES map); `registerGates` writes the entry; nothing writes `.claude/settings.json`; render report has no hook row | Reproduced 2026-09-05 (WI-084): fresh tracked init, no settings or hooks | [WI-086](../backlog/items/WI-086-consumer-hook-delivery.md) | **open** |
+| Self-tests execute in both directions | `gates` module gate `gates-self-tests-both-directions`; `modules/README.md` rule 5 | `src/selftest.ts` context-free list + builders | Inventory 2026-09-06: 71 ok · 69 unrun · 7 mismatch across all modules | [WI-087](../backlog/items/WI-087-executable-self-test-coverage.md) | **open** — 7 mismatches are engine defects (rules configured and unread), not fixture defects |
+| Imperative and stale-command detection | roadmap § "The detector three readers already assume exists"; WI-061 accepted 2026-08-17 | no engine; corpus only ([`imperative-corpus-2026-08-17.md`](imperative-corpus-2026-08-17.md)) | none possible | [WI-061](../backlog/items/WI-061-imperative-staleness-detection.md) | **open** — oracle and R7 decision precede any matcher |
+| `fast_budget_ms` compared with observed durations | `modules/gates/module.toml` param description; ADR-0005 Tier A | no reader of the parameter; ledger rows lack `tier` and a run id | `grep -rn fast_budget src/` → only the registry template | [WI-088](../backlog/items/WI-088-observed-fast-budget-reporting.md) | **open** |
+| Worktree state is truthful | `rungs worktrees` output labels; ADR-0009 "never destroy, only refuse" | `src/concurrency.ts` `worktrees()` catch sets `dirty = false` | not reproduced at runtime before WI-089 | [WI-089](../backlog/items/WI-089-truthful-worktree-state.md) | **open** |
+| Failure attribution distinguishes inherited from introduced | concurrency module docs; F-029 closed 2026-09-05 | `src/concurrency.ts` `land` with detached exact-integration control (WI-081) | 2026-09-06: the selected regression passed (1/1) | — (preserved, not changed) | **verified** — regression only; no `land` was run against this repo's branches |
+| Integrated candidate passes the consumer lifecycle | WI-064 approach; README § Status | `test/package.test.js` packed journey | baseline: `npm test` 139 pass · 3 skipped (2026-09-05, WI-084) | [WI-090](../backlog/items/WI-090-integrated-consumer-verification.md) | **open** |
+
+## Verification log
+
+Appended as items land; each entry names the commit it was run against.
+
+- 2026-09-06 · `bb0bf2b` · baseline rows above.
