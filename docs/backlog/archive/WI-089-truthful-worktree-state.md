@@ -21,7 +21,7 @@ The runner's own rule for an unreadable state is that it blocks; this command re
 
 ## Decision
 
-`accepted` — 2026-09-06 under [WI-085](WI-085-existing-promises-remediation.md). A failed read is
+`accepted` — 2026-09-06 under [WI-085](../items/WI-085-existing-promises-remediation.md). A failed read is
 an unknown with a reason, never a clean row.
 
 ## Plan
