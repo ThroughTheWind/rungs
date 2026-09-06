@@ -4028,12 +4028,49 @@ test('worktrees reports merged-and-dirty, and never removes anything', () => {
     const before = worktrees(dir).rows;
     assert.equal(before.length, 1);
     assert.equal(before[0].merged, true, 'a branch at the tip is merged');
-    assert.equal(before[0].dirty, false);
+    assert.equal(before[0].state, 'clean');
 
     writeFileSync(join(wt, 'a.txt'), 'uncommitted\n');
     const after = worktrees(dir).rows;
-    assert.equal(after[0].dirty, true, 'uncommitted work on a landed branch is the dangerous row');
+    assert.equal(after[0].state, 'dirty', 'uncommitted work on a landed branch is the dangerous row');
     assert.ok(existsSync(wt), 'reporting must never remove the worktree');
+  } finally {
+    rmSync(wt, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/**
+ * WI-089 (F-057). A worktree whose directory is gone is still listed by Git, and
+ * `git status` inside it fails. That read failure used to become `dirty = false`
+ * and the row printed `merged · prunable`. The failing read here is real — the
+ * directory is removed — not a fabricated result object.
+ */
+test('worktrees keeps a failed status read unknown, with its reason, and never calls it prunable', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const { dir, g } = loopRepo();
+  const wt = join(dir, '..', `wt-gone-${basename(dir)}`);
+  try {
+    g('worktree', 'add', '-q', '-b', 'feature/vanished', wt, 'main');
+    assert.equal(worktrees(dir).rows[0].state, 'clean');
+    rmSync(wt, { recursive: true, force: true });
+    assert.match(g('worktree', 'list', '--porcelain'), /feature\/vanished/, 'Git still lists the worktree');
+
+    const [row] = worktrees(dir).rows;
+    assert.equal(row.branch, 'feature/vanished');
+    assert.equal(row.merged, true);
+    assert.equal(row.state, 'unknown', 'a failed read is unknown, not clean');
+    assert.ok(row.reason && row.reason.length > 0, 'the reason Git gave is kept');
+    assert.equal('dirty' in row, false, 'the boolean that hid the failure is gone');
+
+    const listed = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'worktrees', dir], { encoding: 'utf8' });
+    const out = listed.stdout.replace(/\x1b\[[0-9;]*m/g, '');
+    assert.equal(listed.status, 0, listed.stderr);
+    assert.match(out, /merged · status UNKNOWN\s+feature\/vanished/);
+    assert.match(out, /could not read its status: /);
+    assert.match(out, /1 worktree\(s\) could not be inspected/);
+    assert.doesNotMatch(out, /prunable/, 'an unknown tree is never offered for removal');
+    assert.match(g('worktree', 'list', '--porcelain'), /feature\/vanished/, 'listing removed nothing, not even the dangling entry');
   } finally {
     rmSync(wt, { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });

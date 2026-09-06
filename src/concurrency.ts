@@ -965,7 +965,15 @@ export interface WorktreeRow {
   path: string;
   branch: string;
   merged: boolean;
-  dirty: boolean;
+  /**
+   * `unknown` is a failed status read, kept as one. The boolean it replaces
+   * turned a read failure into `dirty = false`, and the listing printed the
+   * worktree as `merged · prunable` — the one label the command exists to
+   * withhold from a tree it could not inspect (F-057, WI-089).
+   */
+  state: 'clean' | 'dirty' | 'unknown';
+  /** Git's first line, when the state is unknown. */
+  reason?: string;
 }
 
 /**
@@ -986,13 +994,17 @@ export function worktrees(root: string): { rows: WorktreeRow[]; integration: str
     const branch = block.match(/^branch refs\/heads\/(.+)$/m)?.[1];
     if (!path || !branch || branch === integration) continue;
     const merged = gitOk(root, ['merge-base', '--is-ancestor', branch, integration]);
-    let dirty = false;
+    let state: WorktreeRow['state'];
+    let reason: string | undefined;
     try {
-      dirty = git(path, ['status', '--porcelain']).length > 0;
-    } catch {
-      dirty = false;
+      state = git(path, ['status', '--porcelain']).length > 0 ? 'dirty' : 'clean';
+    } catch (error: any) {
+      // A read that failed is not a tree that is clean. Keep the failure and its reason.
+      state = 'unknown';
+      const detail = String(error?.stderr ?? error?.message ?? error).split(/\r?\n/).find((l) => l.trim()) ?? 'git status failed';
+      reason = detail.trim();
     }
-    rows.push({ path, branch, merged, dirty });
+    rows.push({ path, branch, merged, state, ...(reason ? { reason } : {}) });
   }
   return { rows, integration };
 }

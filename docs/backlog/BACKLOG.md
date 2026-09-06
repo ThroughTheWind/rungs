@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-089](items/WI-089-truthful-worktree-state.md) | Keep a failed worktree status read unknown instead of reporting it clean | feature | — |
 | [WI-090](items/WI-090-integrated-consumer-verification.md) | Verify the integrated candidate as a packed consumer and hand the canary step to WI-064 | chore | — |
 
 ## Accepted
