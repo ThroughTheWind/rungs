@@ -17,9 +17,11 @@ have not been given.
 
 Nothing. [WI-085](../docs/backlog/archive/WI-085-existing-promises-remediation.md) and its nine items
 are done and archived, and so are the five follow-ups that closed every finding it left open:
-WI-093 (F-061), WI-094 (F-063), WI-095 (F-059), WI-096 (F-060), WI-097 (F-062). `main` and
-`green/main` point at the WI-097 landing plus this handoff commit. The findings register's only open
-rows are F-056 and the user's uncommitted F-058.
+WI-093 (F-061), WI-094 (F-063), WI-095 (F-059), WI-096 (F-060), WI-097 (F-062), and then WI-098
+(F-058, interrupted installs are journaled, atomic and resumable). WI-060 and WI-062 were closed as
+done and WI-035 retired as superseded on 2026-09-06; `items/` holds WI-063 and WI-064 only. The
+findings register's only open row is F-056. `origin/main` is behind local `main` by the WI-098 and
+bookkeeping landings; pushing was authorized once, on 2026-09-06, and has not been repeated.
 
 ## Resume from
 
@@ -33,9 +35,10 @@ which now runs the suite serially under a heap cap by itself.
 1. With authorization: cut and publish 0.5.0 per the `release` module (`changelog.d/0.5.0.md` holds
    thirteen entries) from a commit the matrix has passed on, then open a dedicated Arena Lab item for
    `upgrade --to 0.5.0`.
-2. F-058 (the user's row: an interrupted `add` leaves incomplete files without rollback) when `add`
-   is next touched; F-056 (a session can name a done item as active) when the session module is.
+2. F-056 (a session can name a done item as active) when the session module is next touched.
 3. Delete `integ/feature/WI-091-index-placeholder-rows` if nobody wants the parked merge.
+4. Bump `actions/checkout` and `actions/setup-node` past v4 when the workflow is next touched; GitHub
+   now forces them onto Node 24 runners with a deprecation notice (seen in the 2026-09-06 runs).
 
 ## Active constraints — do not reopen
 
@@ -48,6 +51,8 @@ which now runs the suite serially under a heap cap by itself.
   sentence about it derives from that list (WI-092).
 - The install record is extended, never re-derived (F-017, F-061): `add` appends unrecorded modules
   and `upgrade` edits lines in place; neither re-hashes a file it did not write.
+- An install journals before its first write and a retry of the same modules resumes it (WI-098);
+  do not add rollback of shared-file merges — that was decided out of scope, not forgotten.
 - `check [path] [tier]` is the grammar on both launcher surfaces; a lone positional that is not a
   directory is the tier (WI-094).
 - Every test file imports assert from `test/assert.js`, and the test script keeps its heap cap; the
@@ -67,7 +72,7 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Open questions
 
-- None blocking. Whether to name F-058 in the 0.5.0 release notes is a release decision.
+- None blocking. The 0.5.0 fragment now holds fourteen entries; cutting it is a release decision.
 
 ## Archive
 
