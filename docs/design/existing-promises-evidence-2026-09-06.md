@@ -98,3 +98,10 @@ Appended as items land; each entry names the commit it was run against.
   session note was written during it — recorded, re-run); `rungs check` 31 pass; `modules` 15;
   `npm pack --dry-run --json` 121 entries, `sha512-bhz8RMHM…PxQdeA==` after the README retype; site 171
   pages, 2,651 links, 0 broken. CI matrix for the exact SHA: pending, nothing pushed.
+- 2026-09-06 · `main` pushed at the user's request at `2791a21b19740eb6e671e0f3e7e5d4dba68aa546` (the
+  WI-097 landing plus the session handoff; every WI-085 item and every findings follow-up WI-093 to
+  WI-097 included) · GitHub Actions run 34052948336 on that SHA: all seven jobs `success` —
+  ubuntu-latest, macos-latest and windows-latest on Node 22.18 and Node 22 (each `npm ci`, `npm test`,
+  `node --experimental-strip-types src/cli.ts check`, `node dist/cli.js --help`) plus the site build
+  and link check. This supersedes every "CI matrix pending (unpushed)" note in the rows above: the
+  matrix has now been observed on a commit that contains all of that work. Not yet released.
