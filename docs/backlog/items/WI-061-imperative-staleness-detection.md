@@ -2,10 +2,10 @@
 id: WI-061
 title: Detect imperatives and stale command references in agent instructions
 type: feature
-status: in_progress
-branch:
+status: done
+branch: feature/WI-061-imperative-staleness-detection
 created: 2026-08-17
-updated: 2026-08-17
+updated: 2026-09-06
 related: [WI-038, WI-042, WI-046, WI-052, WI-053, WI-085, ADR-0007, F-015]
 epic:
 children: []
@@ -172,6 +172,89 @@ instruction files always carry unenforced rules.
 Remaining, none of it started: the hand-classified oracle, R7's ADR, the two engines, and the
 per-repo false-positive rates against WI-053's one-in-five threshold.
 
+**Steps 2–5, 2026-09-06**, on `feature/WI-061-imperative-staleness-detection` under
+[WI-085](WI-085-existing-promises-remediation.md), in the order the Approach fixed:
+
+1. **The oracle** — [`imperative-oracle-2026-09-06.md`](../../design/imperative-oracle-2026-09-06.md).
+   The corpus grep re-run at the recorded commits produced the corpus document's counts exactly
+   (134 · 31 · 24 · 10 · 10 · 0 · 0); every line was read and classified rule / not-a-rule before a
+   matcher existed. **It overturned the corpus document's impression**: "almost all are genuine
+   imperatives" is true of the four small files and false of `rift-forge-candidate`, where 94 of 134
+   candidates are project history — a naive matcher would have shipped at 70% false positives on the
+   repository that dominates the count. WI-042's shape, caught before the engine this time.
+2. **R7's ADR** — [ADR-0011](../../decisions/ADR-0011-instruction-detectors-assert-no-enforcement.md).
+   Building the enforcement join showed it cannot be honest even where a registry exists: a gate that
+   scans a file does not enforce the rule on line 40 of it, and a rule enforced by a hook or CI never
+   names the file. **R2 is narrowed by the ADR**: an imperative is never "reported as having no gate".
+   The census is an evidence surface — registered with `surface = "explain"`, run by
+   `doctor --explain` only, never by `check`, never converted at ejection — and its rows name a file,
+   a line and the modal that matched, with no word about enforcement in either direction.
+3. **The engines** — `src/instruction-engines.ts`. `imperative-census`: prose lines only (fenced
+   blocks, headings, code spans, link targets and HTML comments removed), a modal counted where the
+   oracle's shapes say "rule": `must`/`shall` within four words of a clause head; `never`/`always`/
+   `do not` at a clause head, `never` not before a noun phrase or a past participle; conjunctions
+   are not clause heads. `command-reference`: code spans and shell fences, `npm|pnpm|yarn run
+   <script>` against `package.json` `scripts`, `rungs <command>` in its three spellings against the
+   dispatch table, absent surface means no finding. Both `repo-content`; neither runs a command.
+4. **Measured against the oracle**, per repository (`.scratch/oracle-measure.mjs`), after two
+   narrowings the first measurement forced (rift-forge-candidate stood at 45.3%, then 30.8%):
+
+   | Repository | Candidates | Reported | False positives | Rate | Rules missed |
+   | --- | ---: | ---: | ---: | ---: | ---: |
+   | `hexguard` | 10 | 7 | 0 | 0% | 2 of 9 |
+   | `hexguard-templates` | 10 | 9 | 0 | 0% | 1 of 10 |
+   | `ai-cli` | 24 | 13 | 0 | 0% | 6 of 19 |
+   | `rewind` | 31 | 18 | 0 | 0% | 7 of 25 |
+   | `rift-forge-candidate` | 134 | 32 | 5 | **15.6%** | 13 of 40 |
+   | `axiom-mesh`, `gridforge` | 0 | 0 | 0 | — | — |
+
+   The five remaining false positives are the design-narrative `must` near a clause head ("The two
+   must not be confusable"), which the oracle names as the residual no form can separate. Recall is
+   74 of 103 rules (72%): `always` mid-sentence, `mandatory`/`required` as adjectives and `must`
+   more than four words into a clause are the misses, each a deliberate narrowing. The command
+   detector reported nothing on any of the seven repositories.
+5. **Fixtures execute**: 7 census and 6 command fixtures in `modules/instructions/gates/core.toml`,
+   all `ok` in the inventory (161 fixtures · 159 ok · 2 named unrun). The two phantom-command
+   fixtures sit in fenced blocks because this repository's own `module-commands-exist` gate rightly
+   refuses a phantom in a shipped table's code spans.
+
+**Deviations.** R2 narrowed as above, by ADR. The census is `surface = "explain"` rather than a
+runner gate, for the reason the ADR states; the site's derived counts and the runner's tier message
+exclude it. The module moves to 1.4.0; this repo's registry block was re-registered.
+
 ## Review
 
-Not started — the item is at step 1 of 5.
+Against each acceptance criterion, 2026-09-06, Windows 11, Node `v22.22.3`, npm `10.9.8`:
+
+1. **Fixtures execute.** 7 census and 6 command fixtures run through their engines under the
+   meta-gate (`rungs check` here: `gates-self-tests-both-directions` 28 examined, no unrun line) and in
+   the all-module inventory (161 fixtures · 159 ok · 2 named unrun, none of them these).
+2. **Seeded violation / correction.** `test/core.test.js` "the imperative census reports rows through
+   explain only…": a registry-less repo with two rules and two narrative lines yields exactly two rows
+   (`line 5: never`, `line 6: must`); the stale-command gate fails on `npm run lint` against a
+   `package.json` without it and on `rungs verify` in a shell fence, and passes once both are corrected.
+3. **`--explain` on the source repos** (captured before the programme's engine changes, ANSI stripped,
+   diffed after): hexguard-templates `d24cf0aa` and rift-forge `846cfa06` show only added lines (the
+   census rows); axiom-mesh `3e1508a8` gains rows and loses only its "No detector fired" sentence;
+   hexguard `51b25dac` adds rows and carries the two WI-087 changes already recorded there. No
+   pre-existing finding changed.
+4. **Per-repository false-positive rate**, against the oracle, published in Execution: 0% on four
+   repositories, 15.6% on `rift-forge-candidate`; every rate under WI-053's one-in-five, after two
+   narrowings that the measurement forced and the Execution records. Recall 74 of 103 rules, stated
+   as a limitation rather than hidden.
+5. **No "unenforced" anywhere.** The same test runs `doctor --explain` through the CLI on a repo with
+   no registry and asserts the output contains none of *unenforced*, *not enforced*, *no gate*,
+   *has no gate*, *without a gate*. Checked by running it, as the criterion says.
+6. **Gate count agrees.** Registry 33 entries; `derive()` 31 runner gates + 1 hook + 1 explain-only;
+   README "its 31 gates run on every change — 31 pass"; claims snapshot regenerated and
+   `site-claims-current` passes; the landing and versions pages name the explain-only detector beside
+   the hook.
+
+**Suite and gates.** Serial `node --test --test-concurrency=1 test/*.test.js` after rebuild:
+**150 tests, 146 pass, 1 fail, 3 platform skips, 133 s** — the failure was the eject test asserting
+that every declared entry converts, written before explain-only detectors existed; it now exempts
+them alongside hooks and passes alone. `node src/cli.ts check`: 31 pass, 0 fail. Site:
+`npm run build --prefix site` 169 pages; `npm run check --prefix site` 2,631 internal links,
+0 broken.
+
+**Pending.** The exact-SHA OS/Node matrix has not run: the branch is not pushed.

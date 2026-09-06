@@ -39,6 +39,8 @@ export const SITE = {
    */
   registered: claims.gateCount,
   hooks: claims.hookCount,
+  /** Explain-only detectors (ADR-0011): registered, run by `doctor --explain` alone, never by `check`. */
+  explainOnly: claims.reportOnlyCount,
   modules: claims.modules,
   profiles: claims.profiles,
 

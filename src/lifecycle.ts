@@ -340,7 +340,11 @@ export function eject(
   // executes are also converted. A hook keeps `kind = "declared"`: the runner
   // skips it by its trigger, and its frozen table stays available for dispatch.
   const frozen = gates.filter((g) => g.engine && g.table);
-  const convertible = frozen.filter((g) => !g.trigger && (g.kind === 'declared' || isEjectedCommand(g.id, g.command)));
+  // An explain-only detector (ADR-0011) is not a runner gate: converting it would
+  // make the ejected `check` fail on every imperative in the repo's instructions.
+  const convertible = frozen.filter(
+    (g) => !g.trigger && g.surface !== 'explain' && (g.kind === 'declared' || isEjectedCommand(g.id, g.command)),
+  );
   if (!frozen.length) throw new EjectRefusal('no declared gates in .ai/gates.toml — nothing to eject');
 
   const bundlePath = join(SRC, '..', 'dist', 'ejected-runner.mjs');
@@ -582,8 +586,9 @@ repository no longer needs the rungs package, npm access, or a rungs checkout to
 
 \`add\`, \`upgrade\`, \`render\`, \`doctor\`, \`backlog archive\`, \`setup git\` and the concurrency
 commands. Rendered rules and generated blocks are no longer regenerated, the registry no longer
-receives module updates, and engine fixes stop arriving with a version bump. These files are yours
-now, including their bugs.
+receives module updates, and engine fixes stop arriving with a version bump. An explain-only
+detector (\`surface = "explain"\` in the registry) is not retained either: it reported evidence
+through \`doctor --explain\`, which is gone. These files are yours now, including their bugs.
 
 ## What is here
 

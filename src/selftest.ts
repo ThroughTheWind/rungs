@@ -141,9 +141,14 @@ function build(root: string, engine: string, table: any, fx: any, input?: string
       written.push(write(surface, `${input}\n`));
       return { files: written };
     }
-    // Explicit context a link or a stale-blocker needs: files that exist, items
-    // that are done. Written the same way whatever the fixture expects.
+    // Explicit context a link, a stale-blocker or a command reference needs:
+    // files that exist, items that are done, the scripts a package.json declares.
+    // Written the same way whatever the fixture expects.
     for (const rel of Array.isArray(fx?.exists) ? fx.exists : []) written.push(write(String(rel), 'exists\n'));
+    if (Array.isArray(fx?.scripts)) {
+      const scripts = Object.fromEntries(fx.scripts.map((name: string) => [name, `echo ${name}`]));
+      written.push(write(String(spec.package_json ?? 'package.json'), `${JSON.stringify({ name: 'fixture', scripts }, null, 2)}\n`));
+    }
     for (const id of Array.isArray(fx?.done) ? fx.done : []) {
       written.push(write(`${itemsDir(table?.kinds?.item, 'docs/backlog/items')}/${id}-done.md`, `---\nid: ${id}\nstatus: done\n---\n\n# ${id}\n`));
     }

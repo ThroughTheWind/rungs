@@ -1,5 +1,5 @@
 {
-  "gateCount": 30,
+  "gateCount": 31,
   "gateIds": [
     "adr-index-current",
     "adr-required-fields",
@@ -19,6 +19,7 @@
     "instructions-core-size",
     "instructions-render-current",
     "instructions-repo-map-current",
+    "instructions-stale-commands",
     "module-commands-exist",
     "release-changelog-fragment",
     "release-fragment-current",
@@ -36,10 +37,14 @@
   "hookIds": [
     "instructions-shell-backticks"
   ],
+  "reportOnlyCount": 1,
+  "reportOnlyIds": [
+    "instructions-imperatives"
+  ],
   "modules": [
     {
       "name": "instructions",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "rung": 0,
       "summary": "The agent entry point, the harness bridge, path-scoped rule sources, and the render pipeline. The one module every repo installs.",
       "requires": []
@@ -243,7 +248,7 @@
     }
   ],
   "run": {
-    "pass": 30,
+    "pass": 31,
     "fail": 0,
     "unimplemented": 0,
     "error": 0,

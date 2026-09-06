@@ -22,6 +22,7 @@ import { selectEngineTable } from './engine-table.ts';
 import { semanticText } from './text.ts';
 import { isEjectedCommand, modulesRoot } from './ejected.ts';
 import { shellSafety } from './hook-engine.ts';
+import { commandReference, imperativeCensus } from './instruction-engines.ts';
 
 /**
  * Where the CLI's own `modules/` lives is `modulesRoot()` in `ejected.ts`.
@@ -637,6 +638,9 @@ export const ENGINES: Record<string, Engine> = {
   // A hook engine. The runner never reaches it (its gates carry a trigger); it is
   // here so the name is implemented, and so a misuse over files is never green.
   'shell-safety': shellSafety,
+  // WI-061 / ADR-0011. The census is explain-only; the command check is a gate.
+  'imperative-census': imperativeCensus,
+  'command-reference': commandReference,
 };
 
 /**

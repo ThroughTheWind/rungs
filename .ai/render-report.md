@@ -10,10 +10,10 @@ Harnesses: claude, agents-md
 | `skill-authoring.md` | agents-md | `.claude/skills/SKILL.md/AGENTS.md` | description, paths (directory-scoped instead of glob) |
 | `work-items.md` | claude | `.claude/rules/work-items.md` | description |
 | `work-items.md` | agents-md | `docs/backlog/AGENTS.md` | description, paths (directory-scoped instead of glob) |
-| `hook instructions-shell-backticks` | claude | `.claude/settings.json` | — |
+| `hook instructions-shell-backticks` | claude | **not emitted** | hook not emitted: no entry in .claude/settings.json yet — run `node .ai/rungs.mjs upgrade --apply` |
 | `hook instructions-shell-backticks` | agents-md | **not emitted** | hook not emitted: agents-md has no hook mechanism, so this protection is Claude-only (ADR-0001) |
 
-6 renderings · 4 lost a field · 1 degraded.
+6 renderings · 4 lost a field · 2 degraded.
 
 A field listed as dropped is one the target harness has no way to express. It is recorded
 here rather than silently discarded, so a repo can see what its harness choice costs it.

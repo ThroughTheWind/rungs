@@ -48,8 +48,12 @@ export function derive() {
   }
   const idOf = (b) => /^\s*id\s*=\s*"([^"]+)"/m.exec(b.join("\n"))?.[1] ?? "";
   const isHook = (b) => b.some((l) => /^\s*trigger\s*=/.test(l));
+  // An explain-only detector (ADR-0011) is registered but never run by `check`,
+  // so it is counted apart from the gates a run reports, exactly as a hook is.
+  const isReportOnly = (b) => b.some((l) => /^\s*surface\s*=\s*"explain"/.test(l));
   const hookIds = blocks.filter(isHook).map(idOf).sort();
-  const gateIds = blocks.filter((b) => !isHook(b)).map(idOf).sort();
+  const reportOnlyIds = blocks.filter((b) => !isHook(b) && isReportOnly(b)).map(idOf).sort();
+  const gateIds = blocks.filter((b) => !isHook(b) && !isReportOnly(b)).map(idOf).sort();
 
   const modulesDir = join(REPO, "modules");
   const modules = readdirSync(modulesDir)
@@ -76,7 +80,16 @@ export function derive() {
     modules: [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1]),
   }));
 
-  return { gateCount: gateIds.length, gateIds, hookCount: hookIds.length, hookIds, modules, profiles };
+  return {
+    gateCount: gateIds.length,
+    gateIds,
+    hookCount: hookIds.length,
+    hookIds,
+    reportOnlyCount: reportOnlyIds.length,
+    reportOnlyIds,
+    modules,
+    profiles,
+  };
 }
 
 export function readSnapshot() {

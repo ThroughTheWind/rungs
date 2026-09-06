@@ -25,6 +25,7 @@ const cmp = (label, a, b) => {
 cmp("gateCount", snapshot.gateCount, now.gateCount);
 cmp("gateIds", snapshot.gateIds, now.gateIds);
 cmp("hookIds", snapshot.hookIds, now.hookIds);
+cmp("reportOnlyIds", snapshot.reportOnlyIds ?? [], now.reportOnlyIds);
 cmp("modules", snapshot.modules.map((m) => `${m.name}@${m.rung}@${m.version}`), now.modules.map((m) => `${m.name}@${m.rung}@${m.version}`));
 cmp("profiles", snapshot.profiles.map((p) => `${p.name}:${p.modules.length}`), now.profiles.map((p) => `${p.name}:${p.modules.length}`));
 

@@ -18,6 +18,7 @@ Architecture decision records for rungs itself.
 | [ADR-0008](ADR-0008-gate-tiers-are-levels.md) | A gate tier is an ordered level, and an unknown tier is refused | accepted | 2026-08-17 |
 | [ADR-0009](ADR-0009-rungs-drives-git.md) | rungs drives git for the concurrency loop, and only where the loop is the product | accepted | 2026-08-17 |
 | [ADR-0010](ADR-0010-hooks-dispatch-through-the-launcher.md) | A hook is dispatched through the consumer's pinned launcher to a central engine | accepted | 2026-09-06 |
+| [ADR-0011](ADR-0011-instruction-detectors-assert-no-enforcement.md) | An instruction detector reports what it read and asserts nothing about enforcement | accepted | 2026-09-06 |
 <!-- rungs:end adr-index -->
 
 The table above is generated from the records' frontmatter by `rungs render` and held current by

@@ -50,6 +50,13 @@ export interface GateSpec {
   /** A hook is a gate with a lifecycle trigger rather than a runner trigger. */
   trigger?: string;
   matcher?: string;
+  /**
+   * `explain`: an evidence-only detector. Registered like a gate, with self-tests
+   * and an incident, but run by `doctor --explain` alone — never by `check`,
+   * never converted at ejection (ADR-0011). A census that fails `check` on every
+   * repository with a MUST in it is a gate people learn to bypass.
+   */
+  surface?: 'explain';
   why?: string;
 }
 
