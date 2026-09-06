@@ -75,9 +75,10 @@ child remains independently reviewable and supplies its own regression.
 Children carry implementation. Handoff from [WI-090](../archive/WI-090-integrated-consumer-verification.md),
 2026-09-06, for the flow's remaining steps:
 
-- **Producer candidate.** The commit `rungs land` produces for WI-090 on `main` (recorded in that
-  item's Execution once landed); every code change of the WI-085 programme is on `main` at or before
-  `34f36243`. Nothing is pushed, so the exact-SHA CI matrix is pending.
+- **Producer candidate.** The tip of `main` after the findings follow-up items landed (WI-093 to
+  WI-097, the last at `49348eab`, plus the session-handoff commit after it); every code change of
+  the WI-085 programme and of the five follow-ups is on `main`. Nothing is pushed, so the exact-SHA
+  CI matrix is pending.
 - **Tarball and integrity.** Computed from the exact commit at release time with
   `npm pack --dry-run --json` (prepack builds `dist/`; `README.md` is packed, so any README edit
   changes the integrity). At the clean tree of `22edbe3148d16f897a1722ecda02bd0a9ae3464a` the canary

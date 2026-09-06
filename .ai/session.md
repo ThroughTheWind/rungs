@@ -14,24 +14,27 @@ sessions have not been given (push, publish, edit Arena Lab's maintained branch)
 
 ## In progress
 
-Nothing. [WI-085](../docs/backlog/archive/WI-085-existing-promises-remediation.md) and all nine items
-it ran (WI-077, WI-086, WI-087, WI-061, WI-088, WI-089, WI-090, WI-091, WI-092) are done and archived;
-`main` and `green/main` point at the WI-090 landing.
+Nothing. [WI-085](../docs/backlog/archive/WI-085-existing-promises-remediation.md) and its nine items
+are done and archived, and so are the five follow-ups that closed every finding it left open:
+WI-093 (F-061), WI-094 (F-063), WI-095 (F-059), WI-096 (F-060), WI-097 (F-062). `main` and
+`green/main` point at the WI-097 landing plus this handoff commit. The findings register's only open
+rows are F-056 and the user's uncommitted F-058.
 
 ## Resume from
 
 Read WI-064 § Execution (the handoff: commits, tarball, canary result, remaining commands) and
 [`existing-promises-evidence-2026-09-06.md`](../docs/design/existing-promises-evidence-2026-09-06.md).
-Re-derive before acting: `git log --oneline -3`, `node src/cli.ts check`, and the serial suite
-`NODE_OPTIONS=--max-old-space-size=2048 node --test --test-concurrency=1 test/*.test.js`.
+Re-derive before acting: `git log --oneline -3`, `node src/cli.ts check` (32 gates), and `npm test`,
+which now runs the suite serially under a heap cap by itself.
 
 ## Up next
 
-1. Decide F-061 (`add` after `init` rewrites `.ai/rungs.toml`; high) before cutting 0.5.0 — fix it or
-   name it in the release notes.
-2. With authorization: push `main`, read the exact-SHA CI matrix, cut and publish 0.5.0 per the
-   `release` module, then open a dedicated Arena Lab item for `upgrade --to 0.5.0`.
-3. F-063 (`check full` differs between the CLI and the ejected launcher) when `check` is next touched.
+1. With authorization: push `main`, read the exact-SHA CI matrix, cut and publish 0.5.0 per the
+   `release` module (`changelog.d/0.5.0.md` holds thirteen entries), then open a dedicated Arena Lab item
+   for `upgrade --to 0.5.0`.
+2. F-058 (the user's row: an interrupted `add` leaves incomplete files without rollback) when `add`
+   is next touched; F-056 (a session can name a done item as active) when the session module is.
+3. Delete `integ/feature/WI-091-index-placeholder-rows` if nobody wants the parked merge.
 
 ## Active constraints — do not reopen
 
@@ -42,10 +45,16 @@ Re-derive before acting: `git log --oneline -3`, `node src/cli.ts check`, and th
   promote it to a gate or add an "unenforced" verdict.
 - `eject` retains exactly `check` and `hook`; the retained list is `EJECTED_RETAINED` and every
   sentence about it derives from that list (WI-092).
+- The install record is extended, never re-derived (F-017, F-061): `add` appends unrecorded modules
+  and `upgrade` edits lines in place; neither re-hashes a file it did not write.
+- `check [path] [tier]` is the grammar on both launcher surfaces; a lone positional that is not a
+  directory is the tier (WI-094).
+- Every test file imports assert from `test/assert.js`, and the test script keeps its heap cap; the
+  `tests-guard-large-equality` gate refuses otherwise (WI-095, after three host crashes).
 - Defects a verification item finds become new items; the verifier's scope stays verification
   (WI-090 → WI-091, WI-092).
-- Run the test suite serially with a capped heap and one heavy process at a time; compare large values
-  as digests (F-059 — three host crashes).
+- A gate that examines nothing is retired, not kept for its intent (WI-097); a CLI `design pull` is a
+  separate proposal if a consumer ever needs one.
 - A synthetic or disposable consumer run is never described as adoption (WI-064 decision).
 
 ## Working assumptions
@@ -53,12 +62,10 @@ Re-derive before acting: `git log --oneline -3`, `node src/cli.ts check`, and th
 - The CI matrix will pass on the exact SHA; it has not run because nothing is pushed.
 - Arena Lab's `main` at `f4ede793` is still the commit a real adoption would start from; its
   maintained checkout sits on a feature branch with uncommitted work and was only read.
-- The `integ/feature/WI-091-index-placeholder-rows` recovery ref left by a refused first `land` is
-  safe to delete; nobody has decided to.
 
 ## Open questions
 
-- None blocking. Whether to fix F-061 before 0.5.0 is a release decision, not a technical one.
+- None blocking. Whether to name F-058 in the 0.5.0 release notes is a release decision.
 
 ## Archive
 
