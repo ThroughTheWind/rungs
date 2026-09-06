@@ -1,6 +1,6 @@
 # Imperative detection — corpus, before the matcher
 
-> **Gathered 2026-08-17 for [WI-061](../backlog/items/WI-061-imperative-staleness-detection.md).**
+> **Gathered 2026-08-17 for [WI-061](../backlog/archive/WI-061-imperative-staleness-detection.md).**
 > This document exists because that item's Approach step 1 says *corpus first, engine second* —
 > an oracle built after the matcher inherits the matcher's blind spots, which is the documented
 > failure ([WI-042](../backlog/archive/WI-042-link-line-references.md)) this repository keeps
@@ -62,7 +62,7 @@ Unchanged from the item, and none of it is done:
 
 1. **The oracle.** Hand-classify the candidate lines per repo into rule / not-a-rule *before* the
    matcher exists. This document collects the corpus; it does not classify it.
-2. **[R7](../backlog/items/WI-061-imperative-staleness-detection.md)'s ADR** — what a detector may
+2. **[R7](../backlog/archive/WI-061-imperative-staleness-detection.md)'s ADR** — what a detector may
    assert about a repository whose enforcement surface it cannot see. This is the requirement the
    item turns on, because the capability's last appearance was a fabricated console block, and
    *"8 of 17 have no mechanical enforcement"* is not a statement anyone can make about someone

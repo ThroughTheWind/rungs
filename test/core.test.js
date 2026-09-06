@@ -4129,7 +4129,8 @@ test('eject ships a package-free runner whose aggregate and direct checks match 
     assert.equal(contentHash(readFileSync(runGate, 'utf8')), contentHash(readFileSync(bundle, 'utf8')), 'the runner is the shipped bundle, byte for byte');
     const registry = readFileSync(registryPath, 'utf8');
     assert.equal(registry.split('# Ejected: gates above run from .rungs/').length - 1, 1, 'one trailer');
-    assert.doesNotMatch(registry, /kind\s*=\s*"declared"\n(?![\s\S]{0,400}trigger)/, 'every runner-executed declared gate is converted');
+    // Hooks and explain-only detectors (ADR-0011) keep their declared kind; everything the runner executes is converted.
+    assert.doesNotMatch(registry, /kind\s*=\s*"declared"\n(?![\s\S]{0,400}(?:trigger|surface))/, 'every runner-executed declared gate is converted');
     assert.match(registry, /command = "node \.rungs\/run-gate\.mjs instructions-core-size"/);
     assert.match(registry, /command = "node repo-ok\.mjs"/, 'a repository command keeps its command');
     const forwarder = readFileSync(launcher, 'utf8');
@@ -4387,6 +4388,85 @@ test('every shipped self-test fixture executes and agrees, or names the unimplem
     [`design-mirror-not-edited fail: ${unsupported}`, `design-mirror-not-edited pass: ${unsupported}`],
   );
   assert.equal(by('ok').length, rows.length - 2);
+});
+
+/**
+ * WI-061 / ADR-0011. The census is evidence for `doctor --explain` only and never a
+ * verdict on enforcement; the stale-command check is a real gate against surfaces
+ * that are read. Both run nothing the repository owns.
+ */
+test('the imperative census reports rows through explain only, never through check, and never says unenforced', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-census-'));
+  try {
+    // A repo with instructions and no registry at all.
+    writeFileSync(join(dir, 'AGENTS.md'), [
+      '# Agent policy',
+      '',
+      '## Rules (MANDATORY)',
+      '',
+      '- **Never weaken a gate to make a change pass.**',
+      '- Status must agree with git.',
+      'The build was never green on Windows, and Codex and Claude do not share memory.',
+      'The rule reads `Never pipe a multi-line edit through node -e` and a hook enforces it.',
+      '',
+    ].join('\n'));
+    const explained = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'doctor', '--explain', dir], { encoding: 'utf8' });
+    const out = (explained.stdout + explained.stderr).replace(/\x1b\[[0-9;]*m/g, '');
+    assert.equal(explained.status, 0, out);
+    assert.match(out, /instructions-imperatives\s+2 findings/, 'two rules, and neither the narrative line nor the quoted span');
+    assert.match(out, /line 5: never — /);
+    assert.match(out, /line 6: must — /);
+    assert.doesNotMatch(out, /unenforced|not enforced|no gate|has no gate|without a gate/i, 'ADR-0011: no enforcement claim, on a repo with no registry');
+
+    // The same census through a registry: `check` never runs it, `explain` does, eject leaves it alone.
+    mkdirSync(join(dir, '.ai'), { recursive: true });
+    writeFileSync(join(dir, '.ai', 'gates.toml'), [
+      '[runner]',
+      'tiers = ["fast", "full"]',
+      '',
+      '[[gates]]',
+      'id = "instructions-imperatives"',
+      'kind = "declared"',
+      'engine = "imperative-census"',
+      'table = "instructions/core.toml"',
+      'surface = "explain"',
+      '',
+      '[[gates]]',
+      'id = "instructions-stale-commands"',
+      'kind = "declared"',
+      'engine = "command-reference"',
+      'table = "instructions/core.toml"',
+      'tier = "fast"',
+      '',
+    ].join('\n'));
+    const runs = runGates(dir);
+    assert.deepEqual(runs.map((r) => r.id), ['instructions-stale-commands'], 'check never executes an explain-only detector');
+    assert.equal(runs[0].status, 'pass', 'no package.json and no rungs invocation: no surface, no finding');
+    const ejected = eject(dir, loadAllModules(join(root, 'modules')), true, '2026-09-06');
+    assert.equal(ejected.gates, 1, 'eject converts the runner gate and leaves the explain-only detector declared');
+
+    // The stale-command gate fires only where the surface exists and disagrees.
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x', scripts: { build: 'x', test: 'x' } }));
+    writeFileSync(join(dir, 'AGENTS.md'), [
+      'Run `npm run lint` and `npm run build` before pushing, then `node .ai/rungs.mjs backlog archive`.',
+      '',
+      '```bash',
+      'node .ai/rungs.mjs verify',
+      '```',
+      '',
+    ].join('\n'));
+    const [stale] = runGates(dir);
+    assert.equal(stale.status, 'fail');
+    const messages = stale.findings.map((f) => f.message);
+    assert.equal(messages.length, 2, messages.join('\n'));
+    assert.match(messages[0], /`npm run lint` — package\.json has no script 'lint'/);
+    assert.match(messages[1], /`rungs verify` — not a command this CLI dispatches/);
+    writeFileSync(join(dir, 'AGENTS.md'), 'Run `npm run build`, then `node .ai/rungs.mjs check`.\n');
+    assert.equal(runGates(dir)[0].status, 'pass');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 /**

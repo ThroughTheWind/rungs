@@ -33,6 +33,8 @@ export const ENGINE_TABLE_KEYS: Readonly<Record<string, string>> = Object.freeze
   'changelog-freshness': 'changelog_freshness',
   'change-requires-file': 'change_requires_file',
   'shell-safety': 'shell_safety',
+  'imperative-census': 'imperative_census',
+  'command-reference': 'command_reference',
 });
 
 const entryMatches = (entry: any, gateId: string) =>

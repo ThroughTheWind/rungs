@@ -119,7 +119,7 @@ reading. That is not a phase either: it gates nothing and nothing gates it.
 ### The detector three readers already assume exists
 
 **Accepted 2026-08-17:** imperative and staleness detection —
-[WI-061](backlog/items/WI-061-imperative-staleness-detection.md).
+[WI-061](backlog/archive/WI-061-imperative-staleness-detection.md).
 
 The evidence for it arrived by accident, from three parties in a row. The landing page
 asserted the capability in a fabricated console block for weeks — `this rule says
@@ -138,6 +138,14 @@ real; none of them the thing being assumed.
 
 Three independent readers assuming a capability is a demand signal, and the only two
 honest responses are to build it or to stop implying it. This chooses to build it.
+
+**Built 2026-09-06**, in the only form the evidence allows
+([ADR-0011](decisions/ADR-0011-instruction-detectors-assert-no-enforcement.md)). A hand-classified
+oracle written before any matcher ([`imperative-oracle-2026-09-06.md`](design/imperative-oracle-2026-09-06.md))
+found that 70% of a naive grep's hits in the largest corpus file were project history, not rules —
+so the imperative census is an evidence surface for `doctor --explain` alone, asserting nothing
+about enforcement in either direction, measured at 0% false positives on four repositories and 15.6%
+on the fifth. The stale-command detector is a real gate, because its surface can be read.
 
 ## Known open items
 

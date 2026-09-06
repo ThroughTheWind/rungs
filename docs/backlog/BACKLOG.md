@@ -10,7 +10,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-061](items/WI-061-imperative-staleness-detection.md) | Detect imperatives and stale command references in agent instructions | feature | — |
+| — | | | |
 
 ## Review
 
@@ -47,13 +47,13 @@ promises a consumer can read today and not rely on: an `eject` whose runner cann
 declared and never dispatched, fixtures that never execute, accepted detectors with a corpus and no
 engine, a budget parameter nothing reads, and a worktree row that calls an unreadable state clean.
 Five children plus the reused [WI-077](archive/WI-077-standalone-ejected-checks.md) and
-[WI-061](items/WI-061-imperative-staleness-detection.md); the assessment's new proposals are
+[WI-061](archive/WI-061-imperative-staleness-detection.md); the assessment's new proposals are
 deliberately not among them. Recomputing the fixture inventory before opening anything found what the
 assessment's dated 45 could not: **147 fixtures, 7 of which disagree with their engine**, all seven in
 modules this repo does not install, so no gate had ever run them — and four of the seven are rules a
 shipped table configures that no engine reads.
 
-[WI-061](items/WI-061-imperative-staleness-detection.md), accepted 2026-08-17 — **the first
+[WI-061](archive/WI-061-imperative-staleness-detection.md), accepted 2026-08-17 — **the first
 capability here opened because outsiders assumed it already existed.** A third external review, a
 distribution plan, built four of its headline finding categories on detectors rungs does not have;
 reviewer #2 had earlier read the same capability off a landing-page console block that was

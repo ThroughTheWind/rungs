@@ -270,6 +270,7 @@ const gateEntry = (mod: Manifest) => (g: Manifest['gates'][number]) => {
   if (g.tier) lines.push(`tier   = "${g.tier}"`);
   if (g.trigger) lines.push(`trigger = "${g.trigger}"`);
   if (g.matcher) lines.push(`matcher = "${g.matcher}"`);
+  if (g.surface) lines.push(`surface = "${g.surface}"`);
   // `why` is carried into the repo because ADR-0005 tier B quotes it back when
   // a gate has never fired. A gate whose reason lives only in this CLI cannot
   // be asked about by a repo that has it installed.

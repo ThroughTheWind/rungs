@@ -1,6 +1,6 @@
 [module]
 name    = "instructions"
-version = "1.3.0"
+version = "1.4.0"
 rung    = 0
 summary = "The agent entry point, the harness bridge, path-scoped rule sources, and the render pipeline. The one module every repo installs."
 
@@ -85,6 +85,38 @@ writes documentation deletes the backticked words and leaves grammatical text be
 rift-forge measured six occurrences and six repair passes in one session, documented it, and was
 broken three more times before making it a hook — which is the whole argument for the escalation
 ladder this module ships.
+"""
+
+# WI-061 / ADR-0011. An explain-only detector: registered with its self-tests and
+# incident, run by `doctor --explain` alone. Its rows name a file, a line and the
+# modal that matched, and assert nothing about enforcement in either direction.
+[[gates]]
+id      = "instructions-imperatives"
+kind    = "declared"
+engine  = "imperative-census"
+applicability = "repo-content"
+table   = "gates/core.toml"
+surface = "explain"
+why     = """
+Three readers in a row assumed rungs reports which instructions say MUST and have nothing checking
+them. The landing page had asserted it in a fabricated console block for weeks. Whether a sentence is
+enforced cannot be read from the sentence, so this reports the rows — file, line, modal — and no
+verdict; the hand-classified oracle (docs/design/imperative-oracle-2026-09-06.md) found 70% of a
+naive grep's hits in the largest corpus file were project history, not rules.
+"""
+
+[[gates]]
+id     = "instructions-stale-commands"
+kind   = "declared"
+engine = "command-reference"
+applicability = "repo-content"
+table  = "gates/core.toml"
+tier   = "fast"
+why    = """
+`rungs backlog archive` was named in three files shipped into every consumer repo, two of them
+saying "never by hand", and the command did not exist (F-015). A command named in an instruction
+file whose surface exists and does not contain it — a package.json script, a CLI command — is the
+one instruction defect a scan can disprove rather than suspect.
 """
 
 # ── detection (ADR-0004) ──────────────────────────────────────────────────────

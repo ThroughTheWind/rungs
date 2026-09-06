@@ -115,3 +115,114 @@ fixture = { file = "AGENTS.md", blocks = [] }
 gate    = "instructions-repo-map-current"
 expect  = "pass"
 fixture = { file = "AGENTS.md", blocks = ["repo-map"] }
+
+# ── instructions-imperatives (explain-only) ───────────────────────────────────
+#
+# Evidence rows: file, line, the modal that matched. No verdict on enforcement, in either
+# direction (ADR-0011). The shapes excluded below are the ones the hand-classified oracle found to
+# be narrative rather than rules: past-tense modals, `never` before a noun phrase, `do not` with a
+# subject, headings, code spans and fenced blocks.
+
+[imperative_census]
+scan    = ["AGENTS.md", "CLAUDE.md", ".ai/rules/**/*.md", ".claude/rules/**/*.md", ".github/instructions/**/*.md", ".github/copilot-instructions.md", ".cursor/rules/**/*.mdc"]
+exclude = ["node_modules/**", ".ai/rules/README.md"]
+message = """
+{count} imperative line(s) across {files} instruction file(s). This is a census, not a verdict:
+whether a rule is checked cannot be read from the sentence that states it, so nothing here says
+which rules are enforced. Each row is a candidate for the harden-rule ladder — a sentence, a
+skill line, a path-scoped rule, or a gate.
+"""
+
+# ── instructions-stale-commands ───────────────────────────────────────────────
+#
+# A command named in an instruction file whose surface exists and does not contain it. Two surfaces
+# are read — package.json scripts for `npm|pnpm|yarn run <script>`, and the commands this CLI
+# dispatches for `rungs <command>` in any spelling. No surface, no finding.
+
+[command_reference]
+scan         = ["AGENTS.md", "CLAUDE.md", ".ai/rules/**/*.md", ".claude/rules/**/*.md", ".github/instructions/**/*.md", ".github/copilot-instructions.md", ".cursor/rules/**/*.mdc"]
+exclude      = ["node_modules/**"]
+package_json = "package.json"
+message      = """
+{file} names a command its surface does not have. An instruction that cannot be followed is worse
+than none: the reader assumes the file is current and the tool is broken.
+"""
+
+# ── self-tests: imperatives ───────────────────────────────────────────────────
+#
+# A rule fires; the narrative shapes the oracle classified as not-a-rule do not.
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "fail"
+input  = "**Never weaken a gate to make a change pass**; if a gate is wrong that is its own item."
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "fail"
+input  = "Status must agree with git, and the check enforces it."
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "fail"
+input  = "Do not surface it as an open question, do not lay out options, and do not ask the owner to confirm."
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "pass"
+input  = "Meraki has never served them, and the nine originally-archived champions were never a press at all."
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "pass"
+input  = "Codex and Claude do not share memory; they do not prove actor identity."
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "pass"
+input  = "## Editing files from the shell (MANDATORY)"
+
+[[self_test]]
+gate   = "instructions-imperatives"
+expect = "pass"
+input  = "The rule reads `Never pipe a multi-line edit through node -e` and the hook enforces it."
+
+# ── self-tests: stale commands ────────────────────────────────────────────────
+#
+# `scripts` is the package.json surface the fixture builds; omitting it means no surface exists, and
+# no surface means no finding.
+
+[[self_test]]
+gate    = "instructions-stale-commands"
+expect  = "fail"
+input   = "Run `npm run lint` before pushing."
+fixture = { scripts = ["build", "test"] }
+
+[[self_test]]
+gate    = "instructions-stale-commands"
+expect  = "pass"
+input   = "Run `npm run build` before pushing."
+fixture = { scripts = ["build", "test"] }
+
+[[self_test]]
+gate    = "instructions-stale-commands"
+expect  = "pass"
+input   = "Run `npm run lint` before pushing."
+
+# The phantom commands sit in fenced blocks, which the detector reads like code spans; written as
+# spans they would be command claims to this repository's own `module-commands-exist` gate, which
+# is right to refuse a phantom in a shipped table.
+[[self_test]]
+gate    = "instructions-stale-commands"
+expect  = "fail"
+input   = "Move finished items to the archive:\n\n```bash\nnode .ai/rungs.mjs backlog prune\n```"
+
+[[self_test]]
+gate    = "instructions-stale-commands"
+expect  = "pass"
+input   = "Move finished items with `node .ai/rungs.mjs backlog archive`, never by hand."
+
+[[self_test]]
+gate    = "instructions-stale-commands"
+expect  = "fail"
+input   = "Then gate the release:\n\n```console\n$ node .ai/rungs.mjs verify\n```"

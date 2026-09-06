@@ -222,7 +222,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
       <span class="lab">Status · what exists alongside the version</span>
       <div class="status">
         <Measurement
-          value={`${SITE.registered} gates register, plus ${SITE.hooks} hook that fires on a tool call`}
+          value={`${SITE.registered} gates register, plus ${SITE.hooks} hook that fires on a tool call and ${SITE.explainOnly} explain-only detector`}
           date={SITE.asOf}
           command="npx @rungs/cli check"
         />

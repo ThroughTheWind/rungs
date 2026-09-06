@@ -36,7 +36,14 @@ export interface RegistryGate {
   trigger?: string;
   /** A hook's tool-name pattern, for the harness that dispatches it. */
   matcher?: string;
+  /** `explain`: run by `doctor --explain` only, never by the runner (ADR-0011). */
+  surface?: string;
   why?: string;
+}
+
+/** Gates the runner executes: not a hook, not an explain-only detector. */
+export function runnerGate(g: RegistryGate): boolean {
+  return !g.trigger && g.surface !== 'explain';
 }
 
 export function loadRegistry(repoRoot: string): { runner: any; gates: RegistryGate[] } {
@@ -171,9 +178,10 @@ export function runGates(
   const runs: GateRun[] = [];
 
   for (const g of gates) {
-    // A hook fires on a tool call, not in the runner. Skipping it here is
-    // correct; counting it as a pass would not be.
-    if (g.trigger) continue;
+    // A hook fires on a tool call, not in the runner, and an explain-only
+    // detector reports evidence rather than a verdict (ADR-0011). Skipping both
+    // here is correct; counting either as a pass would not be.
+    if (!runnerGate(g)) continue;
     if (only && !only.has(g.id)) continue;
     if (tier && !tierSelects(runnerTiers, tier, g.tier)) continue;
 
@@ -361,7 +369,7 @@ export function checkCommand(
     // Hooks are excluded because a hook fires on a tool call rather than in the runner: it is
     // registered, and no tier value could ever have selected it. Counting it here would offer
     // the reader a gate that changing the tier cannot reach.
-    const runnable = loadRegistry(root).gates.filter((g) => !g.trigger);
+    const runnable = loadRegistry(root).gates.filter(runnerGate);
     if (runnable.length && tier) {
       const tiers = [...new Set(runnable.map((g) => g.tier).filter(Boolean))];
       log(c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
