@@ -10,7 +10,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-090](items/WI-090-integrated-consumer-verification.md) | Verify the integrated candidate as a packed consumer and hand the canary step to WI-064 | chore | `feature/WI-090-integrated-consumer-verification` |
 
 ## Review
 
@@ -24,7 +24,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-090](items/WI-090-integrated-consumer-verification.md) | Verify the integrated candidate as a packed consumer and hand the canary step to WI-064 | chore | — |
+| — | | | |
 
 ## Accepted
 

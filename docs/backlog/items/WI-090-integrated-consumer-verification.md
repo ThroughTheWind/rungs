@@ -2,8 +2,8 @@
 id: WI-090
 title: Verify the integrated candidate as a packed consumer and hand the canary step to WI-064
 type: chore
-status: planned
-branch:
+status: in_progress
+branch: feature/WI-090-integrated-consumer-verification
 created: 2026-09-06
 updated: 2026-09-06
 related: [WI-085, WI-064, WI-066, WI-068, WI-077, WI-086, WI-087, WI-061]
