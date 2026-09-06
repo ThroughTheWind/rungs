@@ -39,7 +39,7 @@ promises in shipped profiles, and the fixtures that would have caught them were 
 
 ## Decision
 
-`accepted` — 2026-09-06 under [WI-085](WI-085-existing-promises-remediation.md). Give every fixture
+`accepted` — 2026-09-06 under [WI-085](../items/WI-085-existing-promises-remediation.md). Give every fixture
 an explicit scenario — context declared in the fixture, builders keyed on fixture fields, adapters
 for engines that need a Git repository or a module root — and implement the table rules the
 fixtures assert where they are bounded. A rule that stays unimplemented is named as such in the
