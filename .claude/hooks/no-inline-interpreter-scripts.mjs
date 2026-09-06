@@ -27,8 +27,23 @@ const INTERPRETERS = String.raw`node|python3?|perl|ruby|php|deno|bun|pwsh|powers
 /** A heredoc feeding an interpreter, quoted or not: `python - <<'PY'`, `node <<EOF`. */
 const HEREDOC = new RegExp(String.raw`\b(?:${INTERPRETERS})\b[^\n;|&]*<<-?\s*['"\\]?\w+`);
 
-/** An inline script flag whose body then runs past the end of the line. */
-const INLINE_FLAG = new RegExp(String.raw`\b(?:${INTERPRETERS})\b[^\n]*\s-{1,2}(?:e|c|pe|ne|Command)\b`);
+/**
+ * An inline script flag whose body then runs past the end of the line.
+ *
+ * Bounded to the interpreter's own command segment (F-060 / WI-096): `[^\n]*`
+ * let `node x.mjs && git -c user.name=…` and `node x.mjs && grep -c …` count as
+ * `node -c`, and refused three honest commands in one session.
+ */
+const INLINE_FLAG = new RegExp(String.raw`\b(?:${INTERPRETERS})\b[^\n;|&]*\s-{1,2}(?:e|c|pe|ne|Command)\b`);
+
+/**
+ * A heredoc body that is *written somewhere* — `cat > script.sh <<'EOF' … EOF` —
+ * is data, not a command, and a `node -e` inside it runs nothing here. Strip
+ * such bodies before the inline-flag test; `HEREDOC` still judges the original
+ * text, so a heredoc that feeds an interpreter is refused as before.
+ */
+const withoutHeredocBodies = (text) =>
+  text.replace(/<<-?\s*(['"\\]?)(\w+)\1?[^\n]*\n[\s\S]*?\n\s*\2[ \t]*(?=\n|$)/g, (m) => m.split('\n')[0]);
 
 let payload = {};
 try {
@@ -41,7 +56,8 @@ if (payload.tool_name !== 'Bash') process.exit(0);
 const command = payload.tool_input?.command ?? '';
 
 const heredoc = HEREDOC.test(command);
-const multilineInline = INLINE_FLAG.test(command) && /\n/.test(command);
+const outsideHeredocs = withoutHeredocBodies(command);
+const multilineInline = INLINE_FLAG.test(outsideHeredocs) && /\n/.test(outsideHeredocs);
 if (!heredoc && !multilineInline) process.exit(0);
 
 process.stderr.write(

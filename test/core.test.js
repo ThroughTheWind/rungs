@@ -4426,6 +4426,40 @@ test('the guarded assert fails fast on large differing values and the gate holds
 });
 
 /**
+ * F-060 / WI-096. The private PreToolUse hook matched `-c`/`-e` anywhere after
+ * an interpreter token on the same line, and inside heredoc bodies being
+ * written to files, so honest multi-line commands were refused three times in
+ * one session. It now judges the interpreter's own argument segment only.
+ */
+test('the private inline-interpreter hook refuses piped scripts and nothing else', () => {
+  const hook = resolve(import.meta.dirname, '..', '.claude', 'hooks', 'no-inline-interpreter-scripts.mjs');
+  const run = (command, tool = 'Bash') => spawnSync(process.execPath, [hook], { encoding: 'utf8', input: JSON.stringify({ tool_name: tool, tool_input: { command } }) });
+  const refused = {
+    'multi-line -e': 'node -e "const a = 1;\nconsole.log(a)"',
+    'multi-line python -c': 'python3 -c "import os\nprint(1)"',
+    'heredoc into python': "python - <<'PY'\nprint(1)\nPY",
+    'heredoc into node': 'node <<EOF\nconsole.log(1)\nEOF',
+  };
+  for (const [label, command] of Object.entries(refused)) {
+    const r = run(command);
+    assert.equal(r.status, 2, `${label} must be refused: ${r.stderr}`);
+    assert.match(r.stderr, /Blocked: this pipes a multi-line script into an interpreter/);
+  }
+  const allowed = {
+    'single-line -e': 'node -e "console.log(1+1)"',
+    'git -c after node on the same line': 'node src/cli.ts check . && git -c user.name=x commit -q -F msg.txt\ngit log -1',
+    'grep -c after a node script': 'node scripts/x.mjs && grep -c "^| F-058 |" docs/FINDINGS.md\necho done',
+    'heredoc written to a file whose body names node -e': "cat > \"$S/canary.sh\" <<'EOF'\nnode -e 'console.log(1)'\nnode -e 'console.log(2)'\nEOF\nbash \"$S/canary.sh\"",
+    'commit message from stdin': "git commit -F- <<'EOF'\nfix: something\n\nbody\nEOF",
+  };
+  for (const [label, command] of Object.entries(allowed)) {
+    const r = run(command);
+    assert.equal(r.status, 0, `${label} must be allowed: ${r.stderr}`);
+  }
+  assert.equal(run('node -e "a\nb"', 'Read').status, 0, 'only Bash is judged');
+});
+
+/**
  * WI-086 (F-054, ADR-0010). The `instructions` module declared a shell-safety hook
  * with four fixtures since it shipped and no engine implemented the name, so the
  * registry entry reached every consumer and the protection reached none.
