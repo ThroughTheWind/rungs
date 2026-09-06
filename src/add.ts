@@ -7,7 +7,7 @@ import { markers, mergeBlock, substitute, type Params } from './substitute.ts';
 import { preflightEmittedPaths, resolveEmittedPath, type EmittedPathCandidate } from './emitted-path.ts';
 
 export interface AddAction {
-  disposition: 'create' | 'skip-exists' | 'rule' | 'skill' | 'merge' | 'gate';
+  disposition: 'create' | 'skip-exists' | 'rule' | 'skill' | 'merge' | 'gate' | 'hook';
   target: string;
   note?: string;
 }

@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { ENGINES, type Finding } from './engines.ts';
+import { HOOK_EVALUATORS } from './hook-engine.ts';
 
 /**
  * Execute a gate's `[[self_test]]` fixtures instead of only checking they exist.
@@ -262,6 +263,23 @@ export function runSelfTests(
   const out: SelfTestResult[] = [];
   for (const b of blocks) {
     const expect = b.expect === 'fail' ? 'fail' : 'pass';
+    // A hook engine evaluates one command, so its fixture is the command text
+    // itself and needs no repository (WI-086, closing the four unrun fixtures of
+    // `instructions-shell-backticks`).
+    const hook = HOOK_EVALUATORS[engine];
+    if (hook) {
+      if (typeof b.input !== 'string') {
+        out.push({ gate: gateId, expect, outcome: 'unrun', detail: `${engine} fixtures need an input command` });
+        continue;
+      }
+      const fired = hook(table, b.input).length > 0;
+      out.push(
+        fired === (expect === 'fail')
+          ? { gate: gateId, expect, outcome: 'ok' }
+          : { gate: gateId, expect, outcome: 'mismatch', detail: `expected ${expect}, ${fired ? 'fired' : 'did not fire'} on ${JSON.stringify(b.input).slice(0, 60)}` },
+      );
+      continue;
+    }
     if (!CONTEXT_FREE.has(engine)) {
       out.push({ gate: gateId, expect, outcome: 'unrun', detail: `${engine} fixtures need context the fixture does not carry` });
       continue;

@@ -22,6 +22,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setEjectedRoots } from './ejected.ts';
 import { checkCommand, isFrozenGate, loadRegistry, loadTable } from './check.ts';
+import { hookVerdict } from './hooks.ts';
 import { ENGINES, isImplemented } from './engines.ts';
 import { selectEngineTable } from './engine-table.ts';
 import { walk } from './glob.ts';
@@ -80,11 +81,28 @@ if (command === 'check') {
   process.exit(checkCommand(root, tier, stamp, { ejected: true }));
 }
 
+// A lifecycle hook, from its frozen table. The harness configuration written at
+// install names `node .ai/rungs.mjs hook <id>`, and ejection must not turn that
+// into a command that blocks every tool call (ADR-0010).
+if (command === 'hook') {
+  if (!args[1]) {
+    console.error('ejected runner: `hook <gate-id>` needs a gate id, with the harness payload on stdin');
+    process.exit(1);
+  }
+  const verdict = hookVerdict(root, args[1], () => readFileSync(0, 'utf8'));
+  if (verdict.message) console.error(verdict.message);
+  process.exit(verdict.exit);
+}
+
 // One gate, by id. Only a converted declared gate qualifies: a repository's own
 // command gate is run by the aggregate path as the command it is, never here.
 const gate = loadRegistry(root).gates.find((g) => g.id === command);
 if (!gate) {
   console.error(`unknown gate ${command}`);
+  process.exit(2);
+}
+if (gate.trigger) {
+  console.error(`gate ${command} is a hook — evaluate it with \`hook ${command}\` and the harness payload on stdin`);
   process.exit(2);
 }
 if (!isFrozenGate(gate) && !(gate.kind === 'declared' && gate.engine && gate.table)) {

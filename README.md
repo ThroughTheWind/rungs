@@ -132,6 +132,7 @@ reported as diverged and left alone.
 | `rungs doctor --explain` | Also run the detectors over what it found — evidence rows, never a score |
 | `rungs add <module…>` | Install one module, resolving dependencies and adopting what exists |
 | `rungs check [path]` | Run the gates, record the ledger |
+| `rungs hook <gate-id>` | Evaluate a lifecycle hook against the harness payload on stdin; exit 2 blocks the tool call |
 | `rungs render [path]` | Re-emit path-scoped rules for each harness |
 | `rungs upgrade [path]` | Move to newer module versions, never touching what you edited |
 | `rungs eject [path]` | Materialise the engines and a local launcher; `check` keeps running without rungs, npm or the package |
@@ -261,7 +262,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~7,847 lines (`wc -l src/*.ts`, 2026-09-05; held within 10% by `docs-version-claims`) |
+| [`src/`](src/) | The CLI, ~8,747 lines (`wc -l src/*.ts`, 2026-09-06; held within 10% by `docs-version-claims`) |
 
 ## Licence
 

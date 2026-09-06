@@ -15,6 +15,7 @@ export const COMMANDS: [usage: string, blurb: string][] = [
   ['doctor [path]', 'detect what a repo already has, installed or not'],
   ['add <module…> [--into p]', 'install modules, resolving dependencies and adopting what exists'],
   ['check [path] [tier]', 'run the registered gates and record the ledger'],
+  ['hook <gate-id>', 'evaluate a lifecycle hook gate against the harness payload on stdin; exit 2 blocks'],
   ['render [path]', 're-emit path-scoped rules per harness'],
   ['upgrade [path]', 'move to newer module versions, never touching what you edited'],
   ['eject [path]', 'materialise the engines and a local launcher; check keeps running without rungs'],

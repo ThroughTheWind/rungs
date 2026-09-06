@@ -670,6 +670,25 @@ test('a packed candidate retrofits an existing repository without taking over it
     assert.match(registry, /id\s*=\s*"adopted-check-existing"/);
     assert.match(registry, /command\s*=\s*"node \.github\/scripts\/check-existing\.mjs"/);
 
+    // WI-086 / ADR-0010. The declared shell-safety hook reaches the Claude harness as one
+    // settings entry naming the pinned launcher, and the installed CLI dispatches it.
+    const settings = JSON.parse(readFileSync(join(consumer, '.claude', 'settings.json'), 'utf8'));
+    const hookCommand = 'node .ai/rungs.mjs hook instructions-shell-backticks';
+    assert.deepEqual(settings.hooks.PreToolUse, [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: hookCommand }] }]);
+    const hookPayload = (command) => JSON.stringify({ tool_name: 'Bash', tool_input: { command } });
+    const dispatch = (input) =>
+      runNpm(['exec', '--offline', '--prefix', toolRoot, '--', 'rungs', 'hook', 'instructions-shell-backticks'], {
+        cwd: consumer,
+        env: isolatedEnv,
+        input,
+      });
+    const blockedByHook = dispatch(hookPayload('node -e "fs.writeFileSync(\'a.md\', \'see `foo`\')"'));
+    assert.equal(blockedByHook.status, 2, combinedOutput(blockedByHook));
+    assert.match(blockedByHook.stderr, /Blocked by instructions-shell-backticks/);
+    assert.equal(dispatch(hookPayload("cat <<'EOF' > a.md")).status, 0, 'the prescribed safe form is permitted');
+    assert.equal(dispatch(hookPayload('node scripts/edit.mjs')).status, 0);
+    assert.match(readFileSync(join(consumer, '.ai', 'render-report.md'), 'utf8'), /`hook instructions-shell-backticks` \| agents-md \| \*\*not emitted\*\*/);
+
     const launcher = readFileSync(join(consumer, '.ai', 'rungs.mjs'), 'utf8');
     const exactPackage = `@rungs/cli@${manifest.version}`;
     assert.equal(launcher.split(exactPackage).length - 1, 1, 'the launcher owns one exact package spec');
@@ -883,6 +902,19 @@ test('a packed candidate retrofits an existing repository without taking over it
     });
     assert.equal(lifecycleGone.status, 1);
     assert.match(lifecycleGone.stderr, /ejected/);
+    // The settings entry written at install must keep working once the package is gone (ADR-0010).
+    const ejectedHook = (input) =>
+      spawnSync(process.execPath, [join(consumer, '.ai', 'rungs.mjs'), 'hook', 'instructions-shell-backticks'], {
+        cwd: consumer,
+        encoding: 'utf8',
+        env: packageFree,
+        input,
+      });
+    const ejectedBlocked = ejectedHook(hookPayload('node -e "fs.writeFileSync(\'a.md\', \'see `foo`\')"'));
+    assert.equal(ejectedBlocked.status, 2, combinedOutput(ejectedBlocked));
+    assert.match(ejectedBlocked.stderr, /Blocked by instructions-shell-backticks/);
+    assert.equal(ejectedHook(hookPayload("cat <<'EOF' > a.md")).status, 0);
+    assert.equal(ejectedHook(hookPayload('node scripts/edit.mjs')).status, 0);
     assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '', 'ejected checks write nothing tracked');
     renameSync(removedPrefix, toolRoot);
 

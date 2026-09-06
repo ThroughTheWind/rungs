@@ -12,7 +12,8 @@ import { c } from './ansi.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive, resolveArchiveTree } from './backlog.ts';
 import { land, preflight, sessionStart, worktrees } from './concurrency.ts';
-import { existsSync } from 'node:fs';
+import { hookRenderEntries, HookRefusal, hookVerdict, preflightHooks, registerHooks } from './hooks.ts';
+import { existsSync, readFileSync } from 'node:fs';
 import type { DetectResult, Manifest } from './types.ts';
 import { UnsafeEmittedPathError } from './emitted-path.ts';
 import { COMMANDS, FLAGS } from './help.ts';
@@ -519,7 +520,14 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
         { moduleName: 'rungs', target: '.ai/rungs.toml', writeExisting: true },
       ],
     );
+    // A harness configuration that cannot be merged into refuses the whole
+    // install here, before any module writes (ADR-0010).
+    preflightHooks(actualInstall, root, harnesses);
   } catch (error) {
+    if (error instanceof HookRefusal) {
+      console.log(c.red(`\n  refused: ${error.message}\n`) + c.dim('  Nothing was written.\n'));
+      return 1;
+    }
     return pathRefusal(error);
   }
 
@@ -566,9 +574,17 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     console.log(c.dim(`\n  registered ${gateActions.reduce((n, a) => n + Number(a.note!.split(': ')[1].split(' ')[0]), 0)} gates from ${gateActions.length} module(s)`));
   }
 
+  // Phase three: hooks. A declared hook is dispatched through the pinned
+  // launcher into the harness that runs hooks, and reported as degraded for the
+  // harnesses that do not (ADR-0010). Nothing is written when there is none.
+  const hookActions = registerHooks(installed, root, harnesses, dryRun);
+  for (const a of hookActions) {
+    console.log(`  ${c.bold('hook'.padEnd(14))} ${a.target} ${c.dim(`— ${a.note}`)}`);
+  }
+
   if (!dryRun) {
     writeInstallRecord(root, installed, params, harnesses, stamp, skillsDir, wrote);
-    const entries = render(root, harnesses);
+    const entries = [...render(root, harnesses), ...hookRenderEntries(root, harnesses)];
     writeReport(root, entries, harnesses, stamp);
     console.log(
       `\n  rendered ${entries.filter((e) => e.target).length} file(s) · ` +
@@ -586,7 +602,7 @@ function cmdRender(root: string, harnesses: Harness[], stamp: string) {
   } catch (error) {
     return pathRefusal(error);
   }
-  const entries = render(root, harnesses);
+  const entries = [...render(root, harnesses), ...hookRenderEntries(root, harnesses)];
   writeReport(root, entries, harnesses, stamp);
   console.log(c.bold(`\nrungs render — ${root}\n`));
   for (const e of entries) {
@@ -637,6 +653,22 @@ function landRunner(dir: string, only?: ReadonlySet<string>) {
       }),
     })),
   };
+}
+
+/**
+ * ADR-0010. The harness runs `node .ai/rungs.mjs hook <gate-id>` with its
+ * payload on stdin; exit 2 blocks, 0 permits, 1 says the hook itself could not
+ * run and never blocks — a guard that fails closed on its own misconfiguration
+ * is disabled within the hour.
+ */
+function cmdHook(root: string, gateId: string | undefined) {
+  if (!gateId) {
+    console.error('rungs hook: a gate id is required — `rungs hook <gate-id>`, with the harness payload on stdin');
+    return 1;
+  }
+  const verdict = hookVerdict(root, gateId, () => readFileSync(0, 'utf8'));
+  if (verdict.message) console.error(verdict.message);
+  return verdict.exit;
 }
 
 function cmdWorktrees(root: string) {
@@ -830,9 +862,20 @@ function cmdUpgrade(root: string, apply: boolean) {
       return pathRefusal(error);
     }
     const { written, gates, recorded } = result;
+    // Hooks ride the same phase as gates: a module version that adds one must
+    // reach the harness configuration on upgrade, and a repeat adds nothing.
+    let hooks: ReturnType<typeof registerHooks> = [];
+    try {
+      hooks = registerHooks(mods.filter((m) => record.modules[m.name]), root, record.harnesses as Harness[], false);
+    } catch (error) {
+      if (!(error instanceof HookRefusal)) throw error;
+      console.log(c.yellow(`\n  hooks not registered: ${error.message}`));
+    }
+    const registeredHooks = hooks.filter((a) => a.note?.endsWith(' registered')).length;
     const parts = [
       written ? `${written} file(s)` : '',
       gates ? `${gates} gate registration(s)` : '',
+      registeredHooks ? `${registeredHooks} hook registration(s)` : '',
       recorded ? `${recorded} record line(s)` : '',
     ].filter(Boolean);
     console.log(c.green(`\n  updated ${parts.length ? parts.join(' · ') : 'nothing'}`));
@@ -988,6 +1031,9 @@ switch (cmd) {
   }
   case 'upgrade':
     process.exit(cmdUpgrade(resolve(args[0] ?? process.cwd()), flags.has('--apply')));
+  case 'hook':
+    // The harness runs hooks with the repository as the working directory.
+    process.exit(cmdHook(process.cwd(), args[0]));
   case 'eject':
     process.exit(cmdEject(resolve(args[0] ?? process.cwd()), flags.has('--dry-run'), STAMP));
   case 'setup': {
