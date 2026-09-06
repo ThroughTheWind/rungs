@@ -5,7 +5,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
 <!-- NEXT-ID: F-064 -->
-<!-- F-058 is claimed by an uncommitted row that predates the WI-085 programme; the marker skips it. -->
+<!-- F-058 was recorded by the user in an uncommitted row on 2026-09-06 and closed by WI-098 the same day; it is spent. -->
 
 ## Open
 
@@ -17,6 +17,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |
+| F-058 | An interrupted `add` or `init` could leave incomplete files without rollback, and a retry preserved those files while losing their managed ownership: written before the record, they read as "already present", were classified kept, and never hashed (recorded by the user, 2026-09-06, from source inspection of the write loop, the phase ordering and the doctor ownership checks) | fixed | [WI-098](archive/WI-098-recoverable-install.md): a journal under `.ai/` is written before the first file, every module file is written atomically by temporary name and rename, and the journal is cleared only after the record and renderings are saved; a retry of the same modules rewrites and hashes the files the interrupted run created, a different module set is refused until then, and `doctor` reports the in-flight install. Rollback of shared-file merges stays out of scope by decision |
 | F-062 | The `design-sync` module shipped a gate that could not function: `design-mirror-not-edited` declared a detection no engine implements and a `rungs design pull` command that does not exist, so it passed on every repo by examining nothing | fixed | [WI-097](archive/WI-097-retire-phantom-design-gate.md): the gate, its table entry and its two fixtures are retired (`design-sync` 1.1.0); the rule stays in the `/design-pull` skill's text; `module-commands-exist` now reads `generated_by` values as command claims; the self-test inventory's unsupported allowlist is empty and asserted so |
 | F-060 | The repository's private PreToolUse hook blocked a legitimate multi-line shell command whenever `-c` or `-e` appeared anywhere after `node` on a line, or inside a heredoc body being written to a file | fixed | [WI-096](archive/WI-096-hook-flag-anchoring.md): the inline-flag match is bounded to the interpreter's own command segment and heredoc bodies that feed no interpreter are stripped first; a core test drives four refusals and five allowed forms through the hook. It blocked three honest commands in this session before the fix, so the severity was understated |
 | F-059 | A failing equality assertion on two large values makes the test process build a character-level diff that can run for minutes and exhaust memory, and nothing mechanical prevented a test from doing it | fixed | [WI-095](archive/WI-095-guarded-large-assertions.md): every test file imports `test/assert.js`, whose `equal`/`deepEqual` forms refuse at once, naming the digest form, to diff two values over 32 KB that differ; the `tests-guard-large-equality` gate holds every test file to that import and the test script to `--max-old-space-size`, and `npm test` runs files serially under the cap, which a worker was measured to inherit (2,096 MB) |

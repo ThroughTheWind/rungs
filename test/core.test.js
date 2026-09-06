@@ -2301,6 +2301,72 @@ test('module-commands-exist reads generated_by values as command claims', () => 
   }
 });
 
+/**
+ * F-058 / WI-098. An interrupted `init`/`add` used to leave its written files
+ * with no record, and a retry adopted them as the user's — kept, unhashed,
+ * invisible to `upgrade` forever. The install now journals before writing,
+ * writes atomically, and a retry finishes what the journal says it started.
+ */
+test('an interrupted install is journaled, reported by doctor, refused for other modules, and completed by a retry that keeps ownership', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-interrupted-'));
+  const fresh = mkdtempSync(join(tmpdir(), 'rungs-interrupted-dry-'));
+  const cli = (args, extraEnv = {}) => spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), ...args], { encoding: 'utf8', env: { ...process.env, RUNGS_DATE: '2026-09-06', ...extraEnv } });
+  const plain = (r) => (r.stdout + r.stderr).replace(/\x1b\[[0-9;]*m/g, '');
+  const journalPath = join(dir, '.ai', 'rungs-install.journal.json');
+  const recordPath = join(dir, '.ai', 'rungs.toml');
+  const walkAll = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walkAll(join(d, e.name)) : [join(d, e.name)]));
+  try {
+    // A fault on a backlog file, so instructions and gates have already written when it fires.
+    const interrupted = cli(['init', dir, 'tracked'], { RUNGS_FAULT_INJECT_WRITE: 'docs/backlog/README.md' });
+    assert.equal(interrupted.status, 1, plain(interrupted));
+    assert.match(plain(interrupted), /interrupted while writing backlog: injected write failure/);
+    assert.match(plain(interrupted), /no install record was saved/);
+    assert.ok(existsSync(journalPath), 'the journal survives the interruption');
+    assert.equal(existsSync(recordPath), false, 'no record is written for a half-finished install');
+    assert.ok(existsSync(join(dir, '.ai', 'rungs.mjs')), 'files written before the fault remain');
+    assert.deepEqual(walkAll(dir).filter((f) => f.endsWith('.rungs-tmp')), [], 'no temporary file is left behind');
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8'));
+    assert.equal(journal.files['.ai/rungs.mjs'], 'create');
+    assert.equal(journal.files['docs/backlog/README.md'], 'create');
+    assert.ok(journal.modules.includes('instructions') && journal.modules.includes('backlog'));
+
+    const doctor = cli(['doctor', dir]);
+    assert.equal(doctor.status, 0, plain(doctor));
+    assert.match(plain(doctor), /Interrupted install — started 2026-09-06: instructions, gates, backlog/);
+    assert.match(plain(doctor), /Complete it: rungs add instructions gates backlog/);
+
+    const other = cli(['add', 'ci', '--into', dir]);
+    assert.equal(other.status, 1, plain(other));
+    assert.match(plain(other), /refused: an install was interrupted on 2026-09-06 and is not finished/);
+    assert.match(plain(other), /this run does not include backlog, findings, adr, session/, 'ci pulls in instructions and gates, not the rest');
+    assert.equal(existsSync(recordPath), false, 'the refused run wrote nothing');
+
+    const dry = cli(['init', fresh, 'tracked', '--dry-run']);
+    assert.equal(dry.status, 0, plain(dry));
+    assert.equal(existsSync(join(fresh, '.ai', 'rungs-install.journal.json')), false, 'a dry run writes no journal');
+
+    const completed = cli(['init', dir, 'tracked']);
+    assert.equal(completed.status, 0, plain(completed));
+    assert.match(plain(completed), /resuming the install interrupted on 2026-09-06/);
+    assert.match(plain(completed), /rewritten — created by the interrupted install|create/);
+    assert.equal(existsSync(journalPath), false, 'the journal is cleared once the record is saved');
+    const record = readFileSync(recordPath, 'utf8');
+    assert.match(record, /^"\.ai\/rungs\.mjs" = "[0-9a-f]+"$/m, 'a file the interrupted run created is hashed as ours');
+    assert.doesNotMatch(record, /files = \[[^\]]*"\.ai\/rungs\.mjs"/, 'and is not listed as kept');
+    assert.match(record, /^"docs\/backlog\/README\.md" = "[0-9a-f]+"$/m);
+    assert.deepEqual(walkAll(dir).filter((f) => f.endsWith('.rungs-tmp')), []);
+
+    const healthy = cli(['doctor', dir]);
+    assert.equal(healthy.status, 0, plain(healthy));
+    assert.doesNotMatch(plain(healthy), /Interrupted install/);
+    for (const name of ['instructions', 'gates', 'backlog']) assert.match(plain(healthy), new RegExp(`^\\s+${name}\\s+ours`, 'm'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(fresh, { recursive: true, force: true });
+  }
+});
+
 const introducedFailure = (_dir, only) =>
   only
     ? { pass: 1, failing: [] }

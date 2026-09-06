@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { auditModules, loadAllModules } from './manifest.ts';
 import { detect, scanRepo } from './detect.ts';
-import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, moduleEmissionCandidates, preflightModuleEmissions, prospectiveRuleEmissions, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
+import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, clearJournal, INSTALL_JOURNAL, moduleEmissionCandidates, plannedFiles, preflightModuleEmissions, prospectiveRuleEmissions, readJournal, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord, writeJournal } from './add.ts';
 import { preflightRender, render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
 import { checkCommand, type GateRun, ledgerBudget, ledgerQuestions, loadRegistry, runGates } from './check.ts';
@@ -187,6 +187,19 @@ function cmdDoctor(target: string, doExplain = false) {
   console.log(c.dim("  module's files would be. Signatures under-detect on purpose.\n"));
 
   reportLedger(root, record !== null);
+
+  // F-058 / WI-098: an install that never reached its record is a fact about
+  // this repo, and `doctor` is where facts about the repo are read.
+  const interrupted = readJournal(root);
+  if (interrupted) {
+    const created = Object.entries(interrupted.files).filter(([, state]) => state === 'create');
+    const present = created.filter(([target]) => existsSync(join(root, ...target.split('/')))).length;
+    console.log(
+      c.yellow(`  Interrupted install${interrupted.started ? ` — started ${interrupted.started}` : ''}: ${interrupted.modules.join(', ')}`) +
+        c.dim(`\n    ${present} of ${created.length} file(s) it planned to create exist and none are recorded as installed.`) +
+        c.dim(`\n    Complete it: rungs add ${interrupted.modules.join(' ')}  — the files it created stay rungs-owned. Journal: ${INSTALL_JOURNAL}\n`),
+    );
+  }
 
   if (doExplain) reportExplain(mods, results, root, files);
   else advertiseAnalysis(results);
@@ -540,6 +553,40 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     return pathRefusal(error);
   }
 
+  // F-058 / WI-098. An install in flight is recorded before the first file is
+  // written. A retry of the same modules finishes it and keeps the files the
+  // interrupted run created as ours; a different module set is refused until
+  // then, because it would classify those files as the user's and lose them.
+  const resume = new Set<string>();
+  if (!dryRun) {
+    const interrupted = readJournal(root);
+    if (interrupted) {
+      const requested = new Set(actualInstall.map((m) => m.name));
+      const missing = interrupted.modules.filter((name) => !requested.has(name));
+      if (missing.length) {
+        console.log(
+          c.red(`\n  refused: an install was interrupted${interrupted.started ? ` on ${interrupted.started}` : ''} and is not finished`) +
+            c.dim(`\n  It was writing ${interrupted.modules.join(', ')}; this run does not include ${missing.join(', ')}.`) +
+            c.dim(`\n  Complete it first: rungs add ${interrupted.modules.join(' ')}`) +
+            c.dim(`\n  Nothing was written. The journal is ${INSTALL_JOURNAL}; git status shows what the interrupted run created.\n`),
+        );
+        return 1;
+      }
+      for (const [target, state] of Object.entries(interrupted.files)) if (state === 'create') resume.add(target);
+      console.log(
+        c.yellow(`  resuming the install interrupted${interrupted.started ? ` on ${interrupted.started}` : ''}`) +
+          c.dim(` — ${resume.size} file(s) it created will be rewritten as rungs-owned\n`),
+      );
+    }
+    const files: Record<string, 'create' | 'kept'> = {};
+    for (const mod of actualInstall) {
+      for (const { target, exists } of plannedFiles(mod, root, params, skillsDir)) {
+        files[target] = exists && !resume.has(target) ? 'kept' : 'create';
+      }
+    }
+    writeJournal(root, { started: stamp, modules: actualInstall.map((m) => m.name), harnesses, files });
+  }
+
   const installed: Manifest[] = [];
   const wrote = new Map<string, Set<string>>();
   for (const mod of toInstall) {
@@ -550,7 +597,19 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
       );
       continue;
     }
-    const actions = addModule(mod, root, params, { dryRun, skillsDir });
+    let actions;
+    try {
+      actions = addModule(mod, root, params, { dryRun, skillsDir, resume });
+    } catch (error: any) {
+      // The journal stays: it is what makes the retry finish this install
+      // instead of adopting its half-written output as the user's.
+      console.log(
+        c.red(`\n  interrupted while writing ${mod.name}: ${error?.message ?? error}`) +
+          c.dim(`\n  The files written so far are recorded in ${INSTALL_JOURNAL}; no install record was saved.`) +
+          c.dim(`\n  Rerun the same command to complete it — the files this run created stay rungs-owned.\n`),
+      );
+      return 1;
+    }
     installed.push(mod);
     wrote.set(mod.name, new Set(actions.filter((a) => a.disposition !== 'skip-exists' && a.disposition !== 'merge' && a.disposition !== 'gate').map((a) => a.target)));
     const counts = new Map<string, number>();
@@ -595,6 +654,8 @@ function cmdAdd(names: string[], root: string, dryRun: boolean, harnesses: Harne
     writeInstallRecord(root, installed, params, harnesses, stamp, skillsDir, wrote);
     const entries = [...render(root, harnesses), ...hookRenderEntries(root, harnesses)];
     writeReport(root, entries, harnesses, stamp);
+    // The record is the commit point; with it and the renderings saved, nothing is in flight.
+    clearJournal(root);
     console.log(
       `\n  rendered ${entries.filter((e) => e.target).length} file(s) · ` +
         `${entries.filter((e) => e.degraded).length} degraded ` +
