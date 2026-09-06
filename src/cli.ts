@@ -679,15 +679,30 @@ function cmdWorktrees(root: string) {
     return 0;
   }
   for (const w of rows) {
-    const state = w.merged && w.dirty ? c.red('merged · DIRTY') : w.merged ? c.green('merged · prunable') : c.dim('in flight');
-    console.log(`  ${state.padEnd(28)} ${w.branch.padEnd(30)} ${c.dim(w.path)}`);
+    // An unknown state is printed as unknown, never as prunable: a tree whose
+    // status could not be read is exactly the tree this command must not call
+    // safe to remove (F-057, WI-089).
+    const label = w.state === 'unknown'
+      ? c.yellow(`${w.merged ? 'merged' : 'in flight'} · status UNKNOWN`)
+      : w.merged && w.state === 'dirty'
+        ? c.red('merged · DIRTY')
+        : w.merged
+          ? c.green('merged · prunable')
+          : c.dim('in flight');
+    console.log(`  ${label.padEnd(28)} ${w.branch.padEnd(30)} ${c.dim(w.path)}`);
+    if (w.state === 'unknown' && w.reason) console.log(c.dim(`      could not read its status: ${w.reason}`));
   }
-  const risky = rows.filter((w) => w.merged && w.dirty);
-  const prunable = rows.filter((w) => w.merged && !w.dirty);
+  const risky = rows.filter((w) => w.merged && w.state === 'dirty');
+  const prunable = rows.filter((w) => w.merged && w.state === 'clean');
+  const unknown = rows.filter((w) => w.state === 'unknown');
   console.log();
   if (risky.length) {
     console.log(c.red(`  ${risky.length} worktree(s) hold uncommitted work on a branch that already landed.`));
     console.log(c.dim('  That is where work actually gets lost. Commit it somewhere or decide to drop it.'));
+  }
+  if (unknown.length) {
+    console.log(c.yellow(`  ${unknown.length} worktree(s) could not be inspected.`));
+    console.log(c.dim('  Unknown is not clean. Read them by hand before removing anything.'));
   }
   if (prunable.length) console.log(c.dim(`  ${prunable.length} prunable. Removing a worktree is your call, not this command's.`));
   console.log();
