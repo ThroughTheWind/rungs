@@ -4154,8 +4154,11 @@ test('eject ships a package-free runner whose aggregate and direct checks match 
     assert.match(ejectedAll.stdout.replace(/\x1b\[[0-9;]*m/g, ''), /repo check red/, 'the failing repository command\'s output survives');
     const ledger = readFileSync(join(dir, '.ai', '.gate-ledger.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     assert.equal(ledger.length, prodAll.size, 'one ledger line per gate per run');
-    assert.deepEqual(Object.keys(ledger[0]), ['at', 'id', 'status', 'ms', 'examined']);
+    // ADR-0005's schema, completed by WI-088: `run` groups one run's rows, `tier` is the gate's.
+    assert.deepEqual(Object.keys(ledger[0]), ['at', 'run', 'id', 'status', 'ms', 'examined', 'tier']);
     assert.equal(ledger[0].at, '2026-09-06');
+    assert.equal(new Set(ledger.map((l) => l.run)).size, 1, 'every row of one run shares its run id');
+    assert.match(ledger[0].run, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
 
     const ejectedFast = spawn([launcher, 'check', 'fast']);
     assert.deepEqual([...parseCheckOutput(ejectedFast.stdout).keys()], [...prodFast.keys()], 'fast selects the same subset');
@@ -4388,6 +4391,84 @@ test('every shipped self-test fixture executes and agrees, or names the unimplem
     [`design-mirror-not-edited fail: ${unsupported}`, `design-mirror-not-edited pass: ${unsupported}`],
   );
   assert.equal(by('ok').length, rows.length - 2);
+});
+
+/**
+ * WI-088 (F-055, ADR-0005 Tier A). `fast_budget_ms` was documented as compared
+ * against observed durations and nothing read it. `doctor` now reports the
+ * first tier's observed serial wall-clock per recorded run beside the budget —
+ * a measurement, never a verdict — and says so when the ledger is off, absent,
+ * too short or partly unreadable.
+ */
+test('doctor reports observed fast-tier wall-clock against the declared budget, and names every state the ledger can be in', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-budget-'));
+  const registry = (budget, ledger = true) => [
+    '[runner]',
+    'tiers          = ["fast", "full"]',
+    `ledger         = ${ledger}`,
+    `fast_budget_ms = ${budget}`,
+    '',
+    '[[gates]]',
+    'id     = "a"',
+    'kind   = "command"',
+    'tier   = "fast"',
+    'command = "node -e 0"',
+    '',
+  ].join('\n');
+  const row = (run, id, ms, tier = 'fast') => JSON.stringify({ at: '2026-09-06', run, id, status: 'pass', ms, examined: 1, tier });
+  const doctor = () => {
+    const r = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'doctor', dir], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    return (r.stdout + r.stderr).replace(/\x1b\[[0-9;]*m/g, '');
+  };
+  try {
+    mkdirSync(join(dir, '.ai'), { recursive: true });
+    writeFileSync(join(dir, '.ai', 'rungs.toml'), '[repo]\nharnesses = ["agents-md"]\n\n[modules.gates]\nversion = "1.1.0"\nstate = "managed"\n');
+    writeFileSync(join(dir, '.ai', 'gates.toml'), registry(100));
+
+    assert.match(doctor(), /No ledger yet/, 'absent ledger is named');
+
+    // Ten runs; each run's fast-tier gates sum to 50, 60, … 140 ms; full-tier rows are not counted.
+    const runs = Array.from({ length: 10 }, (_, i) => `2026-09-06T00:0${i}:00.000Z`);
+    const lines = [];
+    runs.forEach((run, i) => {
+      lines.push(row(run, 'a', 20 + i * 10), row(run, 'b', 30), row(run, 'slow', 5000, 'full'));
+    });
+    writeFileSync(join(dir, '.ai', '.gate-ledger.jsonl'), `${lines.join('\n')}\n`);
+    let out = doctor();
+    assert.match(out, /Fast tier budget \(declared fast_budget_ms = 100\)/);
+    assert.match(out, /last 10 run\(s\) of the fast tier: median 95 ms · max 140 ms · 4 over budget/);
+    assert.match(out, /A measurement,\s+not a verdict/);
+    assert.doesNotMatch(out, /\bscore\b/i, 'ADR-0005 Tier C: no composite, ever');
+
+    writeFileSync(join(dir, '.ai', 'gates.toml'), registry(1000));
+    assert.match(doctor(), /0 over budget/, 'raising the budget changes only the comparison');
+
+    // Malformed and pre-schema rows are counted as unreadable, never guessed at.
+    writeFileSync(join(dir, '.ai', '.gate-ledger.jsonl'), `${lines.join('\n')}\nnot json\n${JSON.stringify({ at: '2026-09-05', id: 'a', status: 'pass', ms: 5, examined: 1 })}\n`);
+    out = doctor();
+    assert.match(out, /median 95 ms · max 140 ms/);
+    assert.match(out, /2 ledger row\(s\) predate the run\/tier fields or do not parse/);
+
+    // Fewer than three usable runs: the history is too short to compare.
+    writeFileSync(join(dir, '.ai', '.gate-ledger.jsonl'), `${lines.slice(0, 6).join('\n')}\n`);
+    out = doctor();
+    assert.match(out, /only 2 recorded run\(s\)/);
+    assert.doesNotMatch(out, /median/);
+
+    // Ledger disabled: said, not silently skipped.
+    writeFileSync(join(dir, '.ai', 'gates.toml'), registry(100, false));
+    assert.match(doctor(), /Ledger off \(runner\.ledger = false\)/);
+
+    // The runner's own output and exit status are untouched by the comparison.
+    writeFileSync(join(dir, '.ai', 'gates.toml'), registry(1));
+    const checked = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'check', dir], { encoding: 'utf8' });
+    assert.equal(checked.status, 0);
+    assert.doesNotMatch(checked.stdout, /Fast tier budget|over budget|fast_budget_ms/, 'check never prints the comparison (pull, not push)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 /**

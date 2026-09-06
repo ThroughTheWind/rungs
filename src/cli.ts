@@ -6,7 +6,7 @@ import { detect, scanRepo } from './detect.ts';
 import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, moduleEmissionCandidates, preflightModuleEmissions, prospectiveRuleEmissions, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { preflightRender, render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
-import { checkCommand, type GateRun, ledgerQuestions, loadRegistry, runGates } from './check.ts';
+import { checkCommand, type GateRun, ledgerBudget, ledgerQuestions, loadRegistry, runGates } from './check.ts';
 import { applyUpgrade, eject, EjectRefusal, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
 import { c } from './ansi.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
@@ -177,7 +177,7 @@ function cmdDoctor(target: string, doExplain = false) {
   console.log(c.dim('  system is good, complete, or working — only that files are where a'));
   console.log(c.dim("  module's files would be. Signatures under-detect on purpose.\n"));
 
-  reportLedger(root);
+  reportLedger(root, record !== null);
 
   if (doExplain) reportExplain(mods, results, root, files);
   else advertiseAnalysis(results);
@@ -713,22 +713,61 @@ function cmdCheck(root: string, tier: string | undefined, stamp: string) {
  * pre-merge habit invoke — so printing there was the push the tier was written
  * to forbid, arriving inside the feature that forbade it.
  */
-function reportLedger(root: string) {
+function reportLedger(root: string, installed = false) {
   const { gates } = loadRegistry(root);
   const q = ledgerQuestions(root, gates);
-  if (!q.neverFired.length && !q.alwaysFires.length) return;
+  if (q.neverFired.length || q.alwaysFires.length) {
+    console.log(c.bold(`  Ledger questions ${c.dim(`(${q.runs} recorded runs)`)}`));
+    for (const g of q.neverFired.slice(0, 3)) {
+      console.log(`    ${c.cyan(g.id)} has never fired. ${c.dim(firstSentence(g.why ?? ''))}`);
+      console.log(c.dim('      Is that still a risk here, or is the gate scoped too narrowly?'));
+    }
+    for (const g of q.alwaysFires.slice(0, 3)) {
+      console.log(`    ${c.cyan(g.id)} fails ${g.rate}. ${c.dim('Red by default is a gate people learn to bypass.')}`);
+    }
+    console.log(c.dim('\n    These are questions, not verdicts. The ledger records whether a gate ran'));
+    console.log(c.dim('    and whether it fired — never whether it is valuable. Gates invoked'));
+    console.log(c.dim('    directly, and CI runs, are not counted.\n'));
+  }
+  if (installed) reportBudget(root);
+}
 
-  console.log(c.bold(`  Ledger questions ${c.dim(`(${q.runs} recorded runs)`)}`));
-  for (const g of q.neverFired.slice(0, 3)) {
-    console.log(`    ${c.cyan(g.id)} has never fired. ${c.dim(firstSentence(g.why ?? ''))}`);
-    console.log(c.dim('      Is that still a risk here, or is the gate scoped too narrowly?'));
+/**
+ * ADR-0005 Tier A's first consumer, and F-055's repair (WI-088): `fast_budget_ms`
+ * was documented as "compared against the ledger's observed values" and nothing
+ * read it. Printed from `doctor` — pull, never push — as a measurement of this
+ * machine's recorded runs. It never becomes a verdict, a score, or an input to
+ * which gates run (ADR-0008).
+ */
+function reportBudget(root: string) {
+  const b = ledgerBudget(root);
+  const ms = (n: number) => `${n.toLocaleString('en-US')} ms`;
+  switch (b.state) {
+    case 'disabled':
+      console.log(c.dim('  Ledger off (runner.ledger = false): no observed durations to compare with fast_budget_ms.\n'));
+      return;
+    case 'absent':
+      console.log(c.dim('  No ledger yet. Run `rungs check` a few times and the fast-tier budget comparison appears here.\n'));
+      return;
+    case 'no-budget':
+      return;
+    case 'too-short':
+      console.log(c.bold('  Fast tier budget'));
+      console.log(c.dim(`    only ${b.usable} recorded run(s) of the first tier carry run and tier fields; ${b.needed} needed before a comparison is worth printing.`));
+      if (b.unreadable) console.log(c.dim(`    ${b.unreadable} ledger row(s) predate those fields or do not parse, and are not counted.`));
+      console.log();
+      return;
+    case 'report':
+      console.log(c.bold(`  Fast tier budget ${c.dim(`(declared fast_budget_ms = ${b.budgetMs.toLocaleString('en-US')})`)}`));
+      console.log(
+        `    last ${b.runs} run(s) of the ${c.cyan(b.tier)} tier: median ${ms(b.medianMs)} · max ${ms(b.maxMs)} · ` +
+          (b.over ? c.yellow(`${b.over} over budget`) : c.green('0 over budget')),
+      );
+      console.log(c.dim('    Serial wall-clock of that tier\'s gates per recorded run, on this machine. A measurement,'));
+      console.log(c.dim('    not a verdict: the runner never selects or fails on it (ADR-0005, ADR-0008).'));
+      if (b.unreadable) console.log(c.dim(`    ${b.unreadable} ledger row(s) predate the run/tier fields or do not parse, and are not counted.`));
+      console.log();
   }
-  for (const g of q.alwaysFires.slice(0, 3)) {
-    console.log(`    ${c.cyan(g.id)} fails ${g.rate}. ${c.dim('Red by default is a gate people learn to bypass.')}`);
-  }
-  console.log(c.dim('\n    These are questions, not verdicts. The ledger records whether a gate ran'));
-  console.log(c.dim('    and whether it fired — never whether it is valuable. Gates invoked'));
-  console.log(c.dim('    directly, and CI runs, are not counted.\n'));
 }
 
 function cmdBacklogArchive(root: string, dryRun: boolean) {

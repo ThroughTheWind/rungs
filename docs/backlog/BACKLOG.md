@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-088](items/WI-088-observed-fast-budget-reporting.md) | Report observed fast-tier wall-clock against the declared budget | feature | — |
 | [WI-089](items/WI-089-truthful-worktree-state.md) | Keep a failed worktree status read unknown instead of reporting it clean | feature | — |
 | [WI-090](items/WI-090-integrated-consumer-verification.md) | Verify the integrated candidate as a packed consumer and hand the canary step to WI-064 | chore | — |
 
