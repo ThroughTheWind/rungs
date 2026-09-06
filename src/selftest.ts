@@ -326,9 +326,14 @@ function build(root: string, engine: string, table: any, fx: any, input?: string
       written.push(write(`${dir}/${stem}000${i + 1}-fixture.md`, `---\nid: ${stem}000${i + 1}\ntitle: fixture ${i + 1}\nstatus: accepted\ndate: 2026-01-0${i + 1}\n---\n\n# fixture\n`));
     }
     const columns: string[] = Array.isArray(spec.columns) ? spec.columns : ['id', 'title', 'status', 'date'];
+    // `placeholder = true`: the table carries the shipped template's `— · none yet` row instead
+    // of data rows — the shape of an untouched fresh scaffold (WI-091).
+    const header = [`| ${columns.join(' | ')} |`, `| ${columns.map(() => '---').join(' | ')} |`];
     const rows = fx.block_rows
-      ? [`| ${columns.join(' | ')} |`, `| ${columns.map(() => '---').join(' | ')} |`, ...Array.from({ length: fx.block_rows }, (_, i) => `| ${columns.map(() => `row ${i + 1}`).join(' | ')} |`)]
-      : [];
+      ? [...header, ...Array.from({ length: fx.block_rows }, (_, i) => `| ${columns.map(() => `row ${i + 1}`).join(' | ')} |`)]
+      : fx.placeholder === true
+        ? [...header, `| — | *none yet* |${' |'.repeat(Math.max(columns.length - 2, 0))}`]
+        : [];
     written.push(write(spec.block.file, `# Index\n\n<!-- rungs:begin ${spec.block.marker} -->\n${rows.join('\n')}${rows.length ? '\n' : ''}<!-- rungs:end ${spec.block.marker} -->\n`));
     return { files: written };
   }

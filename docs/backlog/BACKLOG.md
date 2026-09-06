@@ -3,14 +3,14 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-091 -->
+<!-- NEXT-ID: WI-092 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-091](archive/WI-091-index-placeholder-rows.md) | Stop the derived-index freshness rule counting the template's placeholder row as a record | chore | `feature/WI-091-index-placeholder-rows` |
 
 ## Review
 

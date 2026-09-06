@@ -121,7 +121,12 @@ export const renderFreshness: Engine = (t, root, files) => {
       // asserted otherwise and had never run (WI-087).
       if (spec.derives === 'file-index' && Array.isArray(spec.sources)) {
         const sources = expand(files, spec.sources);
-        const rows = block.split('\n').filter((line) => /^\s*\|/.test(line) && !/^\s*\|[\s:|-]+\|\s*$/.test(line)).length;
+        // A placeholder row — first cell `—`, the shape the shipped templates and `render` both
+        // use for "none yet" — is not a listed file. Counting it failed every fresh scaffold
+        // with zero records on its untouched index (Arena Lab canary, 2026-09-06, WI-091).
+        const rows = block
+          .split('\n')
+          .filter((line) => /^\s*\|/.test(line) && !/^\s*\|[\s:|-]+\|\s*$/.test(line) && !/^\s*\|\s*—\s*\|/.test(line)).length;
         // The header row is one of the pipe lines when a table exists at all.
         const dataRows = rows ? rows - 1 : 0;
         if (dataRows !== sources.length) {
