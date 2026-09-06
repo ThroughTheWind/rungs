@@ -23,7 +23,7 @@ one day cannot be told apart and a tier's cost cannot be summed.
 
 ## Decision
 
-`accepted` — 2026-09-06 under [WI-085](WI-085-existing-promises-remediation.md). Implement the
+`accepted` — 2026-09-06 under [WI-085](../items/WI-085-existing-promises-remediation.md). Implement the
 comparison in `doctor`, where ADR-0005 puts it, as a measurement with no verdict. The parameter
 promises reporting; nothing here introduces timeouts, cancellation or telemetry.
 
