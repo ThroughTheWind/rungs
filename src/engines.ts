@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { matchAny, walk } from './glob.ts';
 import { parse as parseToml } from 'smol-toml';
 import { runSelfTests } from './selftest.ts';
@@ -21,11 +20,12 @@ import {
 import { boardReconcile, changelogFreshness, gitState, mergeDriverCheck, rulePropagation, termOwnership } from './engines3.ts';
 import { selectEngineTable } from './engine-table.ts';
 import { semanticText } from './text.ts';
+import { isEjectedCommand, modulesRoot } from './ejected.ts';
 
 /**
- * Where the CLI's own `modules/` lives.
+ * Where the CLI's own `modules/` lives is `modulesRoot()` in `ejected.ts`.
  *
- * This was `new URL(import.meta.url).pathname.slice(1)` in three places. The
+ * It was `new URL(import.meta.url).pathname.slice(1)` in three places. The
  * `.slice(1)` strips a leading `/`, which is right on Windows — `/C:/…` becomes
  * `C:/…` — and **wrong everywhere else**, where `/home/runner/…` becomes the
  * relative `home/runner/…`. On Linux and macOS the directory did not resolve,
@@ -35,9 +35,12 @@ import { semanticText } from './text.ts';
  * `gates-self-tests-both-directions` reported gates that have fixtures as
  * having none. All three passed here and failed on the first Linux run (F-036).
  *
- * `fileURLToPath` is what the rest of the codebase already used.
+ * Then it was a constant derived from `import.meta.url`, which inside a bundle
+ * copied to a consumer's `.rungs/` pointed at a `modules/` directory the
+ * consumer does not have — the same three gates, passing on an empty set again
+ * (WI-077). It is now a function the ejected runner points at the metadata
+ * `eject` materialized beside it.
  */
-const CLI_MODULES = join(dirname(fileURLToPath(import.meta.url)), '..', 'modules');
 
 export interface Finding {
   file?: string;
@@ -383,10 +386,15 @@ export const gateMeta: Engine = (_t, root) => {
     const id = entry.match(/^id\s*=\s*"(.+)"/m)?.[1];
     const kind = entry.match(/^kind\s*=\s*"(.+)"/m)?.[1];
     const table = entry.match(/^table\s*=\s*"(.+)"/m)?.[1];
-    if (!id || kind !== 'declared' || !table) continue;
+    const command = entry.match(/^command\s*=\s*"(.+)"/m)?.[1];
+    // A converted gate in an ejected registry is still a declared gate for this
+    // purpose: it has an engine, a table and fixtures. Skipping it would make the
+    // meta-gate pass on an empty set the moment a repo ejects (WI-077).
+    const declared = kind === 'declared' || (kind === 'command' && !!id && isEjectedCommand(id, command));
+    if (!id || !declared || !table) continue;
     examined++;
     // Tables live in the CLI, not the repo, so read them from the module set.
-    const tablePath = join(CLI_MODULES, dirname(table), 'gates', table.split('/').pop()!);
+    const tablePath = join(modulesRoot(), dirname(table), 'gates', table.split('/').pop()!);
     const src = existsSync(tablePath) ? semanticText(readFileSync(tablePath, 'utf8')) : '';
     const forGate = [...src.matchAll(/\[\[self_test\]\][\s\S]*?(?=\n\[\[|\n\[|$)/g)]
       .map((m) => m[0])
@@ -455,7 +463,7 @@ function optedInExtensions(rel: string, spec: any): Set<string> {
   const name = rel.split('/').slice(-2)[0];
   if (!name) return new Set();
   try {
-    const mods = loadAllModules(CLI_MODULES);
+    const mods = loadAllModules(modulesRoot());
     const owner = mods.find((m) => m.skills?.[name]?.extensions);
     return new Set(Object.keys(owner?.skills?.[name]?.extensions ?? {}));
   } catch {
@@ -479,7 +487,7 @@ function parseTable(path: string, module: string): any | null {
     // and the runner reported the gate broken — a mismatch entirely of the
     // harness's making. A fixture and the table it tests must resolve against
     // the same parameters or neither means anything.
-    const mods = loadAllModules(CLI_MODULES);
+    const mods = loadAllModules(modulesRoot());
     const params = resolveParams(mods, {}, '.');
     return parseToml(substitute(semanticText(readFileSync(path, 'utf8')), module, params));
   } catch {

@@ -16,6 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
+| [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | `feature/WI-077-standalone-ejected-checks` |
 | [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
 | [WI-060](items/WI-060-release-0.2.0.md) | Prepare the v0.2.0 release and close the release-integrity findings it surfaced | chore | `feature/WI-060-release-0.2.0` |
 | [WI-062](items/WI-062-concurrency-phantom-commands.md) | Decide what the concurrency module is — four commands, or the manual protocol it actually documents | chore | `feature/WI-062-concurrency-loop` |
@@ -24,7 +25,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | — |
 | [WI-086](items/WI-086-consumer-hook-delivery.md) | Deliver the declared shell-safety hook to consumers, or report that a harness cannot carry it | feature | — |
 | [WI-087](items/WI-087-executable-self-test-coverage.md) | Make every shipped self-test fixture execute, or state exactly why it cannot | feature | — |
 | [WI-088](items/WI-088-observed-fast-budget-reporting.md) | Report observed fast-tier wall-clock against the declared budget | feature | — |

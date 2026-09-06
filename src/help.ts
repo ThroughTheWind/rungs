@@ -17,7 +17,7 @@ export const COMMANDS: [usage: string, blurb: string][] = [
   ['check [path] [tier]', 'run the registered gates and record the ledger'],
   ['render [path]', 're-emit path-scoped rules per harness'],
   ['upgrade [path]', 'move to newer module versions, never touching what you edited'],
-  ['eject [path]', 'materialise the engines; stop depending on rungs'],
+  ['eject [path]', 'materialise the engines and a local launcher; check keeps running without rungs'],
   ['setup git [path]', 'install the merge drivers .gitattributes names'],
   ['modules', 'list the module set and audit the manifests'],
   ['backlog archive [path]', 'move finished items to archive/, repointing every link'],

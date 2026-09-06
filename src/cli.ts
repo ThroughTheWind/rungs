@@ -6,8 +6,9 @@ import { detect, scanRepo } from './detect.ts';
 import { addModule, adoptableGates, blockedByConflict, blockedByParadigm, moduleEmissionCandidates, preflightModuleEmissions, prospectiveRuleEmissions, type ConflictBlock, registerGates, resolveInstallOrder, writeInstallRecord } from './add.ts';
 import { preflightRender, render, writeReport, type Harness } from './render.ts';
 import { resolveParams } from './substitute.ts';
-import { appendLedger, type GateRun, ledgerQuestions, loadRegistry, runGates, UnknownTierError } from './check.ts';
-import { applyUpgrade, eject, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
+import { checkCommand, type GateRun, ledgerQuestions, loadRegistry, runGates } from './check.ts';
+import { applyUpgrade, eject, EjectRefusal, planUpgrade, PROFILES, readRecord, setupGit } from './lifecycle.ts';
+import { c } from './ansi.ts';
 import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive, resolveArchiveTree } from './backlog.ts';
 import { land, preflight, sessionStart, worktrees } from './concurrency.ts';
@@ -18,15 +19,6 @@ import { COMMANDS, FLAGS } from './help.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MODULES = join(HERE, '..', 'modules');
-
-const c = {
-  dim: (s: string) => `\x1b[2m${s}\x1b[0m`,
-  bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
-  red: (s: string) => `\x1b[31m${s}\x1b[0m`,
-  yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
-  green: (s: string) => `\x1b[32m${s}\x1b[0m`,
-  cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
-};
 
 function pathRefusal(error: unknown): number {
   if (!(error instanceof UnsafeEmittedPathError)) throw error;
@@ -670,69 +662,13 @@ function cmdWorktrees(root: string) {
   return 0;
 }
 
+/**
+ * The body lives in `check.ts` as `checkCommand`, shared with the ejected
+ * runner so both print the same lines and exit the same way for the same
+ * registry (WI-077).
+ */
 function cmdCheck(root: string, tier: string | undefined, stamp: string) {
-  let runs: GateRun[];
-  try {
-    runs = runGates(root, tier);
-  } catch (e) {
-    // ADR-0008. A tier nobody declared used to select nothing and exit as though
-    // the gates had passed — the one failure mode a release step cannot have.
-    if (!(e instanceof UnknownTierError)) throw e;
-    console.log(c.yellow(`\n  unknown tier "${e.requested}"`) + c.dim(` — this repo declares ${e.declared.join(', ')}.`));
-    console.log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
-    return 1;
-  }
-  if (!runs.length) {
-    // Two situations printed the same sentence, and it was the wrong one for the case that
-    // actually happens: a registry full of `fast` gates filtered by `--full` asked "is this a
-    // rungs repo?" about a repo holding 25 of them, and `cut-release` told every consumer to
-    // gate a release on exactly that command (F-020). Blame the filter when there is one.
-    //
-    // Hooks are excluded because a hook fires on a tool call rather than in the runner: it is
-    // registered, and no tier value could ever have selected it. Counting it here would offer
-    // the reader a gate that changing the tier cannot reach.
-    const runnable = loadRegistry(root).gates.filter((g) => !g.trigger);
-    if (runnable.length && tier) {
-      const tiers = [...new Set(runnable.map((g) => g.tier).filter(Boolean))];
-      console.log(c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
-        c.dim(` (${tiers.length ? tiers.join(', ') : 'none tiered'}).`));
-      console.log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
-    } else {
-      console.log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
-    }
-    return 1;
-  }
-  appendLedger(root, runs, stamp);
-
-  console.log(c.bold(`\nrungs check — ${root}${tier ? ` (${tier} tier)` : ''}\n`));
-  const mark = { pass: c.green('pass'), fail: c.red('FAIL'), unimplemented: c.yellow('unimpl'), error: c.red('error') };
-  for (const r of runs) {
-    console.log(
-      `  ${mark[r.status]} ${r.id.padEnd(34)} ${c.dim(`${r.ms}ms`)}` +
-        (r.examined ? c.dim(`  ${r.examined} examined`) : ''),
-    );
-    for (const f of r.findings.slice(0, 4)) {
-      console.log(`         ${c.dim(f.file ? `${f.file}: ` : '')}${f.message.replace(/\n/g, '\n         ')}`);
-    }
-    if (r.findings.length > 4) console.log(c.dim(`         …and ${r.findings.length - 4} more`));
-  }
-
-  const n = (s: string) => runs.filter((r) => r.status === s).length;
-  console.log(
-    `\n  ${c.green(`${n('pass')} pass`)} · ${c.red(`${n('fail')} fail`)} · ` +
-      `${c.yellow(`${n('unimplemented')} unimplemented`)} · ${n('error')} error` +
-      c.dim(`  (${runs.reduce((t, r) => t + r.ms, 0)}ms total)`),
-  );
-
-  if (n('unimplemented')) {
-    console.log(
-      c.yellow('\n  Unimplemented gates are not passes.') +
-        c.dim(' A registry reporting green because most of its\n  gates do nothing is the worst failure this tool could have, so they block.'),
-    );
-  }
-
-  console.log();
-  return n('fail') + n('unimplemented') + n('error') > 0 ? 1 : 0;
+  return checkCommand(root, tier, stamp);
 }
 
 /**
@@ -909,7 +845,7 @@ function cmdUpgrade(root: string, apply: boolean) {
   return 0;
 }
 
-function cmdEject(root: string, dryRun: boolean) {
+function cmdEject(root: string, dryRun: boolean, stamp: string) {
   let record;
   try {
     record = readRecord(root);
@@ -920,14 +856,28 @@ function cmdEject(root: string, dryRun: boolean) {
     console.log(c.yellow('\n  not a rungs repo — nothing to eject.\n'));
     return 1;
   }
-  const result = eject(root, loadAllModules(MODULES), dryRun);
+  let result;
+  try {
+    result = eject(root, loadAllModules(MODULES), dryRun, stamp);
+  } catch (error) {
+    // Nothing is written on a refusal: every destination is validated and every
+    // byte computed before the first write, so a refused eject leaves the repo
+    // exactly as it found it (WI-077).
+    if (error instanceof EjectRefusal) {
+      console.log(c.red(`\n  refused: ${error.message}\n`) + c.dim('  Nothing was written.\n'));
+      return 1;
+    }
+    return pathRefusal(error);
+  }
   console.log(c.bold(`\nrungs eject — ${root}${dryRun ? c.yellow('  (dry run)') : ''}\n`));
-  for (const a of result.actions.slice(0, 6)) console.log(c.dim(`  ${a}`));
-  if (result.actions.length > 6) console.log(c.dim(`  …and ${result.actions.length - 6} more`));
+  for (const a of result.actions.slice(0, 8)) console.log(c.dim(`  ${a}`));
+  if (result.actions.length > 8) console.log(c.dim(`  …and ${result.actions.length - 8} more`));
   console.log(
-    `\n  ${result.gates} declared gate(s) rewritten as commands.` +
-      c.dim('\n  This repo no longer needs rungs installed to run its checks.\n') +
-      c.dim('  Engine fixes stop arriving with a version bump — these files are yours now.\n'),
+    `\n  ${result.gates} declared gate(s) rewritten as commands` +
+      (result.unchanged ? c.dim(' — already ejected; nothing changed.') : '.') +
+      c.dim(`\n  \`node .ai/rungs.mjs check\` now runs from .rungs/ with this Node alone: no npm, no package.`) +
+      c.dim('\n  Only `check` survives ejection; add, upgrade, render and the rest are gone until you re-adopt.') +
+      c.dim('\n  Engine fixes stop arriving with a version bump — these files are yours now. See .rungs/README.md.\n'),
   );
   return 0;
 }
@@ -1039,7 +989,7 @@ switch (cmd) {
   case 'upgrade':
     process.exit(cmdUpgrade(resolve(args[0] ?? process.cwd()), flags.has('--apply')));
   case 'eject':
-    process.exit(cmdEject(resolve(args[0] ?? process.cwd()), flags.has('--dry-run')));
+    process.exit(cmdEject(resolve(args[0] ?? process.cwd()), flags.has('--dry-run'), STAMP));
   case 'setup': {
     // The path is `args[1]`, *after* the subcommand — so an omitted `git` put the
     // path into the subcommand slot, where it was discarded, and `setup` then

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Manifest } from './types.ts';
+import { ejectedRungsVersion } from './ejected.ts';
 
 export type Params = Record<string, Record<string, unknown>>;
 
@@ -54,6 +55,13 @@ function repoFacts(repoRoot?: string): Record<string, unknown> {
  * when the consumer explicitly invokes a newer artifact.
  */
 function rungsFacts(): Record<string, unknown> {
+  // After ejection there is no package manifest beside the bundle — the runner
+  // sits in the consumer's `.rungs/` — so the version that produced the bundle
+  // is read from the ejected metadata instead. Without this the read threw, the
+  // caller's catch returned no table, and the meta-gate passed without running
+  // a single fixture (WI-077).
+  const ejected = ejectedRungsVersion();
+  if (ejected) return { version: ejected };
   const packageJson = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
   return { version: JSON.parse(readFileSync(packageJson, 'utf8')).version };
 }
