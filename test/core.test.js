@@ -30,6 +30,8 @@ import { markers, mergeBlock, resolveParams, substitute } from '../src/substitut
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
 import { runSelfTests } from '../src/selftest.ts';
 import { loadTable, runGates, UnknownTierError } from '../src/check.ts';
+import { hookRenderEntries, HookRefusal, hookVerdict, preflightHooks, registerHooks } from '../src/hooks.ts';
+import { evaluateShellSafety } from '../src/hook-engine.ts';
 import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
 import { readVersionSource } from '../src/version-source.ts';
 import { readRules } from '../src/render.ts';
@@ -1524,8 +1526,10 @@ test('change-requires-file resolves remote-only bases and refuses ambiguous or a
 });
 
 test('release fixtures execute and every engine uses the strict shared table selector', () => {
+  // `shell-safety` used to be excluded here because the mapping existed and the
+  // engine did not (F-054). WI-086 implemented it, so the two sets are equal again.
   assert.deepEqual(
-    Object.keys(ENGINE_TABLE_KEYS).filter((key) => key !== 'shell-safety').sort(),
+    Object.keys(ENGINE_TABLE_KEYS).sort(),
     Object.keys(ENGINES).sort(),
     'an implemented engine cannot exist without an explicit section mapping',
   );
@@ -4202,6 +4206,122 @@ test('eject refuses an edited launcher or a foreign .rungs directory before writ
     assert.equal(readFileSync(launcher, 'utf8'), edited, 'a diverged launcher is never overwritten');
     assert.equal(readFileSync(registryPath, 'utf8'), registryBefore);
     assert.equal(existsSync(join(dir, '.rungs')), false, 'nothing was written under .rungs/');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/**
+ * WI-086 (F-054, ADR-0010). The `instructions` module declared a shell-safety hook
+ * with four fixtures since it shipped and no engine implemented the name, so the
+ * registry entry reached every consumer and the protection reached none.
+ */
+const HOOK_GATE = 'instructions-shell-backticks';
+const hookPayload = (command, tool = 'Bash') => JSON.stringify({ tool_name: tool, tool_input: { command } });
+
+test('the shell-safety hook engine executes its shipped fixtures and refuses only what the table refuses', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const table = loadTable('instructions/core.toml', root);
+  assert.ok(table, 'the instructions table loads');
+  const section = selectEngineTable(table, 'shell-safety', HOOK_GATE);
+  const blocks = table.self_test.filter((b) => b.gate === HOOK_GATE).map((b) => ({ expect: b.expect, input: b.input }));
+  assert.equal(blocks.length, 4, 'four shipped fixtures');
+  assert.deepEqual(runSelfTests(HOOK_GATE, 'shell-safety', section, blocks).map((r) => r.outcome), ['ok', 'ok', 'ok', 'ok']);
+
+  assert.equal(evaluateShellSafety(section, 'node -e "fs.writeFileSync(\'a.md\', \'see `foo`\')"').length, 1, 'the motivating command is refused');
+  assert.equal(evaluateShellSafety(section, 'cat <<EOF > a.md').length, 1);
+  assert.equal(evaluateShellSafety(section, "cat <<'EOF' > a.md").length, 0, 'a quoted heredoc is the prescribed fix');
+  assert.equal(evaluateShellSafety(section, 'node scripts/edit.mjs').length, 0);
+  assert.equal(evaluateShellSafety(section, "node -e 'const x = `a`'").length, 0, 'a single-quoted -e string has no shell quoting layer');
+  const broken = evaluateShellSafety({ refuse: [{ pattern: '(', why: 'x' }] }, 'anything');
+  assert.match(broken[0].message, /not a valid regular expression/, 'a table defect is reported, never skipped');
+  const misuse = ENGINES['shell-safety']({}, root, ['a.md']);
+  assert.equal(misuse.examined, 0);
+  assert.equal(misuse.findings.length, 1, 'running a hook engine over files is never green');
+});
+
+test('hooks reach the Claude harness through the pinned launcher and degrade everywhere else', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const mods = loadAllModules(join(root, 'modules'));
+  const instructions = mods.find((m) => m.name === 'instructions');
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-hooks-'));
+  const settingsPath = join(dir, '.claude', 'settings.json');
+  try {
+    // A consumer that already has a settings file with its own hook and its own indentation.
+    mkdirSync(join(dir, '.claude'), { recursive: true });
+    const existing = {
+      permissions: { allow: ['Bash(npm test)'] },
+      hooks: { PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'node .claude/hooks/mine.mjs' }] }] },
+    };
+    writeFileSync(settingsPath, `${JSON.stringify(existing, null, 4)}\n`);
+    const init = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'init', dir, 'tracked'], { encoding: 'utf8', env: { ...process.env, RUNGS_DATE: '2026-09-06' } });
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    assert.match(init.stdout.replace(/\x1b\[[0-9;]*m/g, ''), /hook\s+\.claude\/settings\.json → PreToolUse — instructions-shell-backticks registered/);
+
+    const merged = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    assert.deepEqual(merged.permissions, existing.permissions, 'unrelated settings survive');
+    assert.deepEqual(merged.hooks.PreToolUse[0], existing.hooks.PreToolUse[0], 'the consumer\'s own hook survives, first');
+    assert.deepEqual(merged.hooks.PreToolUse[1], {
+      matcher: 'Bash|PowerShell',
+      hooks: [{ type: 'command', command: 'node .ai/rungs.mjs hook instructions-shell-backticks' }],
+    });
+    assert.match(readFileSync(settingsPath, 'utf8'), /\n {4}"permissions"/, 'the file keeps its own indentation');
+
+    const bytes = readFileSync(settingsPath, 'utf8');
+    const repeat = registerHooks([instructions], dir, ['claude', 'agents-md'], false);
+    assert.deepEqual(repeat.map((a) => a.note), ['instructions-shell-backticks already present']);
+    assert.equal(readFileSync(settingsPath, 'utf8'), bytes, 'a repeat adds nothing');
+    const dry = registerHooks([instructions], dir, ['claude'], true);
+    assert.equal(readFileSync(settingsPath, 'utf8'), bytes);
+    assert.equal(dry.length, 1);
+
+    const report = readFileSync(join(dir, '.ai', 'render-report.md'), 'utf8');
+    assert.match(report, /`hook instructions-shell-backticks` \| claude \| `\.claude\/settings\.json` \| — \|/);
+    assert.match(report, /`hook instructions-shell-backticks` \| agents-md \| \*\*not emitted\*\* \| hook not emitted: agents-md has no hook mechanism, so this protection is Claude-only \(ADR-0001\)/);
+    const copilotOnly = hookRenderEntries(dir, ['copilot', 'agents-md']);
+    assert.equal(copilotOnly.length, 2);
+    assert.ok(copilotOnly.every((e) => e.degraded && !e.target), 'a matrix without Claude gets two degradation rows and no target');
+    const none = registerHooks([instructions], dir, ['copilot', 'agents-md'], false);
+    assert.match(none[0].note ?? '', /not emitted/);
+    assert.equal(readFileSync(settingsPath, 'utf8'), bytes, 'a matrix without Claude writes nothing under .claude/');
+
+    // The dispatch contract: 2 blocks, 0 permits, 1 is "the hook itself is broken" and never blocks.
+    const verdict = (payload, gate = HOOK_GATE) => hookVerdict(dir, gate, () => payload);
+    const blocked = verdict(hookPayload('node -e "fs.writeFileSync(\'a.md\', \'see `foo`\')"'));
+    assert.equal(blocked.exit, 2);
+    assert.match(blocked.message, /Blocked by instructions-shell-backticks/);
+    assert.match(blocked.message, /backtick inside a double-quoted -e string is command substitution/);
+    assert.match(blocked.message, /Why this gate exists/);
+    assert.equal(verdict(hookPayload('cat <<EOF > a.md')).exit, 2);
+    assert.equal(verdict(hookPayload("cat <<'EOF' > a.md")).exit, 0);
+    assert.equal(verdict(hookPayload('node scripts/edit.mjs')).exit, 0);
+    assert.equal(verdict(hookPayload('node -e "`x`"', 'Edit')).exit, 0, 'a tool outside the matcher is never blocked');
+    assert.equal(verdict('not json').exit, 0, 'unreadable input never blocks the session');
+    assert.equal(verdict(hookPayload('x'), 'no-such-gate').exit, 1);
+    assert.equal(verdict(hookPayload('x'), 'instructions-core-size').exit, 1, 'a runner gate is not a hook');
+
+    // Malformed settings refuse the operation before anything is written.
+    writeFileSync(settingsPath, '{ not json');
+    assert.throws(() => preflightHooks([instructions], dir, ['claude']), HookRefusal);
+    assert.throws(() => registerHooks([instructions], dir, ['claude'], false), HookRefusal);
+    assert.equal(readFileSync(settingsPath, 'utf8'), '{ not json', 'a malformed file is never overwritten');
+    writeFileSync(settingsPath, bytes);
+
+    // After ejection the entry still points at something that works.
+    assert.ok(existsSync(join(root, 'dist', 'ejected-runner.mjs')), 'pretest builds the runner');
+    eject(dir, mods, false, '2026-09-06');
+    const env = { ...process.env, PATH: stripProducer(root), npm_execpath: '', NODE_PATH: '' };
+    const launcher = join(dir, '.ai', 'rungs.mjs');
+    const dispatch = (payload) => spawnSync(process.execPath, [launcher, 'hook', HOOK_GATE], { cwd: dir, encoding: 'utf8', env, input: payload });
+    const ejectedBlock = dispatch(hookPayload('node -e "fs.writeFileSync(\'a.md\', \'see `foo`\')"'));
+    assert.equal(ejectedBlock.status, 2, ejectedBlock.stderr);
+    assert.match(ejectedBlock.stderr, /Blocked by instructions-shell-backticks/);
+    assert.equal(dispatch(hookPayload("cat <<'EOF' > a.md")).status, 0);
+    assert.equal(dispatch(hookPayload('node scripts/edit.mjs')).status, 0);
+    const direct = spawnSync(process.execPath, [join(dir, '.rungs', 'run-gate.mjs'), HOOK_GATE], { cwd: dir, encoding: 'utf8', env });
+    assert.equal(direct.status, 2, 'a hook is not a file gate');
+    assert.match(direct.stderr, /is a hook/);
+    assert.match(readFileSync(join(dir, '.ai', 'gates.toml'), 'utf8'), /id\s*=\s*"instructions-shell-backticks"\nkind\s*=\s*"declared"/, 'a hook keeps its declared kind after ejection');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

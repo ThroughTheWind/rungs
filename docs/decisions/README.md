@@ -19,6 +19,7 @@ Architecture decision records for rungs itself.
 | [0007](ADR-0007-detector-applicability.md) | Detector applicability is declared per gate, and has no default | accepted | 2026-08-16 |
 | [0008](ADR-0008-gate-tiers-are-levels.md) | A gate tier is an ordered level, and an unknown tier is refused | accepted | 2026-08-17 |
 | [0009](ADR-0009-rungs-drives-git.md) | rungs drives git for the concurrency loop, and only where the loop is the product | accepted | 2026-08-17 |
+| [0010](ADR-0010-hooks-dispatch-through-the-launcher.md) | A hook is dispatched through the consumer's pinned launcher to a central engine | accepted | 2026-09-06 |
 
 > 0001–0005 were decided out of numeric order, each because it blocked the next: 0005 set the
 > gate-shipping contract, 0002 set what a scaffolded repo may depend on, 0003 is largely 0002's

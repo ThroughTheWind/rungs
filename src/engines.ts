@@ -21,6 +21,7 @@ import { boardReconcile, changelogFreshness, gitState, mergeDriverCheck, rulePro
 import { selectEngineTable } from './engine-table.ts';
 import { semanticText } from './text.ts';
 import { isEjectedCommand, modulesRoot } from './ejected.ts';
+import { shellSafety } from './hook-engine.ts';
 
 /**
  * Where the CLI's own `modules/` lives is `modulesRoot()` in `ejected.ts`.
@@ -517,6 +518,9 @@ export const ENGINES: Record<string, Engine> = {
   'board-reconcile': boardReconcile,
   'changelog-freshness': changelogFreshness,
   'change-requires-file': changeRequiresFile,
+  // A hook engine. The runner never reaches it (its gates carry a trigger); it is
+  // here so the name is implemented, and so a misuse over files is never green.
+  'shell-safety': shellSafety,
 };
 
 /**

@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-086](items/WI-086-consumer-hook-delivery.md) | Deliver the declared shell-safety hook to consumers, or report that a harness cannot carry it | feature | — |
 | [WI-087](items/WI-087-executable-self-test-coverage.md) | Make every shipped self-test fixture execute, or state exactly why it cannot | feature | — |
 | [WI-088](items/WI-088-observed-fast-budget-reporting.md) | Report observed fast-tier wall-clock against the declared budget | feature | — |
 | [WI-089](items/WI-089-truthful-worktree-state.md) | Keep a failed worktree status read unknown instead of reporting it clean | feature | — |

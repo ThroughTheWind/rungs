@@ -34,6 +34,8 @@ export interface RegistryGate {
   command?: string;
   tier?: string;
   trigger?: string;
+  /** A hook's tool-name pattern, for the harness that dispatches it. */
+  matcher?: string;
   why?: string;
 }
 

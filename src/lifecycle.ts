@@ -276,8 +276,13 @@ export interface EjectResult {
   unchanged: boolean;
 }
 
-/** Commands the ejected launcher still forwards. Everything else Rungs did is gone after ejection. */
-export const EJECTED_RETAINED = ['check'];
+/**
+ * Commands the ejected launcher still forwards. Everything else Rungs did is
+ * gone after ejection. `hook` is retained because the harness configuration
+ * WI-086 writes names this launcher, and an adapter pointing at a command
+ * ejection removed would block every tool call in an ejected repo (ADR-0010).
+ */
+export const EJECTED_RETAINED = ['check', 'hook'];
 
 const EJECT_TRAILER = '# Ejected: gates above run from .rungs/ and no longer need rungs installed.';
 const EJECTED_LAUNCHER_MARKER = 'rungs ejected launcher';
@@ -564,6 +569,8 @@ repository no longer needs the rungs package, npm access, or a rungs checkout to
   this, so neither changes.
 - \`node .rungs/run-gate.mjs <gate-id>\` — one converted gate on its own; findings on stderr, exit 1
   when it fires.
+- \`node .ai/rungs.mjs hook <gate-id>\` — a lifecycle hook, evaluated from its frozen table, so the
+  harness configuration that names this launcher keeps working after ejection.
 - Your own \`command\` gates run exactly as they did. They never depended on rungs.
 
 ## What is gone
