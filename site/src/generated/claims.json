@@ -1,5 +1,5 @@
 {
-  "gateCount": 31,
+  "gateCount": 32,
   "gateIds": [
     "adr-index-current",
     "adr-required-fields",
@@ -31,7 +31,8 @@
     "site-vendored-unedited",
     "skills-description-routes",
     "skills-names-neighbours",
-    "skills-spec-pure"
+    "skills-spec-pure",
+    "tests-guard-large-equality"
   ],
   "hookCount": 1,
   "hookIds": [
@@ -248,7 +249,7 @@
     }
   ],
   "run": {
-    "pass": 31,
+    "pass": 32,
     "fail": 0,
     "unimplemented": 0,
     "error": 0,

@@ -26,7 +26,7 @@
     "prepack": "npm run build",
     "pretest": "npm run build",
     "rungs": "node src/cli.ts",
-    "test": "node --test test/*.test.js"
+    "test": "node --max-old-space-size=2048 --test --test-concurrency=1 test/*.test.js"
   },
   "files": [
     "dist",
