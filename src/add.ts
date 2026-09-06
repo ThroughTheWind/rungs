@@ -487,7 +487,19 @@ export function writeInstallRecord(
   /** Per module, the files rungs actually created — as opposed to kept. */
   wroteByModule?: Map<string, Set<string>>,
 ) {
-  const lines = [
+  const record = preflightEmittedPaths(repoRoot, [
+    { moduleName: 'rungs', target: '.ai/rungs.toml', writeExisting: true },
+  ])[0];
+  // F-061 / WI-093. An existing record is **extended, never re-derived**: every
+  // line it already has — the `[repo]` table, every module block, every hash —
+  // is kept byte for byte, and only modules it does not yet name are appended.
+  // Re-deriving would stamp our hash onto files the user diverged (F-017's
+  // lesson from `upgrade`), and rewriting the closure of one `add` dropped every
+  // other installed module, so `doctor` called them someone else's, `upgrade`
+  // skipped them and `eject` refused the launcher as edited.
+  const existing = existsSync(record.absolute) ? readFileSync(record.absolute, 'utf8') : null;
+  const recorded = new Set([...(existing ?? '').matchAll(/^\[modules\.([^\].\s]+)\]/gm)].map((m) => m[1]));
+  const header = [
     '# Installed by `rungs`. This is a record of what was written, not a control panel:',
     '# editing a parameter here does not rewrite a file that already exists. `rungs render`',
     '# re-emits path-scoped rules from `.ai/rules/`, and `rungs upgrade --apply` replaces',
@@ -504,7 +516,9 @@ export function writeInstallRecord(
     `installed = "${stamp}"`,
     '',
   ];
+  const lines: string[] = [];
   for (const m of mods) {
+    if (recorded.has(m.name)) continue;
     lines.push(`[modules.${m.name}]`, `version = "${m.version}"`, 'state   = "managed"');
     const p = params[m.name] ?? {};
     if (Object.keys(p).length) {
@@ -528,10 +542,13 @@ export function writeInstallRecord(
     }
     lines.push('');
   }
-  const record = preflightEmittedPaths(repoRoot, [
-    { moduleName: 'rungs', target: '.ai/rungs.toml', writeExisting: true },
-  ])[0];
-  writeFileSync(record.absolute, lines.join('\n'));
+  if (existing === null) {
+    writeFileSync(record.absolute, [...header, ...lines].join('\n'));
+    return;
+  }
+  if (!lines.length) return;
+  const newline = existing.match(/\r\n|\r|\n/)?.[0] ?? '\n';
+  writeFileSync(record.absolute, `${existing.replace(/\s+$/, '')}${newline}${newline}${lines.join(newline)}`);
 }
 
 export interface AdoptedGate {
