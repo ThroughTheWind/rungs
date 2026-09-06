@@ -77,8 +77,11 @@ Children carry implementation. Handoff from [WI-090](../archive/WI-090-integrate
 
 - **Producer candidate.** The tip of `main` after the findings follow-up items landed (WI-093 to
   WI-097, the last at `49348eab`, plus the session-handoff commit after it); every code change of
-  the WI-085 programme and of the five follow-ups is on `main`. Nothing is pushed, so the exact-SHA
-  CI matrix is pending.
+  the WI-085 programme and of the five follow-ups is on `main`. Pushed 2026-09-06 at the user's
+  request: `main` and `green/main` at `2791a21b19740eb6e671e0f3e7e5d4dba68aa546`, and GitHub Actions
+  run 34052948336 on that SHA passed all seven jobs — ubuntu-latest, macos-latest, windows-latest on
+  Node 22.18 and Node 22 (`npm ci`, `npm test`, `check`, built-executable smoke) plus the site build
+  and link check. The matrix is observed, not pending.
 - **Tarball and integrity.** Computed from the exact commit at release time with
   `npm pack --dry-run --json` (prepack builds `dist/`; `README.md` is packed, so any README edit
   changes the integrity). At the clean tree of `22edbe3148d16f897a1722ecda02bd0a9ae3464a` the canary
@@ -99,8 +102,8 @@ Children carry implementation. Handoff from [WI-090](../archive/WI-090-integrate
   hook 2 then 0; `eject --dry-run` and `eject` 0; with the tool prefix renamed away, `node
   .ai/rungs.mjs check` and `check full` 24 pass and the ejected hook 2 then 0. Script and log:
   the WI-090 item names them. Not adoption: a synthetic disposable clone, nothing committed anywhere.
-- **Remaining steps, not authorized by WI-085.** (1) Push `main` and read the CI matrix for the exact
-  SHA. (2) Cut the release per the `release` module (`changelog.d/0.5.0.md` is the fragment; version
+- **Remaining steps, not authorized by WI-085.** (1) ~~Push `main` and read the CI matrix for the
+  exact SHA~~ — done, above. (2) Cut the release per the `release` module (`changelog.d/0.5.0.md` is the fragment; version
   bump to 0.5.0; immutable tag; `npm publish`). (3) In Arena Lab, a dedicated item that runs
   `node .ai/rungs.mjs upgrade --to 0.5.0` on a branch and commits the result — the launcher pin is
   the only sibling-path-free mechanism, and it cannot resolve an unpublished version, which is why

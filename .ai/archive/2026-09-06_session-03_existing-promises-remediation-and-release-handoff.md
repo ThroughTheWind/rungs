@@ -15,9 +15,11 @@ canary found in the integrated candidate. Per-item commands, dates and counts ar
 
 ## Not delivered
 
-Nothing was pushed, tagged, published or deployed, and Arena Lab's maintained checkout was only read.
-The exact-SHA CI matrix is therefore pending. The disposable Arena Lab canary ran on a throwaway
-clone and is a synthetic check, not adoption. The findings the programme left open, F-059 to F-063,
+Nothing was tagged, published or deployed, and Arena Lab's maintained checkout was only read. After
+the follow-ups below landed, the user authorized a push: `main` and `green/main` went to
+`2791a21b`, and GitHub Actions run 34052948336 passed all seven jobs on that SHA (three platforms on
+two Node versions, plus the site). The disposable Arena Lab canary ran on a throwaway clone and is a
+synthetic check, not adoption. The findings the programme left open, F-059 to F-063,
 were then closed in the same session at the user's request, one item each: WI-093 (`add` extends the
 install record, F-061), WI-094 (one `check [path] [tier]` grammar on both launcher surfaces, F-063),
 WI-095 (guarded large-value assertions and a capped serial `npm test`, F-059), WI-096 (the private

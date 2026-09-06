@@ -8,9 +8,10 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Take the integrated 0.5.0 candidate on `main` through [WI-064](../docs/backlog/items/WI-064-arena-lab-dogfood-bootstrap.md)'s
-release flow: exact commit → CI matrix → immutable release → Arena Lab pin. Every producer-side step
-the flow needs is done and recorded; the remaining steps need authorization this repository's
-sessions have not been given (push, publish, edit Arena Lab's maintained branch).
+release flow: exact commit → CI matrix → immutable release → Arena Lab pin. `main` is pushed at
+`2791a21b` and the matrix passed on it (run 34052948336, seven of seven jobs); the remaining steps —
+cut and publish 0.5.0, then pin it in Arena Lab — need authorization this repository's sessions
+have not been given.
 
 ## In progress
 
@@ -29,9 +30,9 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Up next
 
-1. With authorization: push `main`, read the exact-SHA CI matrix, cut and publish 0.5.0 per the
-   `release` module (`changelog.d/0.5.0.md` holds thirteen entries), then open a dedicated Arena Lab item
-   for `upgrade --to 0.5.0`.
+1. With authorization: cut and publish 0.5.0 per the `release` module (`changelog.d/0.5.0.md` holds
+   thirteen entries) from a commit the matrix has passed on, then open a dedicated Arena Lab item for
+   `upgrade --to 0.5.0`.
 2. F-058 (the user's row: an interrupted `add` leaves incomplete files without rollback) when `add`
    is next touched; F-056 (a session can name a done item as active) when the session module is.
 3. Delete `integ/feature/WI-091-index-placeholder-rows` if nobody wants the parked merge.
@@ -59,7 +60,8 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Working assumptions
 
-- The CI matrix will pass on the exact SHA; it has not run because nothing is pushed.
+- A docs-only commit on top of `2791a21b` (this handoff) does not change the matrix result; the
+  next push will run it again and the record should be read from that run, not assumed.
 - Arena Lab's `main` at `f4ede793` is still the commit a real adoption would start from; its
   maintained checkout sits on a feature branch with uncommitted work and was only read.
 
