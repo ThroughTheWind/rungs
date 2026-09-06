@@ -31,6 +31,8 @@ const packageVersion = packageJson.version as string;
 // Written in the same session as the publish, which is runbook §6's last step for a measured
 // reason: this constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
 // "0.1.3 · npm publication pending" above a version anyone could already install.
+// Re-verified 2026-09-07 while preparing 0.5.0: `npm view @rungs/cli dist-tags` → `{ latest: '0.4.0' }`,
+// which is what makes 0.5.0 render as pending below rather than as the published latest.
 const publishedVersion = "0.4.0";
 const publishedDate = "2026-09-05";
 
@@ -54,6 +56,27 @@ const status = (v: string) =>
       : "npm publication pending";
 
 const releases = [
+  {
+    version: "0.5.0",
+    date: "2026-09-07",
+    kind: "minor",
+    entries: [
+      ["added", "eject keeps its promise: the ejected runner is one esbuild bundle carrying every engine and runtime dependency, gate tables are frozen as substituted JSON beside the raw module metadata, and .ai/rungs.mjs becomes a local forwarder — node .ai/rungs.mjs check runs with no npm, no package and no rungs checkout, with the same tiers, output, ledger and exit codes. A repeat eject is byte-idempotent; an edited launcher or a foreign .rungs/ refuses before anything is written."],
+      ["added", "The shell-safety hook reaches consumers: instructions-shell-backticks has an engine, a dispatch command (rungs hook <gate-id>: exit 2 blocks, 0 permits, 1 never blocks) and a delivery path — one PreToolUse entry merged into .claude/settings.json naming the pinned launcher for the claude harness, a degradation row in .ai/render-report.md for every other, and the hook retained after ejection (ADR-0010)."],
+      ["added", "Instruction diagnostics, built the way the oracle allows: instructions-imperatives is an explain-only evidence surface (surface = \"explain\") listing every line that states a rule with no verdict on enforcement (ADR-0011), shaped by a hand-classified oracle and measured at 0% false positives on four repositories and 15.6% on the fifth; instructions-stale-commands is a real gate checking npm-script and rungs-command references against the surfaces that define them."],
+      ["added", "fast_budget_ms is finally read: ledger rows carry ADR-0005's full schema (run id and tier beside date, id, status, wall-clock and examined count) and doctor reports the fast tier's observed serial wall-clock over the last ten runs beside the declared budget — a measurement, never a verdict."],
+      ["added", "An interrupted install is visible and completable: add and init journal under .ai/ before the first write, write every module file atomically, and clear the journal only after the record and renderings are saved; a retry of the same modules finishes it and keeps the files the interrupted run created as rungs-owned, a different module set is refused until then, and doctor reports the in-flight install."],
+      ["fixed", "Every shipped self-test fixture executes through its real engine, and an engine that throws on its own fixture is a gate failure, not a coverage gap. Running them implemented the table rules nothing had read (sections when and required_subsections, frontmatter field_shape, register requires_note, population exempt_marker and similarity, register-row ids, index currency and never-rendered detection) and surfaced three shipped defects: a reasonless exemption marker that exempted anyway, a findings-closure row pattern that matched no real row, and two gates sharing one table entry."],
+      ["fixed", "worktrees never calls an unreadable tree prunable: a worktree whose status cannot be read is listed as status UNKNOWN with Git's reason and withheld from the prunable count."],
+      ["fixed", "A fresh decision index passes its own gate: adr-index-current no longer counts the template's placeholder row as a record, render emits the same placeholder for zero sources, and the shipped template is byte for byte what render writes. Found by a disposable Arena Lab canary, which failed 1 of 24 gates on an untouched scaffold (adr 1.2.1)."],
+      ["fixed", "The eject summary names every retained command — it said only check survived one release after hook did too."],
+      ["fixed", "add after init extends the install record instead of rewriting it with that run's modules, so doctor, upgrade and eject keep seeing everything that was installed; the packed journey now runs add after init."],
+      ["fixed", "check [path] [tier] is one grammar on the CLI and the ejected runner: a lone positional that is not an existing directory is the tier, an unknown tier is reported as one, and the ejected runner refuses a path that is not its own repository."],
+      ["fixed", "A failing assertion can no longer take the machine down: every test file imports a guarded assert that refuses to diff two large differing values, the tests-guard-large-equality gate holds that import and a heap cap on the test script, and npm test runs files serially under it."],
+      ["fixed", "The repository's private inline-interpreter hook stops blocking honest multi-line commands: it judges the interpreter's own argument segment only and ignores heredoc bodies that feed no interpreter (private to this repository, not a shipped module)."],
+      ["fixed", "design-sync no longer ships a gate that checks nothing: design-mirror-not-edited, which declared a detection no engine implements and a command that never existed, is retired; module-commands-exist now reads generated_by values as command claims (design-sync 1.1.0)."],
+    ],
+  },
   {
     version: "0.4.0",
     date: "2026-09-05",
@@ -169,7 +192,7 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
       title="Versions & changelog"
       fields={[
         { label: "Latest", value: `${publishedVersion} · published ${publishedDate}` },
-        { label: "Next", value: pending ? `${packageVersion} · prepared, not yet published` : "candidate/0.4.1 open · nothing pending" },
+        { label: "Next", value: pending ? `${packageVersion} · prepared, not yet published` : "nothing pending · fragments accumulate in changelog.d/" },
         { label: "Updated", value: SITE.asOf },
       ]}
     />
@@ -210,9 +233,10 @@ const modules = SITE.modules.map((m) => [m.name, m.version] as const);
           <span class="next-label">Nothing pending</span>
           <p>
             <code>v{publishedVersion}</code> is tagged, deployable from <code>release/{publishedVersion}</code>, and on npm as <code>latest</code>. Work for the
-            next release lands on <code>candidate/0.4.1</code>, and the version it becomes is
+            next release lands on <code>main</code> through <code>rungs land</code>, and the version it becomes is
             decided from the fragments in <code>changelog.d/</code> at cut time — not from this
-            sentence, and not from the branch name.
+            sentence, and not from a branch name. (This sentence used to name a candidate branch;
+            every candidate so far drifted tens of commits behind <code>main</code> with nothing on it.)
           </p>
         </div>
       )}

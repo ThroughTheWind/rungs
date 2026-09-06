@@ -1,6 +1,6 @@
 {
   "name": "@rungs/site",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "The rungs web surfaces: landing, wiki, contribute. Static Astro; the wiki is generated from the repo's own docs/.",
   "type": "module",

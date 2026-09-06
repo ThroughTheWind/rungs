@@ -32,9 +32,10 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Up next
 
-1. With authorization: cut and publish 0.5.0 per the `release` module (`changelog.d/0.5.0.md` holds
-   thirteen entries) from a commit the matrix has passed on, then open a dedicated Arena Lab item for
-   `upgrade --to 0.5.0`.
+1. With authorization: the irreversible half of the 0.5.0 cut — WI-099 prepared it (fragment consumed
+   into the versions page, boundary and both manifests at 0.5.0): green CI on the exact prepared
+   commit, `npm whoami`, annotated tag, the deploy branch for 0.5.0, `npm publish`; then a dedicated
+   Arena Lab item for `upgrade --to 0.5.0`.
 2. F-056 (a session can name a done item as active) when the session module is next touched.
 3. Delete `integ/feature/WI-091-index-placeholder-rows` if nobody wants the parked merge.
 4. Bump `actions/checkout` and `actions/setup-node` past v4 when the workflow is next touched; GitHub
@@ -72,7 +73,7 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Open questions
 
-- None blocking. The 0.5.0 fragment now holds fourteen entries; cutting it is a release decision.
+- None blocking. 0.5.0 is prepared and not published; cutting it is a release decision.
 
 ## Archive
 
