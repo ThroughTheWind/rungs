@@ -16,9 +16,7 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-035](items/WI-035-public-release.md) | Prepare and execute the public rungs release | chore | — |
-| [WI-060](items/WI-060-release-0.2.0.md) | Prepare the v0.2.0 release and close the release-integrity findings it surfaced | chore | `feature/WI-060-release-0.2.0` |
-| [WI-062](items/WI-062-concurrency-phantom-commands.md) | Decide what the concurrency module is — four commands, or the manual protocol it actually documents | chore | `feature/WI-062-concurrency-loop` |
+| — | | | |
 
 ## Planned
 
