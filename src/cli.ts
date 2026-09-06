@@ -13,7 +13,16 @@ import { explain, IN_SCOPE as EXPLAINABLE } from './explain.ts';
 import { applyArchive, planArchive, resolveArchiveTree } from './backlog.ts';
 import { land, preflight, sessionStart, worktrees } from './concurrency.ts';
 import { hookRenderEntries, HookRefusal, hookVerdict, preflightHooks, registerHooks } from './hooks.ts';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+
+/** `check [path] [tier]`: a positional is a path only if it is a directory that exists (WI-094). */
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
 import type { DetectResult, Manifest } from './types.ts';
 import { UnsafeEmittedPathError } from './emitted-path.ts';
 import { COMMANDS, FLAGS } from './help.ts';
@@ -1078,8 +1087,15 @@ switch (cmd) {
     process.exit(cmdBacklogArchive(resolve(args[1] ?? process.cwd()), flags.has('--dry-run')));
   }
   case 'check': {
-    const tier = args[1] ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
-    process.exit(cmdCheck(resolve(args[0] ?? process.cwd()), tier, STAMP));
+    // F-063 / WI-094: `check [path] [tier]` on both launcher surfaces. A lone positional that is
+    // not an existing directory and carries no separator is the tier, so `check full` through the
+    // pinned npm launcher means what it means after ejection — not "no gates registered" for a
+    // repository named `full`. An unknown tier is then reported as one by `checkCommand`.
+    const [first, second] = args;
+    const firstIsPath = first !== undefined && (second !== undefined || /[\\/]/.test(first) || isDirectory(resolve(first)));
+    const root = firstIsPath ? resolve(first) : process.cwd();
+    const tier = (firstIsPath ? second : first) ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
+    process.exit(cmdCheck(root, tier, STAMP));
   }
   case 'init': {
     const profile = args[1] ?? 'tracked';

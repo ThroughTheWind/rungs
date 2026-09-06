@@ -17,8 +17,8 @@
  * imported five source files whose own imports were never copied, so it could
  * not load; a promise kept by a file that crashes is not kept.
  */
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setEjectedRoots } from './ejected.ts';
 import { checkCommand, isFrozenGate, loadRegistry, loadTable } from './check.ts';
@@ -62,7 +62,7 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
     [
       `rungs ejected runner (from @rungs/cli ${manifest.rungsVersion}, ejected ${manifest.ejectedOn})`,
       '',
-      '  node .rungs/run-gate.mjs check [tier]     run every registered gate, or one tier',
+      '  node .rungs/run-gate.mjs check [path] [tier]   run every registered gate, or one tier (path: this repo)',
       '  node .rungs/run-gate.mjs <gate-id>        run one converted gate; exit 1 if it fires',
       '',
       `  ${manifest.gates.length} converted gate(s): ${manifest.gates.join(' ')}`,
@@ -76,7 +76,27 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
 if (command === 'check') {
   const flags = new Set(args.slice(1).filter((a) => a.startsWith('--')));
   const positional = args.slice(1).filter((a) => !a.startsWith('--'));
-  const tier = positional[0] ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
+  // F-063 / WI-094: the CLI's `check [path] [tier]` grammar, so the launcher command a consumer
+  // learned before ejection means the same thing after it. This runner checks the repository it
+  // lives in and nothing else, so a path that is not that repository is refused, not silently
+  // re-rooted.
+  const isDirectory = (p: string) => {
+    try {
+      return statSync(p).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  const [first, second] = positional;
+  const firstIsPath = first !== undefined && (second !== undefined || /[\\/]/.test(first) || isDirectory(resolve(first)));
+  if (firstIsPath) {
+    const same = isDirectory(resolve(first)) && realpathSync(resolve(first)) === realpathSync(root);
+    if (!same) {
+      console.error(`rungs (ejected): this runner checks ${root} only — run it from that repository, or pass its path.`);
+      process.exit(1);
+    }
+  }
+  const tier = (firstIsPath ? second : first) ?? (flags.has('--full') ? 'full' : flags.has('--fast') ? 'fast' : undefined);
   const stamp = process.env.RUNGS_DATE ?? new Date().toISOString().slice(0, 10);
   process.exit(checkCommand(root, tier, stamp, { ejected: true }));
 }
