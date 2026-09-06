@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -9,6 +9,7 @@ import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadRegistry } from './check.ts';
 import { preflightEmittedPaths, resolveEmittedPath, UnsafeEmittedPathError } from './emitted-path.ts';
 import { semanticText } from './text.ts';
+import { EJECTED_RUNNER, ejectedCommandFor, frozenTableName, isEjectedCommand } from './ejected.ts';
 
 const SRC = dirname(fileURLToPath(import.meta.url));
 
@@ -261,6 +262,27 @@ function paramsFrom(record: InstallRecord): Params {
   return out;
 }
 
+// ── eject ────────────────────────────────────────────────────────────────────
+
+/** A refused eject. Nothing has been written when this is thrown. */
+export class EjectRefusal extends Error {}
+
+export interface EjectResult {
+  /** One line per destination: `create`, `rewrite` or `unchanged`, then the path. */
+  actions: string[];
+  /** Declared gates converted to `command` gates. */
+  gates: number;
+  /** True when a repeat found every destination already byte-identical. */
+  unchanged: boolean;
+}
+
+/** Commands the ejected launcher still forwards. Everything else Rungs did is gone after ejection. */
+export const EJECTED_RETAINED = ['check'];
+
+const EJECT_TRAILER = '# Ejected: gates above run from .rungs/ and no longer need rungs installed.';
+const EJECTED_LAUNCHER_MARKER = 'rungs ejected launcher';
+const EJECT_GENERATOR = 'rungs eject';
+
 /**
  * ADR-0002's promised exit. Materialises the engines and their tables into the
  * repo and rewrites every declared gate to a `command` gate that runs them.
@@ -268,106 +290,307 @@ function paramsFrom(record: InstallRecord): Params {
  * This is a stated obligation, not a nicety: a tool whose checks disappear when
  * you uninstall it is one nobody should adopt, and promising the exit is what
  * makes the no-scripts-in-your-repo default acceptable.
+ *
+ * What goes into `.rungs/`, and why each piece (WI-077, closing F-042 and F-045):
+ *
+ * - `run-gate.mjs` — the runner esbuild bundled with every engine and every
+ *   runtime dependency. The first version copied five source files whose own
+ *   imports were never copied, so the "exit" crashed on `smol-toml`.
+ * - `tables/<module>-<table>.json` — each gate table substituted with the
+ *   parameters this repo installed, then frozen. Ejection removes the parameter
+ *   source, so re-substituting later is impossible; freezing is the honest form.
+ * - `modules/<name>/module.toml`, `modules/<name>/gates/*.toml` — raw metadata
+ *   for the gates that read the module set: the self-test meta-gate and the
+ *   skill-extension ownership check. Without it both passed on an empty set.
+ * - `ejected.json` — which version froze what, and when.
+ *
+ * And outside it: every declared gate in `.ai/gates.toml` becomes the exact
+ * command `node .rungs/run-gate.mjs <id>`, and `.ai/rungs.mjs` — the launcher
+ * every local instruction and generated workflow already calls — becomes a
+ * local forwarder that runs the bundle with `process.execPath`. The old
+ * launcher kept invoking the pinned npm package, so `check` in CI still needed
+ * the thing the repo had just left (F-045).
+ *
+ * Every byte is computed and every destination validated before the first
+ * write, and a repeat produces identical bytes: the ejected registry is
+ * recognised, not re-converted, so nothing is appended twice.
  */
-export function eject(repoRoot: string, mods: Manifest[], dryRun = false) {
-  const dest = join(repoRoot, '.rungs');
-  // Only what the runner actually needs, and nothing that imports a package.
-  // The first version copied `check.ts` and `manifest.ts` too, which pull in the
-  // TOML parser — so an ejected repo crashed on a module it could not resolve.
-  // An exit that does not work is not an exit.
-  const engines = ['glob.ts', 'text.ts', 'engine-table.ts', 'engines.ts', 'engines2.ts'];
+export function eject(
+  repoRoot: string,
+  mods: Manifest[],
+  dryRun = false,
+  stamp = new Date().toISOString().slice(0, 10),
+): EjectResult {
+  const registryPath = resolveEmittedPath(repoRoot, 'rungs', '.ai/gates.toml').absolute;
+  if (!existsSync(registryPath)) throw new EjectRefusal('no .ai/gates.toml here — nothing to eject');
+  const original = readFileSync(registryPath, 'utf8');
   const { gates } = loadRegistry(repoRoot);
-  const declared = gates.filter((g) => g.kind === 'declared' && g.table);
-  const tables = [...new Set(declared.map((g) => g.table!))];
 
-  const actions: string[] = [];
-  for (const f of engines) actions.push(`.rungs/${f}`);
-  for (const t of tables) actions.push(`.rungs/tables/${t.replace('/', '-').replace(/.toml$/, '.json')}`);
-  actions.push('.rungs/run-gate.mjs', '.ai/gates.toml (rewritten to command gates)');
+  // Every gate with an engine and a table is frozen; the ones the runner
+  // executes are also converted. A hook keeps `kind = "declared"`: the runner
+  // skips it by its trigger, and its frozen table stays available for dispatch.
+  const frozen = gates.filter((g) => g.engine && g.table);
+  const convertible = frozen.filter((g) => !g.trigger && (g.kind === 'declared' || isEjectedCommand(g.id, g.command)));
+  if (!frozen.length) throw new EjectRefusal('no declared gates in .ai/gates.toml — nothing to eject');
 
-  if (dryRun) return { actions, gates: declared.length };
+  const bundlePath = join(SRC, '..', 'dist', 'ejected-runner.mjs');
+  if (!existsSync(bundlePath)) {
+    throw new EjectRefusal(
+      `the bundled runner is missing at ${bundlePath}; build the package first (npm run build). ` +
+        'Eject never copies loose sources: a runner with imports left to resolve cannot load (F-042)',
+    );
+  }
+  const outputs = new Map<string, Buffer | string>();
+  outputs.set(EJECTED_RUNNER, readFileSync(bundlePath));
 
-  mkdirSync(join(dest, 'tables'), { recursive: true });
-  for (const f of engines) copyFileSync(join(SRC, f), join(dest, f));
-
-  // Tables are **converted to JSON at eject time**, parsed here with the parser
-  // this CLI already has. The ejected repo then needs no TOML dependency at all
-  // — which is the same promise ADR-0002 makes about installation, kept on the
-  // way out. Parameters are substituted now, for the same reason.
   const record = readRecord(repoRoot);
   const params = resolveParams(mods, record ? paramsFrom(record) : {}, repoRoot);
-  for (const t of tables) {
-    const [mod, file] = t.split('/');
-    const src = join(SRC, '..', 'modules', mod, 'gates', file);
-    if (!existsSync(src)) continue;
+  const version = String(params.rungs?.version ?? '');
+  const modulesDir = join(SRC, '..', 'modules');
+
+  const tableRefs = [...new Set(frozen.map((g) => g.table!))].sort();
+  for (const ref of tableRefs) {
+    const [mod, file] = ref.split('/');
+    const src = join(modulesDir, mod, 'gates', file);
+    if (!existsSync(src)) {
+      throw new EjectRefusal(`gate table '${ref}' is not in this Rungs version's module set, so its gates cannot be frozen`);
+    }
+    let parsed: unknown;
     try {
-      const parsed = parse(substitute(readFileSync(src, 'utf8'), mod, params));
-      writeFileSync(join(dest, 'tables', `${mod}-${file.replace(/\.toml$/, '.json')}`), JSON.stringify(parsed, null, 2));
-    } catch {
-      /* an unparseable table is dropped, and its gate will say so when run */
+      parsed = parse(substitute(readFileSync(src, 'utf8'), mod, params));
+    } catch (error: any) {
+      throw new EjectRefusal(`gate table '${ref}' does not parse after substitution: ${error?.message ?? error}`);
+    }
+    outputs.set(`.rungs/tables/${frozenTableName(ref)}`, `${JSON.stringify(parsed, null, 2)}\n`);
+  }
+
+  // Raw metadata for every installed module plus the owner of each frozen table
+  // (a repo may register a module's gates by hand without installing it).
+  const moduleNames = [...new Set([...Object.keys(record?.modules ?? {}), ...tableRefs.map((r) => r.split('/')[0])])].sort();
+  const materialized: string[] = [];
+  for (const name of moduleNames) {
+    const dir = join(modulesDir, name);
+    if (!existsSync(join(dir, 'module.toml'))) continue;
+    materialized.push(name);
+    outputs.set(`.rungs/modules/${name}/module.toml`, readFileSync(join(dir, 'module.toml')));
+    const gatesDir = join(dir, 'gates');
+    if (!existsSync(gatesDir)) continue;
+    for (const f of readdirSync(gatesDir).filter((x) => x.endsWith('.toml')).sort()) {
+      outputs.set(`.rungs/modules/${name}/gates/${f}`, readFileSync(join(gatesDir, f)));
     }
   }
 
-  writeFileSync(join(dest, 'run-gate.mjs'), RUNNER);
-  writeFileSync(join(dest, 'README.md'), EJECT_README);
-
-  const registry = join(repoRoot, '.ai', 'gates.toml');
-  let text = readFileSync(registry, 'utf8');
-  for (const g of declared) {
-    text = text.replace(
-      new RegExp(`(id\\s*=\\s*"${g.id}"[\\s\\S]*?)kind\\s*=\\s*"declared"`),
-      `$1kind   = "command"\ncommand = "node .rungs/run-gate.mjs ${g.id}"`,
-    );
+  // A prior ejection is ours to refresh; anything else under `.rungs/` is not.
+  const rungsDir = join(repoRoot, '.rungs');
+  let prior: any = null;
+  const priorMeta = join(rungsDir, 'ejected.json');
+  if (existsSync(priorMeta)) {
+    try {
+      prior = JSON.parse(readFileSync(priorMeta, 'utf8'));
+    } catch {
+      prior = null;
+    }
+    if (prior?.generator !== EJECT_GENERATOR) prior = null;
   }
-  writeFileSync(registry, `${text}\n# Ejected: gates above run from .rungs/ and no longer need rungs installed.\n`);
-  return { actions, gates: declared.length };
+  if (existsSync(rungsDir) && !prior) {
+    throw new EjectRefusal('.rungs/ already exists and was not written by `rungs eject` (no readable .rungs/ejected.json) — move it aside first');
+  }
+  const ejectedOn = typeof prior?.ejectedOn === 'string' ? prior.ejectedOn : stamp;
+
+  outputs.set(
+    '.rungs/ejected.json',
+    `${JSON.stringify(
+      {
+        generator: EJECT_GENERATOR,
+        rungsVersion: version,
+        ejectedOn,
+        retained: EJECTED_RETAINED,
+        gates: convertible.map((g) => g.id),
+        frozenTables: tableRefs,
+        modules: materialized,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  outputs.set('.rungs/README.md', ejectReadme(version));
+  outputs.set('.ai/gates.toml', ejectRegistry(original, new Set(convertible.map((g) => g.id))));
+
+  // The launcher is replaced only when it is still the one rungs wrote — the
+  // same rule `upgrade` applies. An edited launcher is the consumer's, and a
+  // consumer's file is never overwritten (ADR-0004).
+  const launcherPath = resolveEmittedPath(repoRoot, 'instructions', '.ai/rungs.mjs').absolute;
+  if (existsSync(launcherPath)) {
+    const current = readFileSync(launcherPath, 'utf8');
+    const recorded = record?.modules.instructions?.hashes?.['.ai/rungs.mjs'];
+    const managed = recorded !== undefined && contentHash(current) === recorded;
+    if (!managed && !current.includes(EJECTED_LAUNCHER_MARKER)) {
+      throw new EjectRefusal(
+        '.ai/rungs.mjs has been edited since rungs wrote it (its hash no longer matches .ai/rungs.toml), so eject will not replace it — ' +
+          'restore the managed launcher or remove the file, then retry',
+      );
+    }
+  }
+  outputs.set('.ai/rungs.mjs', ejectedLauncher());
+
+  // WI-073: the whole operation is validated before the first write.
+  const targets = [...outputs.keys()];
+  const resolved = preflightEmittedPaths(
+    repoRoot,
+    targets.map((target) => ({ moduleName: 'rungs eject', target, writeExisting: true, shared: target === '.ai/gates.toml' })),
+  );
+  const normalise = (bytes: Buffer) => bytes.toString('utf8').replace(/\r\n|\r/g, '\n');
+  const plan = targets.map((target, i) => {
+    const next = outputs.get(target)!;
+    const nextBytes = Buffer.isBuffer(next) ? next : Buffer.from(next);
+    const absolute = resolved[i].absolute;
+    const exists = existsSync(absolute);
+    // Byte-identical after newline normalisation is unchanged: a CRLF checkout
+    // must not be rewritten to LF on every repeat (WI-082's rule, kept here).
+    const same = exists && normalise(readFileSync(absolute)) === normalise(nextBytes);
+    return { target, absolute, nextBytes, action: same ? 'unchanged' : exists ? 'rewrite' : 'create' };
+  });
+  const actions = plan.map((p) => `${p.action.padEnd(9)} ${p.target}`);
+  const unchanged = plan.every((p) => p.action === 'unchanged');
+  if (dryRun) return { actions, gates: convertible.length, unchanged };
+
+  for (const p of plan) {
+    if (p.action === 'unchanged') continue;
+    mkdirSync(dirname(p.absolute), { recursive: true });
+    writeFileSync(p.absolute, p.nextBytes);
+  }
+  return { actions, gates: convertible.length, unchanged };
 }
 
-const RUNNER = `#!/usr/bin/env node
-// Ejected gate runner. Runs one declared gate from the tables in ./tables/.
-// Self-contained: this repo no longer needs rungs installed to run its gates.
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { ENGINES } from './engines.ts';
-import { selectEngineTable } from './engine-table.ts';
-import { walk } from './glob.ts';
+/**
+ * Rewrite the registry so each converted gate is the exact ejected command,
+ * preserving every other byte and the file's own line endings. Block-wise,
+ * because the first version matched lazily from `id = …` to the next
+ * `kind = "declared"` — which, on a block already converted, ran into the
+ * following block and converted the wrong gate.
+ */
+export function ejectRegistry(text: string, convert: ReadonlySet<string>): string {
+  const newline = text.match(/\r\n|\r|\n/)?.[0] ?? '\n';
+  const lines = text.split(/\r\n|\r|\n/);
+  const out: string[] = [];
+  let block: string[] | null = null;
 
-const here = dirname(fileURLToPath(import.meta.url));
-const root = join(here, '..');
-const id = process.argv[2];
-const registry = readFileSync(join(root, '.ai', 'gates.toml'), 'utf8');
-const entry = registry.split('[[gates]]').find((b) => b.includes(\`id      = "\${id}"\`) || b.includes(\`id     = "\${id}"\`));
-if (!entry) { console.error(\`unknown gate \${id}\`); process.exit(2); }
+  const flush = () => {
+    if (!block) return;
+    const id = block.map((l) => /^\s*id\s*=\s*"([^"]+)"/.exec(l)?.[1]).find(Boolean);
+    if (id && convert.has(id)) {
+      const converted: string[] = [];
+      for (const line of block) {
+        if (/^\s*kind\s*=\s*"declared"\s*$/.test(line)) {
+          converted.push(line.replace(/kind\s*=\s*"declared"/, 'kind   = "command"'));
+          converted.push(`command = "${ejectedCommandFor(id)}"`);
+        } else {
+          converted.push(line);
+        }
+      }
+      out.push(...converted);
+    } else {
+      out.push(...block);
+    }
+    block = null;
+  };
 
-const engine = entry.match(/^engine\\s*=\\s*"(.+)"/m)?.[1];
-const table = entry.match(/^table\\s*=\\s*"(.+)"/m)?.[1];
-if (!engine || !ENGINES[engine]) { console.error(\`gate \${id}: engine '\${engine}' unavailable\`); process.exit(2); }
+  for (const line of lines) {
+    if (/^\s*\[\[gates\]\]\s*$/.test(line)) {
+      flush();
+      block = [line];
+      continue;
+    }
+    // Any other table header ends the gate entry; a comment or blank line does not.
+    if (block && /^\s*\[/.test(line)) flush();
+    if (block) block.push(line);
+    else out.push(line);
+  }
+  flush();
 
-// Tables were converted to JSON when this was ejected, so nothing here needs a
-// TOML parser — or any dependency at all beyond Node itself.
-const raw = JSON.parse(readFileSync(join(here, 'tables', table.replace('/', '-').replace(/\\.toml$/, '.json')), 'utf8'));
-const section = selectEngineTable(raw, engine, id);
-const r = ENGINES[engine](section, root, walk(root));
-for (const f of r.findings) console.error(\`  \${f.file ? f.file + ': ' : ''}\${f.message}\`);
-process.exit(r.findings.length ? 1 : 0);
+  let result = out.join(newline);
+  if (!result.includes(EJECT_TRAILER)) {
+    result = `${result.replace(/(\r\n|\r|\n)+$/, '')}${newline}${EJECT_TRAILER}${newline}`;
+  }
+  return result;
+}
+
+function ejectedLauncher(): string {
+  const retained = EJECTED_RETAINED.map((cmd) => `'${cmd}'`).join(', ');
+  return [
+    `// ${EJECTED_LAUNCHER_MARKER} — written by \`rungs eject\`. This repository no longer depends on the`,
+    '// package rungs was installed from. The retained commands run .rungs/run-gate.mjs with this Node',
+    '// (process.execPath): no package manager, no PATH lookup, no package. Everything else Rungs did is',
+    '// gone until you re-adopt it — see .rungs/README.md.',
+    "import { spawnSync } from 'node:child_process';",
+    "import { dirname, join } from 'node:path';",
+    "import { fileURLToPath } from 'node:url';",
+    '',
+    'const here = dirname(fileURLToPath(import.meta.url));',
+    `const runner = join(here, '..', '.rungs', 'run-gate.mjs');`,
+    `const retained = [${retained}];`,
+    'const [command, ...rest] = process.argv.slice(2);',
+    '',
+    'if (!command || !retained.includes(command)) {',
+    '  console.error(',
+    "    `rungs launcher (ejected): '${command ?? ''}' is not available here. This repository ejected from Rungs; ` +",
+    "      `what remains is ${retained.join(' and ')}, running from .rungs/. To re-adopt Rungs, follow .rungs/README.md.`,",
+    '  );',
+    '  process.exit(1);',
+    '}',
+    '',
+    "const child = spawnSync(process.execPath, [runner, command, ...rest], { stdio: 'inherit', windowsHide: true });",
+    'if (child.error) {',
+    '  console.error(`rungs launcher (ejected): ${child.error.message}`);',
+    '  process.exit(1);',
+    '}',
+    'process.exit(child.status ?? 1);',
+    '',
+  ].join('\n');
+}
+
+function ejectReadme(version: string): string {
+  return `# .rungs — ejected from @rungs/cli ${version}
+
+The gate engines, their frozen tables and the module metadata they read, materialised into this
+repository by \`rungs eject\`. Every declared gate in \`.ai/gates.toml\` is now a \`command\` gate
+pointing at \`run-gate.mjs\`, and \`.ai/rungs.mjs\` runs that file with your own Node — so **this
+repository no longer needs the rungs package, npm access, or a rungs checkout to run its checks**.
+
+## What still works
+
+- \`node .ai/rungs.mjs check [tier]\` — every registered gate, with the same tiers, output, ledger
+  and exit code as before ejection. Local instructions and the generated CI workflow already call
+  this, so neither changes.
+- \`node .rungs/run-gate.mjs <gate-id>\` — one converted gate on its own; findings on stderr, exit 1
+  when it fires.
+- Your own \`command\` gates run exactly as they did. They never depended on rungs.
+
+## What is gone
+
+\`add\`, \`upgrade\`, \`render\`, \`doctor\`, \`backlog archive\`, \`setup git\` and the concurrency
+commands. Rendered rules and generated blocks are no longer regenerated, the registry no longer
+receives module updates, and engine fixes stop arriving with a version bump. These files are yours
+now, including their bugs.
+
+## What is here
+
+| Path | Contents |
+| --- | --- |
+| \`run-gate.mjs\` | The runner, bundled with every engine and every dependency it needs |
+| \`tables/*.json\` | Each gate table, substituted with the parameters this repo had installed, then frozen |
+| \`modules/<name>/\` | Raw \`module.toml\` and gate tables the self-test meta-gate and skill-extension check read |
+| \`ejected.json\` | Which version froze what, and when |
+
+## To re-adopt rungs
+
+1. Delete \`.rungs/\` and \`.ai/rungs.mjs\`.
+2. Run the exact version you want: \`npx @rungs/cli@<version> upgrade --apply\`. It restores the pinned
+   launcher and re-registers every installed module's gate block as declared gates.
+3. A gate you registered by hand outside a module block keeps its \`command\` form: set its \`kind\`
+   back to \`"declared"\` and delete its \`command\` line.
 `;
-
-const EJECT_README = `# .rungs — ejected
-
-The gate engines and tables, materialised into this repo. Every gate in
-\`.ai/gates.toml\` now runs as a \`command\` gate pointing here, so **this repo no
-longer needs rungs installed** to run its checks.
-
-What you gave up: engine fixes no longer arrive with a CLI version bump. These
-files are yours now, including their bugs.
-
-What you kept: every gate, every table, and the reason each one exists — the
-\`why\` field travelled with the registry entry, so a gate can still explain
-itself to whoever finds it.
-
-To go back, delete this directory and re-run \`rungs add\`.
-`;
+}
 
 /**
  * Install the merge drivers `.gitattributes` names, and turn on rerere.

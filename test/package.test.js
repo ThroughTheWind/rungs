@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -451,6 +452,10 @@ test('a packed candidate retrofits an existing repository without taking over it
     );
     assert.equal(packedCandidate.name, '@rungs/cli');
     assert.equal(packedCandidate.version, manifest.version);
+    assert.ok(
+      packedCandidate.files.some((file) => file.path === 'dist/ejected-runner.mjs'),
+      'the tarball carries the bundled ejected runner (WI-077)',
+    );
     const candidateTarball = join(packRoot, packedCandidate.filename);
     const candidateIntegrity = `sha512-${createHash('sha512').update(readFileSync(candidateTarball)).digest('base64')}`;
     assert.equal(candidateIntegrity, packedCandidate.integrity, 'the candidate bytes must match npm\'s integrity');
@@ -821,6 +826,65 @@ test('a packed candidate retrofits an existing repository without taking over it
     verifyCrlfNoop('origin-only feature');
     expectOk(runGit(crlfConsumer, ['switch', '-q', '--detach', adoptedCommit]), 'detach fresh CRLF checkout');
     verifyCrlfNoop('detached');
+
+    // WI-077 (F-042, F-045). Eject with the packed candidate, commit the result, then take the
+    // package away — the isolated prefix renamed, no npm entry point, an empty offline cache — and
+    // prove the committed surface still runs every gate from the consumer's own files and this Node.
+    // What this does not prove: that `node` itself is absent from PATH. The repository's own
+    // command gates legitimately need the runtimes they invoke, so PATH keeps the Node directory.
+    const ejected = expectOk(candidate('eject', consumer), 'packed eject');
+    assert.match(withoutAnsi(ejected.stdout), /declared gate\(s\) rewritten as commands/);
+    const ejectedLauncher = readFileSync(join(consumer, '.ai', 'rungs.mjs'), 'utf8');
+    assert.doesNotMatch(ejectedLauncher, /@rungs\/cli|npm/, 'the ejected launcher names no package and no package manager');
+    // Compared as digests: an equality failure on two 186 KB strings makes the
+    // assertion library build a diff that runs for minutes and exhausts memory.
+    const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
+    assert.equal(
+      sha256(join(consumer, '.rungs', 'run-gate.mjs')),
+      sha256(join(installedPackageRoot, 'dist', 'ejected-runner.mjs')),
+      'the ejected runner is the artifact the package shipped, byte for byte',
+    );
+    assert.equal(readFileSync(join(consumer, '.github', 'scripts', 'check-existing.mjs'), 'utf8'), existing.get('.github/scripts/check-existing.mjs'));
+    expectOk(runGit(consumer, ['add', '--all']), 'stage ejection');
+    expectOk(
+      runGit(consumer, ['-c', 'user.name=rungs-test', '-c', 'user.email=rungs@localhost', 'commit', '-q', '-m', 'eject from rungs']),
+      'commit ejection',
+    );
+    const removedPrefix = `${toolRoot}-removed`;
+    renameSync(toolRoot, removedPrefix);
+    assert.equal(existsSync(installedPackageRoot), false, 'the installed package is gone');
+    const packageFree = {
+      ...isolatedEnv,
+      npm_execpath: '',
+      npm_config_cache: join(temporaryRoot, 'empty-cache'),
+      npm_config_offline: 'true',
+    };
+    const directGate = spawnSync(process.execPath, [join(consumer, '.rungs', 'run-gate.mjs'), 'instructions-core-size'], {
+      cwd: consumer,
+      encoding: 'utf8',
+      env: packageFree,
+    });
+    assert.equal(directGate.status, 0, directGate.stderr);
+    const aggregate = spawnSync(process.execPath, [join(consumer, '.ai', 'rungs.mjs'), 'check', 'full'], {
+      cwd: consumer,
+      encoding: 'utf8',
+      env: packageFree,
+    });
+    assert.equal(aggregate.status, 0, combinedOutput(aggregate));
+    const aggregateText = withoutAnsi(aggregate.stdout);
+    assert.match(aggregateText, /pass\s+adopted-check-existing/, 'the repository\'s own command gate still runs');
+    assert.match(aggregateText, /pass\s+backlog-merged-status/);
+    assert.match(aggregateText, /pass\s+gates-self-tests-both-directions\s+\d+ms\s+\d+ examined/, 'the meta-gate examines the frozen gates rather than an empty set');
+    assert.match(aggregateText, /0 fail · 0 unimplemented · 0 error/);
+    const lifecycleGone = spawnSync(process.execPath, [join(consumer, '.ai', 'rungs.mjs'), 'upgrade', '--apply'], {
+      cwd: consumer,
+      encoding: 'utf8',
+      env: packageFree,
+    });
+    assert.equal(lifecycleGone.status, 1);
+    assert.match(lifecycleGone.stderr, /ejected/);
+    assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '', 'ejected checks write nothing tracked');
+    renameSync(removedPrefix, toolRoot);
 
     const resolvedTemporaryRoot = realpathSync(temporaryRoot);
     const resolvedConsumer = realpathSync(consumer);

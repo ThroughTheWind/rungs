@@ -4,13 +4,15 @@ Things noticed while doing something else. **A finding is the observation; a wor
 decision.** Recording one must cost almost nothing, or it will not happen — so a finding is a
 **row**, not a file. Items are files; findings are rows. The asymmetry is deliberate.
 
-<!-- NEXT-ID: F-059 -->
+<!-- NEXT-ID: F-061 -->
 <!-- F-058 is claimed by an uncommitted row that predates the WI-085 programme; the marker skips it. -->
 
 ## Open
 
 | Id | Sev | Pri | What | Evidence | When to act | How to fix |
 | --- | --- | --- | --- | --- | --- | --- |
+| F-059 | high | next | A failing equality assertion on two large values makes the test process build a character-level diff that can run for minutes and exhaust memory, and nothing mechanical prevents a test from doing it | 2026-09-06, WI-077: `assert.equal(readFileSync(runner), bundle.toString())` on a 186 KB artefact ran 221 s then threw `RangeError: Array buffer allocation failed`; the host went down three times before the cause was read from the log; the repair compares digests, with a comment at each site | Before the next test that compares a generated artefact, or if any test run again exceeds a minute for one case | Add a `command` gate or test helper that refuses `assert.equal`/`deepEqual` on values read from files without a digest, and run the suite with a heap cap so a runaway allocation fails the test instead of the machine; a comment at two call sites is rung 1 and this rule has already been broken once |
+| F-060 | low | someday | The repository's private PreToolUse hook blocks a legitimate multi-line shell command when `node` appears anywhere before a `-c` on the same line, such as `node src/cli.ts check … && git -c user.name=x commit …` | 2026-09-06: `.claude/hooks/no-inline-interpreter-scripts.mjs` `INLINE_FLAG` regex `\b(?:node|…)\b[^\n]*\s-{1,2}(?:e|c|…)\b` matched `git -c` after an unrelated `node` on the same line and exited 2; the command was rewritten to avoid the pattern | If the hook blocks a second legitimate command, or before shipping any consumer hook derived from it | Anchor the flag match to the interpreter's own argument list (stop at `&&`, `;`, `\|`) or require the `-e`/`-c` to follow the interpreter token before any other command word |
 | F-056 | medium | next | A session can name a completed work item as active while all session gates pass | At inspected commit `69b6059`, `git show 69b6059:.ai/session.md` names WI-016 in progress; [its archived item](archive/WI-016-extract-openhands.md) is done; [session gate](../../modules/session/gates/session.toml) checks section presence only; WI-084 recorded 30 passing aggregate checks | Before relying on a generated current-work view, or when extending the session module | Add optional explicit active-item references and reconcile their status against the configured local backlog; do not infer staleness from age or score narrative quality; the live handoff is refreshed separately at this session's close |
 
 ## Closed — 2026-09-06 by [WI-085](items/WI-085-existing-promises-remediation.md)
@@ -69,7 +71,7 @@ decision.** Recording one must cost almost nothing, or it will not happen — so
 | --- | --- | --- | --- |
 | F-043 | `change-requires-file` lets an unchanged historical marker exempt unrelated work on every later branch touching that file | promoted | WI-078 scopes the existing substantive same-line escape hatch to marker/reason lines added or modified in the complete current branch/worktree delta, rejects inherited/renamed/copied evidence and preserves deterministic ref and NUL-safe path handling |
 
-## Closed — 2026-09-05 by [WI-077](items/WI-077-standalone-ejected-checks.md)
+## Closed — 2026-09-05 by [WI-077](archive/WI-077-standalone-ejected-checks.md)
 
 | Id | What | Disposition | Reason |
 | --- | --- | --- | --- |

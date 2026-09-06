@@ -134,7 +134,7 @@ reported as diverged and left alone.
 | `rungs check [path]` | Run the gates, record the ledger |
 | `rungs render [path]` | Re-emit path-scoped rules for each harness |
 | `rungs upgrade [path]` | Move to newer module versions, never touching what you edited |
-| `rungs eject [path]` | Materialise the engines; stop depending on rungs |
+| `rungs eject [path]` | Materialise the engines and a local launcher; `check` keeps running without rungs, npm or the package |
 | `rungs setup git [path]` | Install the merge drivers `.gitattributes` names |
 | `rungs modules` | List the set and audit the manifests |
 | `rungs backlog archive` | Move finished items to `archive/`, repointing every link that cites them |

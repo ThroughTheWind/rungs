@@ -24,7 +24,6 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-077](items/WI-077-standalone-ejected-checks.md) | Make ejected checks genuinely package-independent | feature | — |
 | [WI-086](items/WI-086-consumer-hook-delivery.md) | Deliver the declared shell-safety hook to consumers, or report that a harness cannot carry it | feature | — |
 | [WI-087](items/WI-087-executable-self-test-coverage.md) | Make every shipped self-test fixture execute, or state exactly why it cannot | feature | — |
 | [WI-088](items/WI-088-observed-fast-budget-reporting.md) | Report observed fast-tier wall-clock against the declared budget | feature | — |
@@ -49,7 +48,7 @@ completes what the tool already claims.** [WI-084](archive/WI-084-tool-evaluatio
 promises a consumer can read today and not rely on: an `eject` whose runner cannot load, a hook
 declared and never dispatched, fixtures that never execute, accepted detectors with a corpus and no
 engine, a budget parameter nothing reads, and a worktree row that calls an unreadable state clean.
-Five children plus the reused [WI-077](items/WI-077-standalone-ejected-checks.md) and
+Five children plus the reused [WI-077](archive/WI-077-standalone-ejected-checks.md) and
 [WI-061](items/WI-061-imperative-staleness-detection.md); the assessment's new proposals are
 deliberately not among them. Recomputing the fixture inventory before opening anything found what the
 assessment's dated 45 could not: **147 fixtures, 7 of which disagree with their engine**, all seven in

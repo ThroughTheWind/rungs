@@ -5,6 +5,7 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -15,7 +16,7 @@ import {
 } from 'node:fs';
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { hostname, tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { land, parseGitRefFormatOutput, sessionStart, worktrees } from '../src/concurrency.ts';
 
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
@@ -23,12 +24,12 @@ import { addModule, blockedByConflict, blockedByParadigm, contentHash, emittedFi
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { changeRequiresFile, computedClaim, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile, changelogFreshness } from '../src/engines3.ts';
-import { applyUpgrade, eject, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
+import { applyUpgrade, eject, EjectRefusal, planUpgrade, readRecord, updateRecordAfterUpgrade } from '../src/lifecycle.ts';
 import { ENGINES, frontmatterSchema, linkIntegrity } from '../src/engines.ts';
 import { markers, mergeBlock, resolveParams, substitute } from '../src/substitute.ts';
 import { collapseDuplicates, explainWith } from '../src/explain.ts';
 import { runSelfTests } from '../src/selftest.ts';
-import { loadTable, runGates } from '../src/check.ts';
+import { loadTable, runGates, UnknownTierError } from '../src/check.ts';
 import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
 import { readVersionSource } from '../src/version-source.ts';
 import { readRules } from '../src/render.ts';
@@ -1778,12 +1779,21 @@ test('the production runner rejects the equal-version F-025 shape and eject keep
       join(ejectRoot, '.ai', 'gates.toml'),
       '[[gates]]\nid = "release-fragment-current"\nkind = "declared"\nengine = "changelog-freshness"\ntable = "release/release.toml"\n',
     );
-    eject(ejectRoot, loadAllModules(resolve('modules')));
+    eject(ejectRoot, loadAllModules(resolve('modules')), false, '2026-09-06');
+    // WI-077: the runner is the shipped bundle, not a copy of loose sources. It
+    // must resolve nothing outside Node itself, and the frozen table it runs is
+    // the substituted section the production runner selected.
     const runner = readFileSync(join(ejectRoot, '.rungs', 'run-gate.mjs'), 'utf8');
-    assert.match(runner, /import \{ selectEngineTable \} from '\.\/engine-table\.ts'/);
-    assert.match(runner, /selectEngineTable\(raw, engine, id\)/);
-    assert.doesNotMatch(runner, /const KEYS|\?\? raw/);
-    assert.ok(existsSync(join(ejectRoot, '.rungs', 'engine-table.ts')));
+    assert.doesNotMatch(runner, /from '\.\/[a-z-]+\.ts'/, 'the bundle leaves no relative source import to resolve');
+    assert.deepEqual(
+      [...runner.matchAll(/^import .* from "([^"]+)";$/gm)].map((m) => m[1]).filter((spec) => !spec.startsWith('node:')),
+      [],
+      'every remaining import is a Node builtin',
+    );
+    assert.ok(existsSync(join(ejectRoot, '.rungs', 'tables', 'release-release.json')));
+    const frozen = JSON.parse(readFileSync(join(ejectRoot, '.rungs', 'tables', 'release-release.json'), 'utf8'));
+    assert.ok(Array.isArray(frozen.changelog_freshness), 'the frozen table keeps the section the selector needs');
+    assert.match(readFileSync(join(ejectRoot, '.ai', 'gates.toml'), 'utf8'), /command = "node \.rungs\/run-gate\.mjs release-fragment-current"/);
   } finally {
     rmSync(staleRoot, { recursive: true, force: true });
     rmSync(malformedRoot, { recursive: true, force: true });
@@ -4000,6 +4010,199 @@ test('worktrees reports merged-and-dirty, and never removes anything', () => {
     assert.ok(existsSync(wt), 'reporting must never remove the worktree');
   } finally {
     rmSync(wt, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/**
+ * WI-077 (F-042, F-045). ADR-0002 promises that an ejected repo keeps every
+ * check without rungs. The first runner imported five loose source files whose
+ * own imports were never copied, and the launcher every instruction and workflow
+ * called kept invoking the pinned npm package. This runs the shipped bundle from
+ * a consumer with the producer stripped from PATH and no npm entry point, and
+ * requires the ejected surface to agree with the production runner gate by gate.
+ */
+function stripProducer(root) {
+  return (process.env.PATH ?? '')
+    .split(delimiter)
+    .filter((p) => p && !resolve(p).toLowerCase().startsWith(resolve(root).toLowerCase()))
+    .join(delimiter);
+}
+
+function treeDigest(dir, rels) {
+  const parts = [];
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = join(d, e.name);
+      if (e.isDirectory()) walk(full);
+      else parts.push(`${full.slice(dir.length)}\0${readFileSync(full, 'utf8')}`);
+    }
+  };
+  walk(join(dir, '.rungs'));
+  for (const rel of rels) parts.push(`${rel}\0${readFileSync(join(dir, rel), 'utf8')}`);
+  return contentHash(parts.join('\n'));
+}
+
+function parseCheckOutput(stdout) {
+  const rows = new Map();
+  for (const line of stdout.replace(/\x1b\[[0-9;]*m/g, '').split('\n')) {
+    const m = /^\s{2}(pass|FAIL|unimpl|error) (\S+)\s+\d+ms(?:\s+(\d+) examined)?/.exec(line);
+    if (m) rows.set(m[2], { status: { pass: 'pass', FAIL: 'fail', unimpl: 'unimplemented', error: 'error' }[m[1]], examined: Number(m[3] ?? 0) });
+  }
+  return rows;
+}
+
+test('eject ships a package-free runner whose aggregate and direct checks match the production runner', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const bundle = join(root, 'dist', 'ejected-runner.mjs');
+  assert.ok(existsSync(bundle), 'pretest builds dist/ejected-runner.mjs; run `npm run build` before a direct test run');
+  const mods = loadAllModules(join(root, 'modules'));
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-eject-consumer-'));
+  const env = { ...process.env, PATH: stripProducer(root), npm_execpath: '', NODE_PATH: '', RUNGS_DATE: '2026-09-06' };
+  const spawn = (args, extra = {}) => spawnSync(process.execPath, args, { cwd: dir, encoding: 'utf8', env, ...extra });
+  const launcher = join(dir, '.ai', 'rungs.mjs');
+  const runGate = join(dir, '.rungs', 'run-gate.mjs');
+
+  try {
+    const g = (...a) => execFileSync('git', a, { cwd: dir, stdio: 'pipe', encoding: 'utf8' }).trim();
+    g('init', '-q', '-b', 'main', '.');
+    g('config', 'user.email', 't@t');
+    g('config', 'user.name', 't');
+    const init = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'init', dir, 'disciplined'], { encoding: 'utf8', env: { ...process.env, RUNGS_DATE: '2026-09-06' } });
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    writeFileSync(join(dir, 'repo-ok.mjs'), "console.log('repo check ok');\n");
+    writeFileSync(join(dir, 'repo-red.mjs'), "console.error('repo check red');\nprocess.exit(3);\n");
+    const registryPath = join(dir, '.ai', 'gates.toml');
+    writeFileSync(
+      registryPath,
+      readFileSync(registryPath, 'utf8') +
+        '\n[[gates]]\nid      = "repo-own"\nkind    = "command"\ntier    = "fast"\ncommand = "node repo-ok.mjs"\nwhy     = "the repo\'s own validator survives ejection untouched"\n' +
+        '\n[[gates]]\nid      = "repo-red"\nkind    = "command"\ntier    = "full"\ncommand = "node repo-red.mjs"\nwhy     = "a failing repository command must still fail after ejection"\n',
+    );
+    g('add', '-A');
+    g('commit', '-qm', 'seed');
+
+    // Production semantics, recorded before ejection changes the registry.
+    const summarise = (runs) => new Map(runs.map((r) => [r.id, { status: r.status, examined: r.examined, findings: r.findings.map((f) => f.message) }]));
+    const prodAll = summarise(runGates(dir));
+    const prodFast = summarise(runGates(dir, 'fast'));
+    assert.ok(prodAll.size > 25 && prodAll.has('repo-own') && prodAll.has('repo-red'));
+    assert.equal(prodAll.get('repo-red').status, 'fail');
+    assert.ok(prodAll.get('gates-self-tests-both-directions').examined > 0, 'the meta-gate examines the declared gates before ejection');
+    assert.throws(() => runGates(dir, 'banana'), UnknownTierError);
+
+    const result = eject(dir, mods, false, '2026-09-06');
+    assert.ok(result.gates >= 25, `converted ${result.gates} gates`);
+    assert.equal(result.unchanged, false);
+    for (const rel of ['.rungs/run-gate.mjs', '.rungs/ejected.json', '.rungs/README.md', '.rungs/tables/gates-structural.json', '.rungs/modules/gates/module.toml', '.rungs/modules/gates/gates/structural.toml']) {
+      assert.ok(existsSync(join(dir, rel)), `${rel} is materialised`);
+    }
+    // Hashes, never the bytes: a failed equality on two 186 KB strings makes the
+    // assertion library build a character diff that runs for minutes and
+    // exhausts memory. It did, on 2026-09-06, and took the host down with it.
+    assert.equal(contentHash(readFileSync(runGate, 'utf8')), contentHash(readFileSync(bundle, 'utf8')), 'the runner is the shipped bundle, byte for byte');
+    const registry = readFileSync(registryPath, 'utf8');
+    assert.equal(registry.split('# Ejected: gates above run from .rungs/').length - 1, 1, 'one trailer');
+    assert.doesNotMatch(registry, /kind\s*=\s*"declared"\n(?![\s\S]{0,400}trigger)/, 'every runner-executed declared gate is converted');
+    assert.match(registry, /command = "node \.rungs\/run-gate\.mjs instructions-core-size"/);
+    assert.match(registry, /command = "node repo-ok\.mjs"/, 'a repository command keeps its command');
+    const forwarder = readFileSync(launcher, 'utf8');
+    assert.doesNotMatch(forwarder, /@rungs\/cli|npm/, 'the launcher names no package and no package manager');
+    assert.match(forwarder, /process\.execPath/);
+
+    // Aggregate, through the committed launcher, from a shell that cannot see the producer.
+    const ejectedAll = spawn([launcher, 'check']);
+    assert.equal(ejectedAll.status, 1, ejectedAll.stdout + ejectedAll.stderr);
+    const rowsAll = parseCheckOutput(ejectedAll.stdout);
+    assert.deepEqual([...rowsAll.keys()], [...prodAll.keys()], 'same gates in the same order');
+    // Ejection adds exactly one markdown file, `.rungs/README.md`, so the one gate
+    // that scans every `*.md` examines one more file; everything else is identical.
+    const addedMarkdown = readdirSync(join(dir, '.rungs')).filter((f) => f.endsWith('.md')).length;
+    assert.equal(addedMarkdown, 1);
+    for (const [id, prod] of prodAll) {
+      assert.equal(rowsAll.get(id).status, prod.status, `${id} status matches production`);
+      const expectedExamined = prod.examined + (id === 'gates-links-resolve' ? addedMarkdown : 0);
+      assert.equal(rowsAll.get(id).examined, expectedExamined, `${id} examined count matches production`);
+    }
+    assert.match(ejectedAll.stdout.replace(/\x1b\[[0-9;]*m/g, ''), /repo check red/, 'the failing repository command\'s output survives');
+    const ledger = readFileSync(join(dir, '.ai', '.gate-ledger.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.equal(ledger.length, prodAll.size, 'one ledger line per gate per run');
+    assert.deepEqual(Object.keys(ledger[0]), ['at', 'id', 'status', 'ms', 'examined']);
+    assert.equal(ledger[0].at, '2026-09-06');
+
+    const ejectedFast = spawn([launcher, 'check', 'fast']);
+    assert.deepEqual([...parseCheckOutput(ejectedFast.stdout).keys()], [...prodFast.keys()], 'fast selects the same subset');
+    assert.equal(ejectedFast.status, [...prodFast.values()].some((r) => r.status !== 'pass') ? 1 : 0);
+    const ejectedFull = spawn([launcher, 'check', '--full']);
+    assert.deepEqual([...parseCheckOutput(ejectedFull.stdout).keys()], [...prodAll.keys()], 'full is the superset');
+
+    const banana = spawn([launcher, 'check', 'banana']);
+    assert.equal(banana.status, 1);
+    assert.match(banana.stdout, /unknown tier "banana"/);
+    const quiet = readFileSync(registryPath, 'utf8').replace('tiers          = ["fast", "full"]', 'tiers          = ["quick", "fast", "full"]');
+    assert.notEqual(quiet, registry);
+    writeFileSync(registryPath, quiet);
+    const empty = spawn([launcher, 'check', 'quick']);
+    assert.equal(empty.status, 1, 'a tier that selects nothing is never a pass');
+    assert.match(empty.stdout, /no gates in the quick tier/);
+    writeFileSync(registryPath, registry);
+
+    const render = spawn([launcher, 'render']);
+    assert.equal(render.status, 1);
+    assert.match(render.stderr, /ejected/);
+    assert.match(render.stderr, /not available/);
+
+    // Direct, one converted gate.
+    assert.equal(spawn([runGate, 'instructions-core-size']).status, 0);
+    const agents = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+    writeFileSync(join(dir, 'AGENTS.md'), agents + Array.from({ length: 300 }, (_, i) => `padding line ${i}`).join('\n') + '\n');
+    const bloated = spawn([runGate, 'instructions-core-size']);
+    assert.equal(bloated.status, 1);
+    assert.match(bloated.stderr, /AGENTS\.md: \d+ loaded lines/);
+    writeFileSync(join(dir, 'AGENTS.md'), agents);
+    const repoDirect = spawn([runGate, 'repo-own']);
+    assert.equal(repoDirect.status, 2, 'a repository command is not a converted gate');
+    assert.equal(spawn([runGate, 'no-such-gate']).status, 2);
+
+    // Idempotence: a second eject changes nothing, and git agrees.
+    g('add', '-A');
+    g('commit', '-qm', 'ejected');
+    const before = treeDigest(dir, ['.ai/gates.toml', '.ai/rungs.mjs']);
+    const again = eject(dir, mods, false, '2026-12-31');
+    assert.equal(again.unchanged, true, 'a repeat reproduces every byte, including the original ejection date');
+    assert.equal(treeDigest(dir, ['.ai/gates.toml', '.ai/rungs.mjs']), before);
+    assert.equal(g('status', '--porcelain'), '');
+    assert.deepEqual(eject(dir, mods, true).actions.filter((a) => !a.startsWith('unchanged')), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('eject refuses an edited launcher or a foreign .rungs directory before writing anything', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const mods = loadAllModules(join(root, 'modules'));
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-eject-refuse-'));
+  try {
+    const init = spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'init', dir, 'tracked'], { encoding: 'utf8', env: { ...process.env, RUNGS_DATE: '2026-09-06' } });
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    const registryPath = join(dir, '.ai', 'gates.toml');
+    const launcher = join(dir, '.ai', 'rungs.mjs');
+    const registryBefore = readFileSync(registryPath, 'utf8');
+
+    mkdirSync(join(dir, '.rungs'));
+    writeFileSync(join(dir, '.rungs', 'notes.txt'), 'the consumer already uses this directory\n');
+    assert.throws(() => eject(dir, mods, false, '2026-09-06'), EjectRefusal);
+    assert.equal(readFileSync(registryPath, 'utf8'), registryBefore, 'the registry is untouched');
+    assert.equal(existsSync(join(dir, '.rungs', 'run-gate.mjs')), false);
+    rmSync(join(dir, '.rungs'), { recursive: true, force: true });
+
+    const edited = `${readFileSync(launcher, 'utf8')}\n// consumer edit\n`;
+    writeFileSync(launcher, edited);
+    assert.throws(() => eject(dir, mods, false, '2026-09-06'), (error) => error instanceof EjectRefusal && /edited/.test(error.message));
+    assert.equal(readFileSync(launcher, 'utf8'), edited, 'a diverged launcher is never overwritten');
+    assert.equal(readFileSync(registryPath, 'utf8'), registryBefore);
+    assert.equal(existsSync(join(dir, '.rungs')), false, 'nothing was written under .rungs/');
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });

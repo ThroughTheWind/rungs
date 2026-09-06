@@ -1,15 +1,14 @@
 import { appendFileSync, existsSync, readFileSync, realpathSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import { parse } from 'smol-toml';
 import { ENGINES, isImplemented, type Finding } from './engines.ts';
 import { walk } from './glob.ts';
 import { resolveParams, substitute, type Params } from './substitute.ts';
 import { loadAllModules } from './manifest.ts';
 import { selectEngineTable } from './engine-table.ts';
-
-const MODULES = join(dirname(fileURLToPath(import.meta.url)), '..', 'modules');
+import { frozenTableName, frozenTablesDir, isEjectedCommand, modulesRoot } from './ejected.ts';
+import { c } from './ansi.ts';
 
 export type Status = 'pass' | 'fail' | 'unimplemented' | 'error';
 
@@ -26,7 +25,7 @@ export interface GateRun {
   why?: string;
 }
 
-interface RegistryGate {
+export interface RegistryGate {
   id: string;
   kind: string;
   module?: string;
@@ -130,12 +129,34 @@ function commandFailure(error: any, repoRoot: string): Finding {
 }
 
 /**
+ * How the runner is executing. The ejected runner runs a converted declared
+ * gate in-process from its frozen table rather than spawning itself through the
+ * registry's command string; the production CLI runs that same command as any
+ * other repository command. Both paths reach the same engine on the same table,
+ * which is what lets a consumer compare them.
+ */
+export interface RunMode {
+  ejected?: boolean;
+}
+
+/** A registry entry `eject` rewrote: the exact command form, still carrying its engine and table. */
+export function isFrozenGate(g: RegistryGate): boolean {
+  return g.kind === 'command' && !!g.engine && !!g.table && isEjectedCommand(g.id, g.command);
+}
+
+/**
  * `only` narrows the run to named gate ids. Attribution needs it: after a merged
  * tree goes red, `land` re-runs **just the failing gates** against the merge base
  * to decide whether they were already red. Re-running all of them would give the
  * same verdict and cost a second full pass for gates nobody asked about.
  */
-export function runGates(repoRoot: string, tier?: string, now = () => Date.now(), only?: ReadonlySet<string>): GateRun[] {
+export function runGates(
+  repoRoot: string,
+  tier?: string,
+  now = () => Date.now(),
+  only?: ReadonlySet<string>,
+  mode: RunMode = {},
+): GateRun[] {
   const { runner, gates } = loadRegistry(repoRoot);
   const runnerTiers: string[] = Array.isArray(runner?.tiers) ? runner.tiers : [];
   // A tier nobody declared selects nothing, and "selected nothing" is
@@ -158,8 +179,9 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
     let status: Status = 'pass';
     let findings: Finding[] = [];
     let examined = 0;
+    const frozen = mode.ejected && isFrozenGate(g);
 
-    if (g.kind === 'command' && g.command) {
+    if (g.kind === 'command' && g.command && !frozen) {
       try {
         execSync(g.command, { cwd: repoRoot, stdio: 'pipe' });
       } catch (e: any) {
@@ -216,11 +238,25 @@ export function runGates(repoRoot: string, tier?: string, now = () => Date.now()
  * plainly on disk. Tables are substituted against the repo's own installed
  * parameters before parsing — which is also what makes a gate honour the
  * prefix, root and budget that repo actually chose.
+ *
+ * After ejection the substitution has already happened: the frozen JSON table
+ * under `.rungs/tables/` is the one the consumer reviewed, and re-substituting
+ * would need a parameter source ejection removed.
  */
 export function loadTable(ref: string | undefined, repoRoot: string): any | null {
   if (!ref) return null;
+  const frozen = frozenTablesDir();
+  if (frozen) {
+    const path = join(frozen, frozenTableName(ref));
+    if (!existsSync(path)) return null;
+    try {
+      return JSON.parse(readFileSync(path, 'utf8'));
+    } catch {
+      return null;
+    }
+  }
   const [mod, file] = ref.split('/');
-  const path = join(MODULES, mod, 'gates', file);
+  const path = join(modulesRoot(), mod, 'gates', file);
   if (!existsSync(path)) return null;
   try {
     return parse(substitute(readFileSync(path, 'utf8'), mod, installedParams(repoRoot)));
@@ -229,12 +265,13 @@ export function loadTable(ref: string | undefined, repoRoot: string): any | null
   }
 }
 
-let paramCache: { root: string; params: Params } | null = null;
+let paramCache: { root: string; modules: string; params: Params } | null = null;
 
 /** Parameters as the repo installed them, falling back to module defaults. */
 export function installedParams(repoRoot: string): Params {
-  if (paramCache?.root === repoRoot) return paramCache.params;
-  const defaults = resolveParams(loadAllModules(MODULES), {}, repoRoot);
+  const modules = modulesRoot();
+  if (paramCache?.root === repoRoot && paramCache.modules === modules) return paramCache.params;
+  const defaults = resolveParams(loadAllModules(modules), {}, repoRoot);
   const recordPath = join(repoRoot, '.ai', 'rungs.toml');
   if (existsSync(recordPath)) {
     try {
@@ -246,7 +283,7 @@ export function installedParams(repoRoot: string): Params {
       /* a malformed record falls back to defaults rather than failing every gate */
     }
   }
-  paramCache = { root: repoRoot, params: defaults };
+  paramCache = { root: repoRoot, modules, params: defaults };
   return defaults;
 }
 
@@ -285,4 +322,83 @@ export function ledgerQuestions(repoRoot: string, gates: RegistryGate[]) {
     .filter(([, e]) => e.total >= 3 && e.failed / e.total > 0.9)
     .map(([id, e]) => ({ id, why: whyOf(id), rate: `${e.failed}/${e.total}` }));
   return { neverFired, alwaysFires, runs: rows.length };
+}
+
+/**
+ * The `check` command, end to end: select, run, record, print, exit code.
+ *
+ * Lived in `cli.ts` as `cmdCheck`. Moved here unchanged so the ejected runner
+ * and the CLI print the same lines and return the same code for the same
+ * registry — WI-077's criterion 3 is that the two agree, and one function is the
+ * only way to make that true by construction rather than by test.
+ */
+export function checkCommand(
+  root: string,
+  tier: string | undefined,
+  stamp: string,
+  mode: RunMode = {},
+  log: (line: string) => void = console.log,
+): number {
+  let runs: GateRun[];
+  try {
+    runs = runGates(root, tier, undefined, undefined, mode);
+  } catch (e) {
+    // ADR-0008. A tier nobody declared used to select nothing and exit as though
+    // the gates had passed — the one failure mode a release step cannot have.
+    if (!(e instanceof UnknownTierError)) throw e;
+    log(c.yellow(`\n  unknown tier "${e.requested}"`) + c.dim(` — this repo declares ${e.declared.join(', ')}.`));
+    log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
+    return 1;
+  }
+  if (!runs.length) {
+    // Two situations printed the same sentence, and it was the wrong one for the case that
+    // actually happens: a registry full of `fast` gates filtered by `--full` asked "is this a
+    // rungs repo?" about a repo holding 25 of them, and `cut-release` told every consumer to
+    // gate a release on exactly that command (F-020). Blame the filter when there is one.
+    //
+    // Hooks are excluded because a hook fires on a tool call rather than in the runner: it is
+    // registered, and no tier value could ever have selected it. Counting it here would offer
+    // the reader a gate that changing the tier cannot reach.
+    const runnable = loadRegistry(root).gates.filter((g) => !g.trigger);
+    if (runnable.length && tier) {
+      const tiers = [...new Set(runnable.map((g) => g.tier).filter(Boolean))];
+      log(c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
+        c.dim(` (${tiers.length ? tiers.join(', ') : 'none tiered'}).`));
+      log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
+    } else {
+      log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
+    }
+    return 1;
+  }
+  appendLedger(root, runs, stamp);
+
+  log(c.bold(`\nrungs check — ${root}${tier ? ` (${tier} tier)` : ''}\n`));
+  const mark = { pass: c.green('pass'), fail: c.red('FAIL'), unimplemented: c.yellow('unimpl'), error: c.red('error') };
+  for (const r of runs) {
+    log(
+      `  ${mark[r.status]} ${r.id.padEnd(34)} ${c.dim(`${r.ms}ms`)}` +
+        (r.examined ? c.dim(`  ${r.examined} examined`) : ''),
+    );
+    for (const f of r.findings.slice(0, 4)) {
+      log(`         ${c.dim(f.file ? `${f.file}: ` : '')}${f.message.replace(/\n/g, '\n         ')}`);
+    }
+    if (r.findings.length > 4) log(c.dim(`         …and ${r.findings.length - 4} more`));
+  }
+
+  const n = (s: string) => runs.filter((r) => r.status === s).length;
+  log(
+    `\n  ${c.green(`${n('pass')} pass`)} · ${c.red(`${n('fail')} fail`)} · ` +
+      `${c.yellow(`${n('unimplemented')} unimplemented`)} · ${n('error')} error` +
+      c.dim(`  (${runs.reduce((t, r) => t + r.ms, 0)}ms total)`),
+  );
+
+  if (n('unimplemented')) {
+    log(
+      c.yellow('\n  Unimplemented gates are not passes.') +
+        c.dim(' A registry reporting green because most of its\n  gates do nothing is the worst failure this tool could have, so they block.'),
+    );
+  }
+
+  log('');
+  return n('fail') + n('unimplemented') + n('error') > 0 ? 1 : 0;
 }
