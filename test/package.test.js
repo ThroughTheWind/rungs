@@ -770,6 +770,15 @@ test('a packed candidate retrofits an existing repository without taking over it
     assert.match(secondCheckText, /0 fail/);
     const secondLedgerCount = readFileSync(ledger, 'utf8').trim().split(/\r?\n/).filter(Boolean).length;
     assert.equal(secondLedgerCount, firstLedgerCount * 2, 'the ignored append-only ledger should record both runs');
+
+    // F-063 / WI-094: the form the ejected README documents must mean the tier before ejection too.
+    // After the ledger arithmetic above, because a successful run appends rows.
+    const loneTier = expectOk(candidate('check', 'full'), 'check full with the tier as the only positional');
+    assert.match(withoutAnsi(loneTier.stdout), /\(full tier\)/);
+    assert.doesNotMatch(withoutAnsi(loneTier.stdout), /no gates registered/);
+    const unknownTier = candidate('check', 'nonsense');
+    assert.equal(unknownTier.status, 1, combinedOutput(unknownTier));
+    assert.match(withoutAnsi(unknownTier.stdout), /unknown tier "nonsense"/);
     assert.equal(gitText(consumer, ['status', '--porcelain=v1', '--untracked-files=all']), '');
     assert.equal(trackedDigest(consumer), adoptedDigest);
 

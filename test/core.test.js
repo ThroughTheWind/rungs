@@ -4323,6 +4323,59 @@ test('add after init extends the install record instead of replacing it', () => 
 });
 
 /**
+ * F-063 / WI-094. The CLI parsed `check [path] [tier]` and the ejected runner
+ * `check [tier]`, so `node .ai/rungs.mjs check full` selected the full tier
+ * after ejection and looked for a repository named `full` before it.
+ */
+test('check takes the same [path] [tier] grammar through the CLI and the ejected runner', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-check-grammar-'));
+  const elsewhere = mkdtempSync(join(tmpdir(), 'rungs-check-elsewhere-'));
+  const env = { ...process.env, RUNGS_DATE: '2026-09-06' };
+  const cli = (cwd, ...args) => spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), ...args], { cwd, encoding: 'utf8', env });
+  const launcher = (cwd, ...args) => spawnSync(process.execPath, [join(dir, '.ai', 'rungs.mjs'), ...args], { cwd, encoding: 'utf8', env });
+  const plain = (r) => (r.stdout + r.stderr).replace(/\x1b\[[0-9;]*m/g, '');
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@x', ...args], { cwd: dir, stdio: 'pipe' });
+  try {
+    git('init', '-q', '-b', 'main', '.');
+    const init = cli(dir, 'init', dir, 'tracked');
+    assert.equal(init.status, 0, plain(init));
+    git('add', '--all');
+    git('commit', '-q', '-m', 'scaffold');
+
+    const explicit = cli(dir, 'check', dir, 'full');
+    assert.equal(explicit.status, 0, plain(explicit));
+    assert.match(plain(explicit), /\(full tier\)/);
+    const lone = cli(dir, 'check', 'full');
+    assert.equal(lone.status, 0, plain(lone));
+    assert.match(plain(lone), /\(full tier\)/, 'a lone positional that is no directory is the tier');
+    const unknown = cli(dir, 'check', 'nonsense');
+    assert.equal(unknown.status, 1);
+    assert.match(plain(unknown), /unknown tier "nonsense"/);
+    assert.doesNotMatch(plain(unknown), /no gates registered/);
+    const dotPath = cli(dir, 'check', '.', 'full');
+    assert.equal(dotPath.status, 0, plain(dotPath));
+
+    const ejected = cli(dir, 'eject', dir);
+    assert.equal(ejected.status, 0, plain(ejected));
+    for (const args of [['check', 'full'], ['check', '.', 'full'], ['check', dir, 'full'], ['check', '--full']]) {
+      const run = launcher(dir, ...args);
+      assert.equal(run.status, 0, `${args.join(' ')}: ${plain(run)}`);
+      assert.match(plain(run), /\(full tier\)/, args.join(' '));
+    }
+    const foreign = launcher(dir, 'check', elsewhere, 'full');
+    assert.equal(foreign.status, 1, plain(foreign));
+    assert.match(plain(foreign), /checks .* only/);
+    const ejectedUnknown = launcher(dir, 'check', 'nonsense');
+    assert.equal(ejectedUnknown.status, 1);
+    assert.match(plain(ejectedUnknown), /unknown tier "nonsense"/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(elsewhere, { recursive: true, force: true });
+  }
+});
+
+/**
  * WI-086 (F-054, ADR-0010). The `instructions` module declared a shell-safety hook
  * with four fixtures since it shipped and no engine implemented the name, so the
  * registry entry reached every consumer and the protection reached none.

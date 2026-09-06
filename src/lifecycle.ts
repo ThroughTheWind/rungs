@@ -573,9 +573,10 @@ repository no longer needs the rungs package, npm access, or a rungs checkout to
 
 ## What still works
 
-- \`node .ai/rungs.mjs check [tier]\` — every registered gate, with the same tiers, output, ledger
-  and exit code as before ejection. Local instructions and the generated CI workflow already call
-  this, so neither changes.
+- \`node .ai/rungs.mjs check [path] [tier]\` — every registered gate, with the same grammar, tiers,
+  output, ledger and exit code as before ejection (\`check full\`, \`check . full\` and \`--full\` all
+  select the full tier; the path, if given, must be this repository). Local instructions and the
+  generated CI workflow already call this, so neither changes.
 - \`node .rungs/run-gate.mjs <gate-id>\` — one converted gate on its own; findings on stderr, exit 1
   when it fires.
 - \`node .ai/rungs.mjs hook <gate-id>\` — a lifecycle hook, evaluated from its frozen table, so the
