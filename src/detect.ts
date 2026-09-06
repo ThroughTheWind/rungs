@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DetectResult, Manifest } from './types.ts';
 import { matchAny, walk } from './glob.ts';
-import { contentHash, emittedFiles, preflightModuleEmissions } from './add.ts';
+import { contentHash, emittedFiles, ownershipHash, preflightModuleEmissions } from './add.ts';
 import { resolveEmittedPath } from './emitted-path.ts';
 import type { Params } from './substitute.ts';
 
@@ -245,9 +245,13 @@ export function ownedState(mod: Manifest, repoRoot: string, installed: Installed
       out.missing.push(rel);
       continue;
     }
-    const onDisk = contentHash(readFileSync(full, 'utf8'));
-    if (onDisk === contentHash(wouldEmit)) out.current.push(rel);
-    else if (installed.hashes?.[rel] && onDisk === installed.hashes[rel]) out.stale.push(rel);
+    // Ownership ignores generated block bodies (WI-087); a recorded raw hash
+    // from an older record still matches.
+    const raw = readFileSync(full, 'utf8');
+    const onDisk = ownershipHash(raw);
+    const recorded = installed.hashes?.[rel];
+    if (onDisk === ownershipHash(wouldEmit)) out.current.push(rel);
+    else if (recorded && (onDisk === recorded || contentHash(raw) === recorded)) out.stale.push(rel);
     else out.diverged.push(rel);
   }
   return out;

@@ -18,8 +18,11 @@ that has grown past ~15 lines is usually the one to look at first.
 
 # ── instructions-render-current ───────────────────────────────────────────────
 
+# `id` is matched against the gate id (`instructions-render-current` contains `render`).
+# It was `rules`, which no gate id contains, so the selector kept both entries and this
+# gate also judged the repo-map block — the other gate's job (WI-087).
 [[render_freshness]]
-id      = "rules"
+id      = "render"
 sources = [".ai/rules/**/*.md"]
 exclude = [".ai/rules/README.md"]   # the scaffold doc is not a rule
 targets = [".claude/rules/**/*.md", ".github/instructions/**/*.instructions.md", ".cursor/rules/**/*.mdc"]

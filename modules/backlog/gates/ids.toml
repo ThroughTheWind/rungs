@@ -59,30 +59,39 @@ exempt_marker       = "branch-merged-ok:"   # ignored unless it states a reason
 # A gate whose rules are all currently satisfied is indistinguishable from a gate that matches
 # nothing, so each engine runs these fixtures and asserts BOTH directions.
 
+# Each stale-blocker fixture states the context the engine needs — the document
+# the sentence lives in, and the finished item it names — so the runner builds
+# the same repository for both directions and only the sentence differs (WI-087).
 [[self_test]]
-gate   = "backlog-stale-blocker"
-expect = "fail"
-input  = "The mapper is blocked on {{id_prefix}}-001, which is done."
+gate    = "backlog-stale-blocker"
+expect  = "fail"
+input   = "The mapper is blocked on {{id_prefix}}-001, which is done."
+fixture = { file = "docs/plan.md", done = ["{{id_prefix}}-001"] }
 
 [[self_test]]
-gate   = "backlog-stale-blocker"
-expect = "pass"
-input  = "The mapper was blocked on {{id_prefix}}-001 until it landed."
+gate    = "backlog-stale-blocker"
+expect  = "pass"
+input   = "The mapper was blocked on {{id_prefix}}-001 until it landed."
+fixture = { file = "docs/plan.md", done = ["{{id_prefix}}-001"] }
 
 [[self_test]]
-gate   = "backlog-stale-blocker"
-expect = "pass"
-input  = "Do not write that a doc is blocked on finished work. <!-- owner-ok: quotes the retired rule to explain it -->"
+gate    = "backlog-stale-blocker"
+expect  = "pass"
+input   = "Do not write that a doc is blocked on {{id_prefix}}-001. <!-- owner-ok: quotes the retired rule to explain it -->"
+fixture = { file = "docs/plan.md", done = ["{{id_prefix}}-001"] }
+
+# Merged status is observed from a real repository: the runner commits an item
+# at the given status on a branch, and merges it or leaves it, as the fixture
+# says. The former prose inputs described the state and could not produce it.
+[[self_test]]
+gate    = "backlog-merged-status"
+expect  = "fail"
+fixture = { item_status = "in_progress", branch_state = "merged" }
 
 [[self_test]]
-gate   = "backlog-merged-status"
-expect = "fail"
-input  = "status: in_progress, branch merged into {{integration_branch}}"
-
-[[self_test]]
-gate   = "backlog-merged-status"
-expect = "pass"
-input  = "status: in_progress, branch not merged"
+gate    = "backlog-merged-status"
+expect  = "pass"
+fixture = { item_status = "in_progress", branch_state = "unmerged" }
 
 # ── backlog-ids self-tests ────────────────────────────────────────────────────
 #
@@ -128,12 +137,16 @@ exempt_marker = "board-ok:"        # ignored unless it states a reason
 "Proposed"    = ["proposed"]
 "Deferred"    = ["deferred"]
 
+# The board text is the input; the item it links to is built at the status the
+# fixture states, so the disagreement (or agreement) is real rather than described.
 [[self_test]]
-gate   = "backlog-board-reconciled"
-expect = "fail"
-input  = "## Proposed\n| [{{id_prefix}}-001](items/{{id_prefix}}-001-x.md) | done item filed as proposed | docs |"
+gate    = "backlog-board-reconciled"
+expect  = "fail"
+input   = "## Proposed\n| [{{id_prefix}}-001](items/{{id_prefix}}-001-x.md) | done item filed as proposed | docs |"
+fixture = { item_status = "done" }
 
 [[self_test]]
-gate   = "backlog-board-reconciled"
-expect = "pass"
-input  = "## Proposed\n| [{{id_prefix}}-001](items/{{id_prefix}}-001-x.md) | a genuinely proposed item | docs |"
+gate    = "backlog-board-reconciled"
+expect  = "pass"
+input   = "## Proposed\n| [{{id_prefix}}-001](items/{{id_prefix}}-001-x.md) | a genuinely proposed item | docs |"
+fixture = { item_status = "proposed" }

@@ -113,6 +113,12 @@ const fileBudget: Engine = (t, root, files) => {
   return { findings, examined };
 };
 
+/** A frontmatter field's scalar value, or undefined when the file has none. */
+function frontmatterField(text: string, key: string): string | undefined {
+  const fm = text.match(/^---\n([\s\S]*?)\n---/)?.[1];
+  return fm?.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))?.[1].trim().replace(/^["']|["']$/g, '');
+}
+
 const sections: Engine = (t, root, files) => {
   const specs = Array.isArray(t) ? t : [t];
   const findings: Finding[] = [];
@@ -122,10 +128,34 @@ const sections: Engine = (t, root, files) => {
     const excluded = new Set(expand(files, spec.exclude, []));
     for (const rel of targets) {
       if (excluded.has(rel) || !existsSync(join(root, rel))) continue;
-      examined++;
       const text = read(root, rel);
+      // `when = { tier = 2 }` scopes a spec to files whose frontmatter says so.
+      // The `workflows` table declared it since the module shipped and nothing
+      // read it, so every tier-1 plan was held to the tier-2 section list — in
+      // three of five profiles (WI-087). A file without the field is out of scope.
+      if (spec.when && typeof spec.when === 'object') {
+        const applies = Object.entries(spec.when).every(([key, value]) => frontmatterField(text, key) === String(value));
+        if (!applies) continue;
+      }
+      examined++;
       const matches = [...text.matchAll(/^(#{1,6})\s+(.+?)\s*$/gm)];
       const heads = matches.map((m) => m[2]);
+      // `required_subsections = { Scope = ["Out of scope"] }`: under the named
+      // heading, the sub-headings before the next same-or-higher heading must
+      // include each required one. Declared by `specs`, read by nothing until
+      // its fixture executed (WI-087).
+      for (const [parent, subs] of Object.entries<any>(spec.required_subsections ?? {})) {
+        const idx = heads.findIndex((h) => h.toLowerCase().startsWith(parent.toLowerCase()));
+        if (idx === -1) continue; // the missing parent is reported by `required`, or is not required
+        const level = matches[idx][1].length;
+        const nested: string[] = [];
+        for (let i = idx + 1; i < matches.length && matches[i][1].length > level; i++) nested.push(matches[i][2]);
+        for (const want of Array.isArray(subs) ? subs : []) {
+          if (!nested.some((h) => h.toLowerCase().startsWith(String(want).toLowerCase()))) {
+            findings.push({ file: rel, message: `missing subsection '${want}' under '${parent}'` });
+          }
+        }
+      }
       for (const want of spec.required ?? []) {
         const idx = heads.findIndex((h) => h.toLowerCase().startsWith(String(want).toLowerCase()));
         if (idx === -1) {
@@ -187,6 +217,25 @@ export const frontmatterSchema: Engine = (t, root, files) => {
         }
       }
       const field = (k: string) => m[1].match(new RegExp(`^${k}:\\s*(.+)$`, 'm'))?.[1].trim().replace(/^["']|["']$/g, '');
+      // `[[frontmatter_schema.field_shape]]`: a field must be at least so many
+      // words and contain one of the given phrases. `skills-description-routes`
+      // declared it since the skills module shipped and nothing read it, so that
+      // gate examined every consumer's skills and checked nothing about their
+      // descriptions (WI-087). Folded scalars (`>-`) are read across lines.
+      for (const shape of Array.isArray(spec.field_shape) ? spec.field_shape : []) {
+        if (!shape?.field) continue;
+        const folded = m[1].match(new RegExp(`^${shape.field}:\\s*>-?\\s*\\n((?:[ \\t]+.*(?:\\n|$))+)`, 'm'))?.[1];
+        const value = (folded ? folded.replace(/\s+/g, ' ') : field(shape.field) ?? '').trim();
+        if (!value) continue; // absence is `required`'s finding, not a shape finding
+        const words = value.split(/\s+/).filter(Boolean).length;
+        if (typeof shape.min_words === 'number' && words < shape.min_words) {
+          findings.push({ file: rel, message: `'${shape.field}' is ${words} word(s); at least ${shape.min_words} needed to say when to use it` });
+        }
+        const phrases: string[] = Array.isArray(shape.requires_any) ? shape.requires_any.map(String) : [];
+        if (phrases.length && !phrases.some((p) => value.toLowerCase().includes(p.toLowerCase()))) {
+          findings.push({ file: rel, message: `'${shape.field}' names no trigger — expected one of ${phrases.join(', ')}` });
+        }
+      }
       for (const [key, values] of Object.entries(spec.enum ?? {})) {
         const v = field(key);
         if (v && !(values as string[]).map(String).includes(v)) {
@@ -329,8 +378,71 @@ export const linkIntegrity: Engine = (t, root, files) => {
   return { findings, examined };
 };
 
+/**
+ * Structural tokens of a workflow file: job ids, `uses:` references and the
+ * first word of each `run:` line. Similarity between two files is the Jaccard
+ * index of their token sets — near-identical per-package workflows share almost
+ * everything and differ in the package name, which is exactly what the tokens
+ * ignore. `similarity_on` names which of the three families count.
+ */
+function workflowTokens(text: string, on: string[]): Set<string> {
+  const tokens = new Set<string>();
+  const lines = text.split('\n');
+  let inJobs = false;
+  for (const line of lines) {
+    if (/^jobs:\s*$/.test(line)) {
+      inJobs = true;
+      continue;
+    }
+    if (/^\S/.test(line)) inJobs = false;
+    if (on.includes('job_ids') && inJobs) {
+      const job = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(line);
+      if (job) tokens.add(`job:${job[1]}`);
+    }
+    if (on.includes('step_uses')) {
+      const uses = /^\s*-?\s*uses:\s*(\S+)/.exec(line);
+      if (uses) tokens.add(`uses:${uses[1]}`);
+    }
+    if (on.includes('step_run_shape')) {
+      const run = /^\s*-?\s*run:\s*(\S+)/.exec(line);
+      if (run) tokens.add(`run:${run[1]}`);
+    }
+  }
+  return tokens;
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (!a.size && !b.size) return 1;
+  let both = 0;
+  for (const x of a) if (b.has(x)) both++;
+  return both / (a.size + b.size - both);
+}
+
 const filePopulation: Engine = (t, root, files) => {
   let hits = dropGenerated(root, expand(files, t.scan)).filter((f) => !new Set(expand(files, t.exclude, [])).has(f));
+
+  // `exempt_marker`: a file carrying the marker **with a reason** is history the
+  // owner has chosen to keep, and leaves the population. Declared by `audit`
+  // since it shipped and read by nothing until its fixture executed (WI-087);
+  // a bare marker with no reason is ignored, as every exemption here is.
+  if (typeof t.exempt_marker === 'string' && t.exempt_marker) {
+    // The reason must be on the marker's line and must not be the comment closer:
+    // `<!-- audit-doc-ok: -->` carries no reason, and `\s*\S` accepted its `-`.
+    const marker = new RegExp(`${escapeRe(t.exempt_marker)}[ \\t]*(?!-->)\\S`);
+    hits = hits.filter((rel) => !marker.test(read(root, rel)));
+  }
+
+  // `similarity_on` + `similarity_min`: only files that are structurally
+  // near-identical to at least one other count. Without this the `ci` gate fired
+  // on any repo holding eight workflows however different they were, while its
+  // message promised a similarity it never computed (WI-087).
+  if (Array.isArray(t.similarity_on) && t.similarity_on.length && typeof t.similarity_min === 'number') {
+    const on = t.similarity_on.map(String);
+    const tokens = new Map(hits.map((rel) => [rel, workflowTokens(read(root, rel), on)]));
+    hits = hits.filter((rel) =>
+      hits.some((other) => other !== rel && jaccard(tokens.get(rel)!, tokens.get(other)!) >= t.similarity_min),
+    );
+  }
 
   // A `detect` narrows the population to files matching a shape. Without it the
   // gate counted *every scanned file* — so the redirect-stub check reported
@@ -430,6 +542,10 @@ export const gateMeta: Engine = (_t, root) => {
         const section = selectEngineTable(parsed, engine, id);
         for (const r of runSelfTests(id, engine, section, blocks)) {
           if (r.outcome === 'mismatch') findings.push({ message: `self-test for '${id}' ${r.detail}` });
+          // An engine that throws on its own fixture is a defect, not a coverage
+          // gap. It used to be folded into `unrun`, which is how an exception
+          // hides inside a count nobody reads (WI-087).
+          else if (r.outcome === 'error') findings.push({ message: `self-test for '${id}' ${r.detail}` });
           else if (r.outcome === 'unrun') unrun++;
         }
       } catch (e: any) {

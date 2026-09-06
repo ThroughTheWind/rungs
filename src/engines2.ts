@@ -18,9 +18,14 @@ const read = (root: string, rel: string) => {
 const expand = (files: string[], p: string[] | undefined, f: string[] = []) =>
   [...new Set((p ?? f).flatMap((x) => matchAny(files, x)))];
 
-/** An exemption marker is ignored unless it states a reason. */
+/**
+ * An exemption marker is ignored unless it states a reason — on the same line,
+ * and not the `-->` that closes an HTML comment. `\s*\S` accepted `<!-- owner-ok: -->`
+ * because `-` is a non-space character, so a bare marker exempted after all;
+ * the fixtures asserting the opposite had never run (WI-087).
+ */
 const exempted = (text: string, marker?: string) =>
-  !!marker && new RegExp(`${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\S`).test(text);
+  !!marker && new RegExp(`${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[ \\t]*(?!-->)\\S`).test(text);
 
 /**
  * Ids: uniqueness across the declared sources, citations that resolve, and the
@@ -37,12 +42,20 @@ export const idIntegrity: Engine = (t, root, files) => {
     for (const rel of expand(files, kind.sources)) {
       examined++;
       const text = read(root, rel);
-      const id = text.match(re)?.[1] ?? rel.match(new RegExp(kind.format))?.[0];
-      if (!id) continue;
-      known.add(id);
-      const prior = seen.get(id);
-      if (prior) findings.push({ file: rel, message: `id ${id} also claimed by ${prior}` });
-      else seen.set(id, rel);
+      const fileId = text.match(re)?.[1] ?? rel.match(new RegExp(kind.format))?.[0];
+      // A register is one file holding many ids, one per table row. Reading one
+      // id per file meant `findings-ids` could never see a duplicate finding id —
+      // its fail fixture had no way to fire (WI-087). Only the first cell of a
+      // row is an id; a citation later in the row is a reference to one.
+      const rowIds = fileId
+        ? []
+        : [...text.matchAll(new RegExp(`^\\|\\s*\\[?(${kind.format})(?:\\]\\([^)]*\\))?\\s*\\|`, 'gm'))].map((m) => m[1]);
+      for (const id of fileId ? [fileId] : rowIds) {
+        known.add(id);
+        const prior = seen.get(id);
+        if (prior) findings.push({ file: rel, message: `id ${id} also claimed by ${prior}` });
+        else seen.set(id, rel);
+      }
     }
     // The marker must not name an id that is already spent.
     if (kind.marker?.file) {
@@ -97,8 +110,26 @@ export const renderFreshness: Engine = (t, root, files) => {
       examined++;
       const text = read(root, spec.block.file);
       const re = new RegExp(`rungs:begin ${spec.block.marker}[\\s\\S]*?rungs:end ${spec.block.marker}`);
-      if (!re.test(text)) {
+      const block = text.match(re)?.[0];
+      if (!block) {
         findings.push({ file: spec.block.file, message: `no '${spec.block.marker}' block — run \`${spec.command}\`` });
+        continue;
+      }
+      // `derives = "file-index"`: the block is a table with one row per source
+      // file. Presence alone had been the whole check, so an index block that
+      // was empty while ten records sat beside it passed — its own fail fixture
+      // asserted otherwise and had never run (WI-087).
+      if (spec.derives === 'file-index' && Array.isArray(spec.sources)) {
+        const sources = expand(files, spec.sources);
+        const rows = block.split('\n').filter((line) => /^\s*\|/.test(line) && !/^\s*\|[\s:|-]+\|\s*$/.test(line)).length;
+        // The header row is one of the pipe lines when a table exists at all.
+        const dataRows = rows ? rows - 1 : 0;
+        if (dataRows !== sources.length) {
+          findings.push({
+            file: spec.block.file,
+            message: `'${spec.block.marker}' lists ${dataRows} row(s) for ${sources.length} source file(s) — run \`${spec.command}\``,
+          });
+        }
       }
       continue;
     }
@@ -108,6 +139,17 @@ export const renderFreshness: Engine = (t, root, files) => {
     // Only harnesses this repo actually emits for are checked; a missing
     // `.cursor/rules` in a repo that never asked for Cursor is not staleness.
     const live = new Set(targets.map((x) => x.split('/')[0]));
+    // Except when nothing was ever rendered anywhere: a repo with rule sources
+    // and no rendering under any harness has never run `render`, and that is
+    // staleness, not a harness choice. The fail fixture asserted this since the
+    // module shipped, and the engine passed it (WI-087).
+    if (sources.length && !live.size) {
+      for (const src of sources) {
+        examined++;
+        findings.push({ file: src, message: `no rendering under any harness directory — run \`${spec.command}\`` });
+      }
+      continue;
+    }
     for (const src of sources) {
       examined++;
       const stem = src.split('/').pop()!.replace(/\.md$/, '');
@@ -182,6 +224,17 @@ export const registerSchema: Engine = (t, root, files) => {
         for (const cond of t.conditional ?? []) {
           const matches = Object.entries<any>(cond.when ?? {}).every(([k, v]) => strip(row[k]) === String(v));
           if (!matches) continue;
+          // `requires_note = true`: the row must say something in its note
+          // column (`note_column`, default `Note`). The specs table declared it
+          // for a partial story since the module shipped and nothing read it, so
+          // "🟡 with no note" was never refused (WI-087).
+          if (cond.requires_note) {
+            const column = String(cond.note_column ?? 'Note');
+            const key = Object.keys(row).find((k) => k.toLowerCase() === column.toLowerCase());
+            if (!key || !strip(row[key])) {
+              findings.push({ file: rel, message: `row ${firstCell(row)}: a '${column}' is required when ${JSON.stringify(cond.when)} — a bare partial is a guess` });
+            }
+          }
           for (const c of cond.non_empty ?? []) {
             const v = strip(row[c]);
             if (!v) findings.push({ file: rel, message: `row ${firstCell(row)}: '${c}' required when ${JSON.stringify(cond.when)}` });
@@ -215,7 +268,10 @@ export const selfDeclaredClosure: Engine = (t, root, files) => {
   let examined = 0;
   const targets = t.file ? [t.file] : expand(files, t.scan ?? ['docs/**/FINDINGS.md']);
   const idPattern = t.id_pattern ?? '[A-Z]{1,6}-\\d{1,4}';
-  const openRow = new RegExp(t.open_row_pattern ?? `^\\|\\s*\\[?(${idPattern})\\]`, 'gmu');
+  // The bracket after the id is optional: a register row is `| F-054 | …`, not
+  // `| [F-054] | …`. The shipped default and the findings table both required
+  // it, so no real row ever matched and the gate examined nothing (WI-087).
+  const openRow = new RegExp(t.open_row_pattern ?? `^\\|\\s*\\[?(${idPattern})\\]?`, 'gmu');
   const detailHeading = new RegExp(t.detail_heading_pattern ?? `^###\\s+(${idPattern})\\s+—\\s+`, 'gmu');
   const verdicts = (t.declares_fixed ?? [
     '\\*\\*Fixed[.,)*]',
@@ -246,7 +302,7 @@ export const selfDeclaredClosure: Engine = (t, root, files) => {
       const end = headings[i + 1]?.index ?? detail.length;
       const section = detail.slice(start, end);
       const marker = t.exempt_marker ?? 'closure-ok:';
-      if (new RegExp(`<!--\\s*${escapeRe(marker)}\\s*\\S`, 'u').test(section)) continue;
+      if (new RegExp(`<!--\\s*${escapeRe(marker)}[ \\t]*(?!-->)\\S`, 'u').test(section)) continue;
       const body = section.slice(section.indexOf('\n') + 1);
       for (const verdict of verdicts) {
         const match = verdict.exec(body);

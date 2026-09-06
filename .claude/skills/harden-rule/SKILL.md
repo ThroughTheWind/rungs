@@ -3,7 +3,7 @@ name: harden-rule
 description: >-
   Turn a mistake into a rule that cannot be made again, by picking the cheapest rung that actually
   holds: a sentence at the point of use, a line in a skill, a path-scoped rule, or a gate or hook.
-  Use after getting something wrong that an instruction could have prevented, after the same
+  Use when you got something wrong that an instruction could have prevented, when the same
   mistake happens twice, when a rule that already exists was broken anyway, or when asked to
   "write that down", "make sure this doesn't happen again", or "add a check for this". Also use to
   decide whether a rule is worth a gate at all. Recording the observation without changing the

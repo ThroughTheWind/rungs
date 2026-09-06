@@ -143,11 +143,31 @@ export function registerHooks(mods: Manifest[], repoRoot: string, harnesses: Har
  */
 export function hookRenderEntries(repoRoot: string, harnesses: Harness[]): RenderEntry[] {
   const hooks = loadRegistry(repoRoot).gates.filter((g) => g.trigger);
+  if (!hooks.length) return [];
+  // The row says "emitted" only when the entry is actually in the file. A repo
+  // that registered the gate before hooks were delivered, and has not upgraded,
+  // must read as not yet emitted rather than as protected.
+  let settings: Record<string, any> | null = null;
+  let unreadable: string | null = null;
+  if (harnesses.includes(HOOK_HARNESS)) {
+    try {
+      settings = readSettings(repoRoot).settings;
+    } catch (error: any) {
+      unreadable = error?.message ?? String(error);
+    }
+  }
   const entries: RenderEntry[] = [];
   for (const gate of hooks) {
     for (const harness of harnesses) {
-      if (harness === HOOK_HARNESS && HOOK_EVENTS[gate.trigger!]) {
-        entries.push({ rule: `hook ${gate.id}`, harness, target: CLAUDE_SETTINGS, dropped: [] });
+      const event = HOOK_EVENTS[gate.trigger!];
+      if (harness === HOOK_HARNESS && event) {
+        if (unreadable) {
+          entries.push({ rule: `hook ${gate.id}`, harness, degraded: `hook not emitted: ${unreadable}` });
+        } else if (settings && hasCommand(settings, event, hookCommandFor(gate.id))) {
+          entries.push({ rule: `hook ${gate.id}`, harness, target: CLAUDE_SETTINGS, dropped: [] });
+        } else {
+          entries.push({ rule: `hook ${gate.id}`, harness, degraded: `hook not emitted: no entry in ${CLAUDE_SETTINGS} yet — run \`node .ai/rungs.mjs upgrade --apply\`` });
+        }
       } else {
         entries.push({
           rule: `hook ${gate.id}`,

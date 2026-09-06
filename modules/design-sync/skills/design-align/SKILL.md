@@ -2,8 +2,8 @@
 name: design-align
 description: >-
   Reconcile the pulled design mirror against what is actually implemented, routing every difference
-  to a work item, a deferred item, or an upstream change request. Use after a design pull, or when
-  asked to "align with the design", "does this match the mock", "triage the design deltas", or
+  to a work item, a deferred item, or an upstream change request. Use when a design pull has just
+  landed, or when asked to "align with the design", "does this match the mock", "triage the design deltas", or
   "what does the new design mean for us". Pulling the mirror down is /design-pull; this decides
   what the pull means.
 ---

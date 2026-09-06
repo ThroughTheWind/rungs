@@ -173,9 +173,9 @@ export const changelogFreshness: Engine = (t, root, files) => {
   return { findings, examined };
 };
 
-/** An exemption marker is ignored unless it states a reason. */
+/** An exemption marker is ignored unless it states a reason on its own line — and `-->` is not a reason (WI-087). */
 const exempted = (text: string, marker?: string) =>
-  !!marker && new RegExp(`${escapeRe(marker)}\\s*\\S`).test(text);
+  !!marker && new RegExp(`${escapeRe(marker)}[ \\t]*(?!-->)\\S`).test(text);
 
 /** Rows of the first markdown table under a heading containing `near`. */
 function tableRows(text: string, near?: string): Record<string, string>[] {

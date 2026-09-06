@@ -5,8 +5,11 @@
 
 # ── skills-spec-pure ──────────────────────────────────────────────────────────
 
+# Each entry's `id` is matched against the gate id, so each gate runs only its own rule. One
+# shared entry (`id = "skills"`) served both gates, so `skills-spec-pure` also judged descriptions
+# and `skills-description-routes` also judged keys (WI-087).
 [[frontmatter_schema]]
-id       = "skills"
+id       = "spec-pure"
 scan     = ["{{dir}}/**/SKILL.md"]
 required = ["name", "description"]
 allowed  = ["name", "description", "license", "compatibility", "metadata", "allowed-tools"]
@@ -23,6 +26,13 @@ module's manifest, where the portability cost is recorded next to the choice.
 #
 # Structure, not quality. A gate cannot judge whether a description is *good*; it can tell that it
 # is a single clause with no trigger vocabulary, which is the shape that never fires.
+#
+# `field_shape` was declared here since the module shipped and read by no engine, so this gate
+# examined every consumer's skills and checked nothing about their descriptions (WI-087).
+
+[[frontmatter_schema]]
+id   = "description-routes"
+scan = ["{{dir}}/**/SKILL.md"]
 
 [[frontmatter_schema.field_shape]]
 field     = "description"

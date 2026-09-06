@@ -20,7 +20,7 @@ import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { land, parseGitRefFormatOutput, sessionStart, worktrees } from '../src/concurrency.ts';
 
 import { loadAllModules, auditModules, loadManifest } from '../src/manifest.ts';
-import { addModule, blockedByConflict, blockedByParadigm, contentHash, emittedFiles } from '../src/add.ts';
+import { addModule, blockedByConflict, blockedByParadigm, contentHash, emittedFiles, ownershipHash } from '../src/add.ts';
 import { applyArchive, planArchive } from '../src/backlog.ts';
 import { changeRequiresFile, computedClaim, gitStatusReconcile, parseGitPathList, registerSchema, selfDeclaredClosure } from '../src/engines2.ts';
 import { boardReconcile, changelogFreshness } from '../src/engines3.ts';
@@ -32,6 +32,9 @@ import { runSelfTests } from '../src/selftest.ts';
 import { loadTable, runGates, UnknownTierError } from '../src/check.ts';
 import { hookRenderEntries, HookRefusal, hookVerdict, preflightHooks, registerHooks } from '../src/hooks.ts';
 import { evaluateShellSafety } from '../src/hook-engine.ts';
+import { renderDerivedBlocks } from '../src/render.ts';
+import { semanticText } from '../src/text.ts';
+import { parse as parseToml } from 'smol-toml';
 import { ENGINE_TABLE_KEYS, selectEngineTable } from '../src/engine-table.ts';
 import { readVersionSource } from '../src/version-source.ts';
 import { readRules } from '../src/render.ts';
@@ -340,13 +343,32 @@ test('the self-test runner executes a fixture and refuses to guess at one it can
   ]);
   assert.equal(wrong[0].outcome, 'mismatch', 'a fixture that disagrees with its engine is reported');
 
+  // WI-087 gave every shipped shape a builder, so the examples here are a shape
+  // no module declares and the one rule no engine implements. Both are `unrun`,
+  // by name — never a pass.
   const unbuildable = runSelfTests('demo', 'frontmatter-schema', table, [
-    { expect: 'pass', fixture: { worktrees: [{ branch: 'x' }] } },
+    { expect: 'pass', fixture: { no_such_shape: 1 } },
   ]);
   assert.equal(unbuildable[0].outcome, 'unrun', 'a shape with no builder is never a pass');
+  assert.match(unbuildable[0].detail, /no builder/);
 
-  const contextual = runSelfTests('demo', 'link-integrity', table, [{ expect: 'pass', input: 'x' }]);
-  assert.equal(contextual[0].outcome, 'unrun', 'engines needing context the fixture lacks do not run');
+  const unsupported = runSelfTests('demo', 'render-freshness', table, [{ expect: 'pass', fixture: { modified: [] } }]);
+  assert.equal(unsupported[0].outcome, 'unrun');
+  assert.match(unsupported[0].detail, /local-modification.*unimplemented/, 'an unimplemented rule is named, not counted');
+
+  // A link fixture now states the context it needs and executes.
+  const linkTable = { check: ['relative_markdown_links'], scan: ['**/*.md'] };
+  const contextual = runSelfTests('demo', 'link-integrity', linkTable, [
+    { expect: 'pass', input: 'See [x](./x.md).', fixture: { file: 'docs/a.md', exists: ['docs/x.md'] } },
+    { expect: 'fail', input: 'See [x](./x.md).', fixture: { file: 'docs/a.md' } },
+  ]);
+  assert.deepEqual(contextual.map((r) => r.outcome), ['ok', 'ok'], 'declared context decides the verdict, not the expectation');
+
+  // An engine that throws on its fixture is an error, not a coverage gap.
+  const throwing = runSelfTests('demo', 'computed-claim', [{ id: 'v', sources: [{ file: 'package.json', path: 'version' }], rule: 'all-agree' }], [
+    { expect: 'pass', fixture: { version_files: { 'package.json': '{' } } },
+  ]);
+  assert.notEqual(throwing[0].outcome, 'unrun', 'a fixture that reaches the engine is never reported as unrun');
 });
 
 /**
@@ -4322,6 +4344,168 @@ test('hooks reach the Claude harness through the pinned launcher and degrade eve
     assert.equal(direct.status, 2, 'a hook is not a file gate');
     assert.match(direct.stderr, /is a hook/);
     assert.match(readFileSync(join(dir, '.ai', 'gates.toml'), 'utf8'), /id\s*=\s*"instructions-shell-backticks"\nkind\s*=\s*"declared"/, 'a hook keeps its declared kind after ejection');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/**
+ * WI-087. This repo's meta-gate sees only the gates registered here, so a fixture
+ * in a module this repo does not install can disagree with its engine for ever
+ * without any gate noticing — seven did. This runs every fixture of every
+ * bundled module and holds the unrun set to an explicit list with reasons, so
+ * the number cannot shrink or grow silently.
+ */
+test('every shipped self-test fixture executes and agrees, or names the unimplemented rule it waits for', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const mods = loadAllModules(join(root, 'modules'));
+  const params = resolveParams(mods, {}, '.');
+  const rows = [];
+  for (const mod of mods) {
+    const gatesDir = join(mod.dir, 'gates');
+    if (!existsSync(gatesDir)) continue;
+    for (const file of readdirSync(gatesDir).filter((f) => f.endsWith('.toml'))) {
+      const parsed = parseToml(substitute(semanticText(readFileSync(join(gatesDir, file), 'utf8')), mod.name, params));
+      for (const block of Array.isArray(parsed.self_test) ? parsed.self_test : []) {
+        const gate = mod.gates.find((g) => g.id === block.gate);
+        assert.ok(gate?.engine, `${mod.name}/${file}: fixture for '${block.gate}' names a gate the manifest declares`);
+        const section = selectEngineTable(parsed, gate.engine, gate.id);
+        const [r] = runSelfTests(gate.id, gate.engine, section, [{ expect: String(block.expect), input: block.input, fixture: block.fixture }]);
+        rows.push({ module: mod.name, gate: gate.id, expect: r.expect, outcome: r.outcome, detail: r.detail ?? '' });
+      }
+    }
+  }
+  const by = (outcome) => rows.filter((r) => r.outcome === outcome);
+  assert.ok(rows.length >= 148, `${rows.length} fixtures found`);
+  assert.deepEqual(by('mismatch'), [], 'no fixture disagrees with its engine');
+  assert.deepEqual(by('error'), [], 'no engine throws on its own fixture');
+  // The allowlist. Adding to it is a decision recorded in the module's table; a
+  // fixture that stops running for any other reason fails here by name.
+  const unsupported = 'rule `detect = "local-modification"` is unimplemented, and the `rungs design pull` it presupposes does not exist';
+  assert.deepEqual(
+    by('unrun').map((r) => `${r.gate} ${r.expect}: ${r.detail}`).sort(),
+    [`design-mirror-not-edited fail: ${unsupported}`, `design-mirror-not-edited pass: ${unsupported}`],
+  );
+  assert.equal(by('ok').length, rows.length - 2);
+});
+
+/**
+ * WI-087. A managed block's body inside a module-owned file is generated, so it
+ * must not count toward ownership: `render` filling the ADR index made the file
+ * read as diverged and `upgrade` refuse it. Deleting the block is still an edit.
+ */
+test('ownership ignores a filled managed block but not a deleted one', () => {
+  const emitted = '# Decisions\n\n<!-- rungs:begin adr-index -->\n<!-- Generated by `rungs render`. -->\n<!-- rungs:end adr-index -->\n\nprose\n';
+  const filled = emitted.replace(
+    '<!-- Generated by `rungs render`. -->\n',
+    '<!-- Generated by `rungs render` from docs/decisions/ADR-*.md. -->\n| id | title |\n| --- | --- |\n| [ADR-0001](a.md) | x |\n',
+  );
+  const deleted = '# Decisions\n\nprose\n';
+  const edited = emitted.replace('prose', 'my prose');
+  assert.equal(ownershipHash(filled), ownershipHash(emitted), 'a filled block is the emitted file for ownership');
+  assert.notEqual(ownershipHash(deleted), ownershipHash(emitted), 'a deleted block is an edit');
+  assert.notEqual(ownershipHash(edited), ownershipHash(emitted), 'an edit outside the block is an edit');
+  assert.notEqual(contentHash(filled), contentHash(emitted), 'the raw hash still sees the difference, which is why ownership needs its own');
+  const toml = '# rungs:begin gates@1.0.0\n[[gates]]\nid = "x"\n# rungs:end gates\n';
+  assert.equal(ownershipHash(toml), ownershipHash(toml.replace('id = "x"\n', 'id = "y"\nwhy = "z"\n')), 'a versioned TOML block body is generated too');
+});
+
+/**
+ * WI-087. The rules the fixtures turned out to assert and no engine read, each
+ * seeded as a violation and then corrected, through the production runner —
+ * the same path a consumer's `rungs check` takes.
+ */
+test('the table rules the fixtures exposed fail on a seeded violation and pass when corrected, through runGates', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rungs-exposed-rules-'));
+  const seed = (files) => {
+    for (const [rel, body] of Object.entries(files)) {
+      const full = join(dir, ...rel.split('/'));
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, body);
+    }
+  };
+  const registry = (id, engine, table) => `[[gates]]\nid = "${id}"\nkind = "declared"\nengine = "${engine}"\ntable = "${table}"\n`;
+  const only = (id) => runGates(dir).find((r) => r.id === id);
+  const plan = (tier, sections) => `---\ntier: ${tier}\nstatus: active\ncreated: 2026-01-01\n---\n\n${sections.map((s) => `## ${s}\n\ntext\n`).join('\n')}`;
+  const tierOne = ['Why', 'Decisions', 'Phases', 'Validation', 'Follow-up'];
+  try {
+    // `when`: a tier-1 plan is held to the tier-1 list only; a tier-2 plan needs its own sections.
+    seed({ '.ai/gates.toml': registry('workflows-plan-sections', 'sections', 'workflows/workflows.toml'), 'docs/plans/a.md': plan(1, tierOne) });
+    assert.equal(only('workflows-plan-sections').status, 'pass', 'a complete tier-1 plan is not held to tier-2 sections');
+    seed({ 'docs/plans/a.md': plan(2, tierOne) });
+    const tierTwo = only('workflows-plan-sections');
+    assert.equal(tierTwo.status, 'fail');
+    assert.match(tierTwo.findings[0].message, /missing section 'Boundary decision'/);
+    rmSync(join(dir, 'docs'), { recursive: true, force: true });
+
+    // `required_subsections`: a Scope without an Out of scope is the sideways-growth shape.
+    seed({ '.ai/gates.toml': registry('specs-scope-section', 'sections', 'specs/specs.toml'), 'docs/specs/a.md': '## Purpose\n\ntext\n\n## Scope\n\ntext\n\n### In scope\n\ntext\n' });
+    assert.match(only('specs-scope-section').findings[0]?.message ?? '', /missing subsection 'Out of scope' under 'Scope'/);
+    seed({ 'docs/specs/a.md': '## Purpose\n\ntext\n\n## Scope\n\ntext\n\n### In scope\n\ntext\n\n### Out of scope\n\ntext\n' });
+    assert.equal(only('specs-scope-section').status, 'pass');
+    rmSync(join(dir, 'docs'), { recursive: true, force: true });
+
+    // `field_shape` runs for the routing gate only; the spec-purity gate still ignores wording.
+    seed({
+      '.ai/gates.toml': registry('skills-description-routes', 'frontmatter-schema', 'skills/skills.toml') + registry('skills-spec-pure', 'frontmatter-schema', 'skills/skills.toml'),
+      '.claude/skills/x/SKILL.md': '---\nname: x\ndescription: Executes the release process.\n---\n\n# x\n',
+    });
+    let runs = runGates(dir);
+    assert.equal(runs.find((r) => r.id === 'skills-description-routes').status, 'fail');
+    assert.equal(runs.find((r) => r.id === 'skills-spec-pure').status, 'pass', 'a terse description is not a purity defect');
+    seed({ '.claude/skills/x/SKILL.md': '---\nname: x\ndescription: Cut, tag and ship a release from the active candidate. Use when asked to cut the release, tag a version, hotfix production, or roll back a deploy.\n---\n\n# x\n' });
+    runs = runGates(dir);
+    assert.equal(runs.find((r) => r.id === 'skills-description-routes').status, 'pass');
+    rmSync(join(dir, '.claude'), { recursive: true, force: true });
+
+    // `exempt_marker` on a population: a reason exempts, `-->` is not a reason.
+    const audits = (marker) => Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`docs/audits/a-${i}.md`, `<!-- ${marker} -->\n# audit ${i}\n`]));
+    seed({ '.ai/gates.toml': registry('audit-output-is-rows', 'file-population', 'audit/audit.toml'), ...audits('audit-doc-ok:') });
+    assert.equal(only('audit-output-is-rows').status, 'fail', 'a bare marker exempts nothing');
+    seed(audits('audit-doc-ok: retained as regulatory evidence'));
+    assert.equal(only('audit-output-is-rows').status, 'pass');
+    rmSync(join(dir, 'docs'), { recursive: true, force: true });
+
+    // Register-row ids: a duplicated finding id is now visible inside one file.
+    const register = (ids) => `# Findings\n\n<!-- NEXT-ID: F-009 -->\n\n## Open\n\n| Id | Sev | Pri | What | Evidence | When to act | How to fix |\n| --- | --- | --- | --- | --- | --- | --- |\n${ids.map((id) => `| ${id} | high | now | x | y | z | w |`).join('\n')}\n`;
+    seed({ '.ai/gates.toml': registry('findings-ids', 'id-integrity', 'findings/findings.toml'), 'docs/backlog/FINDINGS.md': register(['F-001', 'F-001']) });
+    assert.match(only('findings-ids').findings[0]?.message ?? '', /id F-001 also claimed/);
+    seed({ 'docs/backlog/FINDINGS.md': register(['F-001', 'F-002']) });
+    assert.equal(only('findings-ids').status, 'pass');
+
+    // The closure gate's row pattern now matches a real row; a reasoned marker exempts, a bare one does not.
+    const closure = (detail) => `# Findings\n\n## Open\n\n| Id | Sev | Pri | What | Evidence | When to act | How to fix |\n| --- | --- | --- | --- | --- | --- | --- |\n| F-001 | high | now | x | y | z | w |\n\n## Closed\n\n| Id | What | Disposition | Reason |\n| --- | --- | --- | --- |\n\n## Detail\n\n### F-001 — x\n\n${detail}\n`;
+    seed({ '.ai/gates.toml': registry('findings-self-declared-closure', 'self-declared-closure', 'findings/findings.toml'), 'docs/backlog/FINDINGS.md': closure('**Fixed.**') });
+    assert.equal(only('findings-self-declared-closure').status, 'fail', 'an open finding declaring itself fixed is caught on a real row');
+    seed({ 'docs/backlog/FINDINGS.md': closure('<!-- closure-ok: -->\n**Fixed.**') });
+    assert.equal(only('findings-self-declared-closure').status, 'fail', 'a bare closure marker exempts nothing');
+    seed({ 'docs/backlog/FINDINGS.md': closure('<!-- closure-ok: only the mitigation shipped -->\n**Fixed.**') });
+    assert.equal(only('findings-self-declared-closure').status, 'pass');
+    rmSync(join(dir, 'docs'), { recursive: true, force: true });
+
+    // `file-index`: an empty index beside records fails, and `render` is what fixes it.
+    const adr = (n) => `---\nid: ADR-000${n}\ntitle: Decision ${n}\nstatus: accepted\ndate: 2026-01-0${n}\n---\n\n# ADR-000${n}\n`;
+    seed({
+      '.ai/gates.toml': registry('adr-index-current', 'render-freshness', 'adr/adr.toml'),
+      'docs/decisions/README.md': '# Decisions\n\n<!-- rungs:begin adr-index -->\n<!-- rungs:end adr-index -->\n',
+      'docs/decisions/ADR-0001-a.md': adr(1),
+      'docs/decisions/ADR-0002-b.md': adr(2),
+    });
+    assert.match(only('adr-index-current').findings[0]?.message ?? '', /lists 0 row\(s\) for 2 source file\(s\)/);
+    assert.deepEqual(renderDerivedBlocks(dir), ['docs/decisions/README.md']);
+    const index = readFileSync(join(dir, 'docs', 'decisions', 'README.md'), 'utf8');
+    assert.match(index, /\| \[ADR-0001\]\(ADR-0001-a\.md\) \| Decision 1 \| accepted \| 2026-01-01 \|/);
+    assert.equal(only('adr-index-current').status, 'pass');
+    assert.deepEqual(renderDerivedBlocks(dir), [], 'a second render changes nothing');
+
+    // Never rendered: rule sources with no rendering anywhere are stale, not a harness choice.
+    seed({
+      '.ai/gates.toml': registry('instructions-render-current', 'render-freshness', 'instructions/core.toml'),
+      '.ai/rules/backend.md': '---\ndescription: d\nenforcement: review-only\n---\n\nbody\n',
+    });
+    assert.match(only('instructions-render-current').findings[0]?.message ?? '', /no rendering under any harness directory/);
+    seed({ '.claude/rules/backend.md': '<!-- Generated by `rungs render` -->\n\nbody\n' });
+    assert.equal(only('instructions-render-current').status, 'pass');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

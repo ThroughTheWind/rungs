@@ -417,6 +417,17 @@ export function resolveInstallOrder(requested: string[], all: Manifest[]): { ord
 export const contentHash = (s: string) => createHash('sha256').update(s.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
 
 /**
+ * The hash ownership is judged by. A managed block's **body** inside a
+ * module-owned file is generated — `render` fills the ADR index block from the
+ * records beside it (WI-087) — so it is stripped before hashing: a block that
+ * was filled is not a file the consumer edited, and a block the module now
+ * emits differently is not a divergence either. The markers stay, so a block
+ * that was deleted still reads as an edit.
+ */
+export const ownershipHash = (s: string) =>
+  contentHash(s.replace(/(rungs:begin ([\w-]+)[^\n]*\n)[\s\S]*?(?=[^\n]*rungs:end \2\b)/g, '$1'));
+
+/**
  * Files a module owns **outright** — not the shared ones it merges into.
  *
  * `AGENTS.md` and `.ai/gates.toml` are co-owned: a module creates them and then
@@ -508,7 +519,7 @@ export function writeInstallRecord(
     const kept = [...emitted].filter(([rel]) => !created.some(([c]) => c === rel) && exists(rel));
     if (created.length) {
       lines.push(`[modules.${m.name}.hashes]`);
-      for (const [rel, content] of created) lines.push(`"${rel}" = "${contentHash(content)}"`);
+      for (const [rel, content] of created) lines.push(`"${rel}" = "${ownershipHash(content)}"`);
     }
     if (kept.length) {
       lines.push('', `[modules.${m.name}]`.replace(']', '.kept]'));

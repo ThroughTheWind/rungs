@@ -67,20 +67,28 @@ the end is one whose later sections collect unverified claims. Do not pre-split 
 
 # ── self-tests ────────────────────────────────────────────────────────────────
 
+# Rows carry every column the register requires, so a fixture fires for the rule
+# it asserts and not for a missing `Story` column (WI-087).
 [[self_test]]
 gate    = "specs-status-evidence"
 expect  = "fail"
-fixture = { row = { Id = "X-US-001", Status = "✅", "Closed by" = "" } }
+fixture = { row = { Id = "X-US-001", Story = "sign in", Status = "✅", "Closed by" = "" } }
 
 [[self_test]]
 gate    = "specs-status-evidence"
 expect  = "pass"
-fixture = { row = { Id = "X-US-001", Status = "✅", "Closed by" = "WI-042" } }
+fixture = { row = { Id = "X-US-001", Story = "sign in", Status = "✅", "Closed by" = "WI-042" } }
 
+# A partial story needs a note. `note` becomes the row's `Note` column, empty or not.
 [[self_test]]
 gate    = "specs-status-evidence"
 expect  = "fail"
-fixture = { row = { Id = "X-US-002", Status = "🟡" }, note = "" }
+fixture = { row = { Id = "X-US-002", Story = "sign out", Status = "🟡", "Closed by" = "" }, note = "" }
+
+[[self_test]]
+gate    = "specs-status-evidence"
+expect  = "pass"
+fixture = { row = { Id = "X-US-002", Story = "sign out", Status = "🟡", "Closed by" = "" }, note = "waiting on the session spec" }
 
 [[self_test]]
 gate    = "specs-scope-section"
