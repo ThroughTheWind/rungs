@@ -17,8 +17,13 @@ canary found in the integrated candidate. Per-item commands, dates and counts ar
 
 Nothing was pushed, tagged, published or deployed, and Arena Lab's maintained checkout was only read.
 The exact-SHA CI matrix is therefore pending. The disposable Arena Lab canary ran on a throwaway
-clone and is a synthetic check, not adoption. Findings F-059 to F-063 are open, F-061 (`add` after
-`init` rewrites the install record) being the one that matters before the next release.
+clone and is a synthetic check, not adoption. The findings the programme left open, F-059 to F-063,
+were then closed in the same session at the user's request, one item each: WI-093 (`add` extends the
+install record, F-061), WI-094 (one `check [path] [tier]` grammar on both launcher surfaces, F-063),
+WI-095 (guarded large-value assertions and a capped serial `npm test`, F-059), WI-096 (the private
+inline-interpreter hook anchored to the interpreter's own arguments, F-060), WI-097 (the phantom
+`design-sync` gate retired and `generated_by` values read as command claims, F-062). Still open:
+F-056 and the user's own F-058.
 
 ## Decisions taken
 
@@ -38,9 +43,10 @@ tier through the ejected launcher and a path through the CLI (F-063).
 
 ## Verification and handoff
 
-Final producer numbers are in WI-090's Review. The next task is WI-064's release flow, which this
-session did not have authorization to run: push `main`, read the CI matrix for the exact SHA, cut
-0.5.0 from `changelog.d/0.5.0.md`, publish, then a dedicated Arena Lab item pins the released version
-through `node .ai/rungs.mjs upgrade --to 0.5.0`. Before that, F-061 should be fixed or the release
-notes should name it. The user's uncommitted F-058 row was restored from the stash after the last
-landing and remains uncommitted, as before the programme.
+Producer numbers per item are in each item's Review; the last full run, on the WI-097 tree, was
+`npm test` 157 tests, 154 pass, 0 fail, 3 skipped, and `rungs check` 32 pass with every one of the
+161 shipped fixtures executing. The next task is WI-064's release flow, which this session did not
+have authorization to run: push `main`, read the CI matrix for the exact SHA, cut 0.5.0 from
+`changelog.d/0.5.0.md`, publish, then a dedicated Arena Lab item pins the released version through
+`node .ai/rungs.mjs upgrade --to 0.5.0`. The user's uncommitted F-058 row was stashed during every
+landing and restored afterwards; it remains uncommitted, as before the programme.
