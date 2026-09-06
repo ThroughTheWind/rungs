@@ -1,4 +1,4 @@
-<!-- rungs:begin design-sync@1.0.0 -->
+<!-- rungs:begin design-sync@1.1.0 -->
 ## Design
 
 The design authority is external. Pull it with **`/design-pull`** into `{{mirror}}/` — generated,

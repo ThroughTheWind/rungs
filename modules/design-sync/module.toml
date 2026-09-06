@@ -1,6 +1,6 @@
 [module]
 name    = "design-sync"
-version = "1.0.0"
+version = "1.1.0"
 rung    = 3
 summary = "An external design authority pulled into a local mirror, with every delta routed to a work item, a future item, or an upstream change request — never silent divergence."
 
@@ -41,14 +41,10 @@ not routed — is how a design system and its implementation drift apart while b
 they are aligned.
 """
 
-[[gates]]
-id     = "design-mirror-not-edited"
-kind   = "declared"
-engine = "render-freshness"
-applicability = "our-artifacts"
-table  = "gates/design.toml"
-tier   = "fast"
-why    = "A hand-edit in the mirror is a local change that the next pull silently destroys, and until then it is a fact about the design system that the design system does not know."
+# `design-mirror-not-edited` was retired in 1.1.0 (F-062, WI-097). It declared a detection no
+# engine implements and a CLI "design pull" command that never existed — the mirror is produced
+# by the `/design-pull` skill — so it passed everywhere by examining nothing. The rule it stated
+# (the mirror is generated; a hand edit is destroyed by the next pull) lives in that skill.
 
 [skills.design-pull]
 # Read-only against upstream. Safe for a model to run unprompted.

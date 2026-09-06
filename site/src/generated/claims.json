@@ -136,7 +136,7 @@
     },
     {
       "name": "design-sync",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "rung": 3,
       "summary": "An external design authority pulled into a local mirror, with every delta routed to a work item, a future item, or an upstream change request — never silent divergence.",
       "requires": [

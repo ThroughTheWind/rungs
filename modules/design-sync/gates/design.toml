@@ -24,19 +24,6 @@ non_empty = ["Where"]
 min_words = { Where = 4 }
 message   = "Delta \"{delta}\" is deferred with no revisit trigger. A deferral with no trigger is a decision to never do it, taken without saying so."
 
-# ── design-mirror-not-edited ──────────────────────────────────────────────────
-
-[[render_freshness]]
-id       = "design-mirror"
-targets  = ["{{mirror}}/**"]
-generated_by = "rungs design pull"
-detect   = "local-modification"
-message  = """
-{file} in the mirror has been edited locally. The mirror is generated and the next pull destroys
-this — and until then it is a fact about the design system that the design system does not know.
-Route it instead: a work item if we should change, an upstream request if they should.
-"""
-
 # ── self-tests ────────────────────────────────────────────────────────────────
 
 [[self_test]]
@@ -58,13 +45,3 @@ fixture = { row = { Delta = "new chart component", Route = "defer", Where = "lat
 gate    = "design-deltas-routed"
 expect  = "pass"
 fixture = { row = { Delta = "new chart component", Route = "defer", Where = "revisit when analytics ships" } }
-
-[[self_test]]
-gate    = "design-mirror-not-edited"
-expect  = "fail"
-fixture = { modified = ["{{mirror}}/tokens.json"] }
-
-[[self_test]]
-gate    = "design-mirror-not-edited"
-expect  = "pass"
-fixture = { modified = [] }
