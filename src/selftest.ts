@@ -83,10 +83,10 @@ interface Built {
  * output says *why* a fixture did not run, and so the producer-side inventory
  * can hold the list to an explicit allowlist rather than a shrinking count.
  */
-export function unsupportedReason(engine: string, fx: any): string | null {
-  if (engine === 'render-freshness' && fx && Array.isArray(fx.modified)) {
-    return 'rule `detect = "local-modification"` is unimplemented, and the `rungs design pull` it presupposes does not exist';
-  }
+export function unsupportedReason(_engine: string, _fx: any): string | null {
+  // Empty since WI-097 retired `design-mirror-not-edited` (F-062), the one shape
+  // that had a named reason. The mechanism stays: the next table that declares a
+  // rule nothing implements is named here, not counted as "no builder".
   return null;
 }
 

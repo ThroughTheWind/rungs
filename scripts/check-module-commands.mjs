@@ -111,7 +111,9 @@ for (const file of walk(join(root, 'modules'))) {
   if (file.endsWith('.toml')) {
     matches.push(
       ...text.matchAll(
-        /^\s*(?:command|install_command)\s*=\s*"(?:npx @rungs\/cli|rungs|node \.ai\/rungs\.mjs) ([a-z][a-z-]*)([^"]*)"/gm,
+        // `generated_by` joined the keys after F-062: a gate table named `rungs design pull` as
+        // the producer of a mirror, no such command existed, and this scan read only `command`.
+        /^\s*(?:command|install_command|generated_by)\s*=\s*"(?:npx @rungs\/cli|rungs|node \.ai\/rungs\.mjs) ([a-z][a-z-]*)([^"]*)"/gm,
       ),
     );
   }

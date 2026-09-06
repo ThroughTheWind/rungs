@@ -20,9 +20,11 @@ Note the mirror's current state before pulling — what came down last time and 
 
 ## 2. Pull into `{{mirror}}/`
 
-The mirror is **generated**. Anything hand-edited there is destroyed by this step, which is why
-`design-mirror-not-edited` exists — if it has fired, resolve that before pulling or the edit
-disappears along with whatever it was compensating for.
+The mirror is **generated**. Anything hand-edited there is destroyed by this step, and no gate
+watches for it — so before pulling, check `git status` and `git diff` on `{{mirror}}/` yourself. A
+local edit there is either a fact the design system does not know (route it upstream) or a
+workaround (route it to a work item); pulling over it loses both the edit and whatever it was
+compensating for.
 
 ## 3. Report what changed, in design terms
 

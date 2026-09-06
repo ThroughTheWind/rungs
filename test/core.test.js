@@ -352,9 +352,11 @@ test('the self-test runner executes a fixture and refuses to guess at one it can
   assert.equal(unbuildable[0].outcome, 'unrun', 'a shape with no builder is never a pass');
   assert.match(unbuildable[0].detail, /no builder/);
 
+  // The `modified` shape belonged to the retired `design-mirror-not-edited` (F-062, WI-097); with
+  // no named unsupported rule left it is an ordinary shape with no builder.
   const unsupported = runSelfTests('demo', 'render-freshness', table, [{ expect: 'pass', fixture: { modified: [] } }]);
   assert.equal(unsupported[0].outcome, 'unrun');
-  assert.match(unsupported[0].detail, /local-modification.*unimplemented/, 'an unimplemented rule is named, not counted');
+  assert.match(unsupported[0].detail, /no builder/, 'no rule is named unsupported any more');
 
   // A link fixture now states the context it needs and executes.
   const linkTable = { check: ['relative_markdown_links'], scan: ['**/*.md'] };
@@ -2265,6 +2267,38 @@ test('docs command claims read the dependency-free authority that renders help',
   assert.ok(COMMANDS.length > 0, 'the help authority is structurally present');
   const names = COMMANDS.map(([usage]) => usage.split(' ')[0]);
   assert.equal(new Set(names).size, names.length, 'each rendered top-level command is counted once');
+});
+
+/**
+ * F-062 / WI-097. `design-sync` named `rungs design pull` as the producer of
+ * its mirror in a `generated_by` value, no such command existed, and the
+ * module-commands gate read only `command` keys. It now reads that key too.
+ */
+test('module-commands-exist reads generated_by values as command claims', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const copy = mkdtempSync(join(tmpdir(), 'rungs-module-commands-'));
+  const gate = () => spawnSync(process.execPath, [join(copy, 'scripts', 'check-module-commands.mjs')], { cwd: copy, encoding: 'utf8' });
+  try {
+    mkdirSync(join(copy, 'scripts'));
+    mkdirSync(join(copy, 'src'));
+    mkdirSync(join(copy, 'modules', 'x', 'gates'), { recursive: true });
+    writeFileSync(join(copy, 'scripts', 'check-module-commands.mjs'), readFileSync(join(root, 'scripts', 'check-module-commands.mjs'), 'utf8'));
+    writeFileSync(join(copy, 'src', 'help.ts'), readFileSync(join(root, 'src', 'help.ts'), 'utf8'));
+    // The dispatch the script derives its command set from: the real switch's case lines only.
+    const cases = [...readFileSync(join(root, 'src', 'cli.ts'), 'utf8').matchAll(/^\s{2}case '[a-z-]+':.*$/gm)].map((m) => m[0]);
+    writeFileSync(join(copy, 'src', 'cli.ts'), `${cases.join('\n')}\n`);
+
+    writeFileSync(join(copy, 'modules', 'x', 'gates', 'x.toml'), '[[render_freshness]]\nid = "m"\ngenerated_by = "node .ai/rungs.mjs render"\n');
+    const honest = gate();
+    assert.equal(honest.status, 0, honest.stdout + honest.stderr);
+
+    writeFileSync(join(copy, 'modules', 'x', 'gates', 'x.toml'), '[[render_freshness]]\nid = "m"\ngenerated_by = "rungs design pull"\n');
+    const phantom = gate();
+    assert.equal(phantom.status, 1, 'a generated_by naming a command the CLI does not dispatch fails the gate');
+    assert.match(phantom.stderr, /modules\/x\/gates\/x\.toml:3: `rungs design` is not a command the CLI dispatches/);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
 });
 
 const introducedFailure = (_dir, only) =>
@@ -4606,13 +4640,10 @@ test('every shipped self-test fixture executes and agrees, or names the unimplem
   assert.deepEqual(by('mismatch'), [], 'no fixture disagrees with its engine');
   assert.deepEqual(by('error'), [], 'no engine throws on its own fixture');
   // The allowlist. Adding to it is a decision recorded in the module's table; a
-  // fixture that stops running for any other reason fails here by name.
-  const unsupported = 'rule `detect = "local-modification"` is unimplemented, and the `rungs design pull` it presupposes does not exist';
-  assert.deepEqual(
-    by('unrun').map((r) => `${r.gate} ${r.expect}: ${r.detail}`).sort(),
-    [`design-mirror-not-edited fail: ${unsupported}`, `design-mirror-not-edited pass: ${unsupported}`],
-  );
-  assert.equal(by('ok').length, rows.length - 2);
+  // fixture that stops running for any other reason fails here by name. Empty
+  // since WI-097 retired the one gate whose fixtures could not execute (F-062).
+  assert.deepEqual(by('unrun').map((r) => `${r.gate} ${r.expect}: ${r.detail}`).sort(), []);
+  assert.equal(by('ok').length, rows.length, 'every shipped fixture executes');
 });
 
 /**
