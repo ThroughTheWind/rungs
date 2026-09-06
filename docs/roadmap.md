@@ -119,7 +119,7 @@ reading. That is not a phase either: it gates nothing and nothing gates it.
 ### The detector three readers already assume exists
 
 **Accepted 2026-08-17:** imperative and staleness detection —
-[WI-061](backlog/items/WI-061-imperative-staleness-detection.md).
+[WI-061](backlog/archive/WI-061-imperative-staleness-detection.md).
 
 The evidence for it arrived by accident, from three parties in a row. The landing page
 asserted the capability in a fabricated console block for weeks — `this rule says

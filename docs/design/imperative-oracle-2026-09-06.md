@@ -1,6 +1,6 @@
 # Imperative detection — the hand-classified oracle
 
-> **Classified 2026-09-06 for [WI-061](../backlog/items/WI-061-imperative-staleness-detection.md),
+> **Classified 2026-09-06 for [WI-061](../backlog/archive/WI-061-imperative-staleness-detection.md),
 > before any matcher existed**, from the candidate lines
 > [`imperative-corpus-2026-08-17.md`](imperative-corpus-2026-08-17.md) collected. The grep is the
 > corpus document's own — `\b(must|never|always|shall|required|mandatory|do not|don't)\b`, case

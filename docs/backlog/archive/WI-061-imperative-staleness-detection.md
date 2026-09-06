@@ -17,7 +17,7 @@ children: []
 
 The landing page asserted the capability in a console block labelled `REAL OUTPUT` whose text
 nobody had ever run — `this rule says MANDATORY and has no gate` — live for weeks, deleted by
-[WI-046](../archive/WI-046-console-provenance.md) and now refused by the `site-transcripts-real` gate.
+[WI-046](WI-046-console-provenance.md) and now refused by the `site-transcripts-real` gate.
 External reviewer #2 read that block as shipped behaviour. Then a third review, on 2026-08-17,
 built an entire distribution plan on four finding categories: unenforced MUST/SHOULD, stale
 command references, duplicated path-scoped rules, and conflicting authority. rungs produces none
@@ -69,12 +69,12 @@ refused here with reasons under *Out of scope*.
   against `package.json` `scripts`, and the same shape for any other surface that is read, never
   guessed. Absent surface means no finding, not a finding.
 - **R4. Nothing is executed.** No command the repo owns is run, in either direction. The rule
-  `--explain` shipped with under [WI-038](../archive/WI-038-doctor-explain-detectors.md) is
+  `--explain` shipped with under [WI-038](WI-038-doctor-explain-detectors.md) is
   unchanged: `isRunnable` excludes `kind = "command"`.
 - **R5. Applicability is declared per gate**, per [ADR-0007](../../decisions/ADR-0007-detector-applicability.md).
   There is no default, and a gate that has not declared does not read a foreign repo.
 - **R6. The false-positive rate is measured before the detector is believed**, on the corpus and by
-  the method [WI-053](../archive/WI-053-false-positive-census.md) established: every repository not a sample,
+  the method [WI-053](WI-053-false-positive-census.md) established: every repository not a sample,
   a classifier proven able to return every verdict *before* its results are read, per-repo rates,
   never pooled.
 - **R7. An ADR** for R2, because *what a detector may assert about a repository whose enforcement
@@ -90,7 +90,7 @@ refused here with reasons under *Out of scope*.
   against each other, so the count moves in one change or `rungs check` goes red.
 - **Risk, and it is the main one:** an imperative detector is a regex over prose, and a regex over
   prose is exactly the shape that produced 46.6% false positives in
-  [WI-042](../archive/WI-042-link-line-references.md). Every MUST inside a quotation, an example, a
+  [WI-042](WI-042-link-line-references.md). Every MUST inside a quotation, an example, a
   changelog entry or a code span is a candidate false positive, and the acceptance test must not
   share the engine's assumption about which — that sharing is what made WI-038's triage unable to
   fail.
@@ -103,7 +103,7 @@ refused here with reasons under *Out of scope*.
    documented failure this repo exists because of.
 2. **Imperative census** as a `file-scan` shaped engine: modal verbs in instruction files, code
    spans and fenced blocks excluded (a quoted MUST is not a rule — the same correction
-   [WI-008](../archive/WI-008-link-gate-checks-every-file.md) had to make for links).
+   [WI-008](WI-008-link-gate-checks-every-file.md) had to make for links).
 3. **The enforcement join, second and separately.** Where `.ai/gates.toml` exists, an imperative is
    reported alongside whether any gate names the file it lives in. Where it does not, the finding
    says so in its own text. Two gates, not one flag, so the foreign case cannot inherit the local
@@ -159,7 +159,7 @@ document counted forty times.
 
 **No detector has been written, deliberately.** The Approach says corpus first, engine second, and
 an oracle built after the matcher inherits the matcher's blind spots — the documented failure in
-[WI-042](../archive/WI-042-link-line-references.md). Writing the engine in the same pass as the
+[WI-042](WI-042-link-line-references.md). Writing the engine in the same pass as the
 corpus would have been the thing this item exists to correct.
 
 One design-relevant finding: reading candidates by hand, almost all are genuine imperatives,
@@ -173,7 +173,7 @@ Remaining, none of it started: the hand-classified oracle, R7's ADR, the two eng
 per-repo false-positive rates against WI-053's one-in-five threshold.
 
 **Steps 2–5, 2026-09-06**, on `feature/WI-061-imperative-staleness-detection` under
-[WI-085](WI-085-existing-promises-remediation.md), in the order the Approach fixed:
+[WI-085](../items/WI-085-existing-promises-remediation.md), in the order the Approach fixed:
 
 1. **The oracle** — [`imperative-oracle-2026-09-06.md`](../../design/imperative-oracle-2026-09-06.md).
    The corpus grep re-run at the recorded commits produced the corpus document's counts exactly

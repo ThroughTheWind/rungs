@@ -31,7 +31,7 @@ is the precondition for claiming more.
 `accepted` — 2026-09-06, by executing the prepared prompt at the user's request. One bounded
 programme; separately scoped children; two existing items reused rather than duplicated:
 [WI-077](../archive/WI-077-standalone-ejected-checks.md) (ejection, child of WI-064) and
-[WI-061](WI-061-imperative-staleness-detection.md) (instruction diagnostics) keep their own
+[WI-061](../archive/WI-061-imperative-staleness-detection.md) (instruction diagnostics) keep their own
 records and are executed in this programme's order.
 
 Baseline reconciled on 2026-09-06 before any child opened, from Git and the tests rather than from
