@@ -75,3 +75,16 @@ fixture = { block_rows = 0, source_files = 3 }
 gate    = "adr-index-current"
 expect  = "pass"
 fixture = { block_rows = 3, source_files = 3 }
+
+# The shipped template's `— · none yet` row is a placeholder, not a listed record: an untouched
+# scaffold with no decision passes, and the same row beside one real record still fails. Counting
+# the placeholder failed every fresh consumer's first `check` (Arena Lab canary, 2026-09-06, WI-091).
+[[self_test]]
+gate    = "adr-index-current"
+expect  = "pass"
+fixture = { block_rows = 0, source_files = 0, placeholder = true }
+
+[[self_test]]
+gate    = "adr-index-current"
+expect  = "fail"
+fixture = { block_rows = 0, source_files = 1, placeholder = true }

@@ -4681,8 +4681,30 @@ test('the table rules the fixtures exposed fail on a seeded violation and pass w
     assert.equal(only('findings-self-declared-closure').status, 'pass');
     rmSync(join(dir, 'docs'), { recursive: true, force: true });
 
-    // `file-index`: an empty index beside records fails, and `render` is what fixes it.
     const adr = (n) => `---\nid: ADR-000${n}\ntitle: Decision ${n}\nstatus: accepted\ndate: 2026-01-0${n}\n---\n\n# ADR-000${n}\n`;
+
+    // `file-index`: the shipped template's `—` placeholder is not a listed record. An untouched
+    // scaffold with zero decisions passes, its first `render` writes nothing because the template is
+    // exactly what render emits for zero sources, and the same placeholder beside one record fails.
+    // Counting it failed every fresh consumer's first check (Arena Lab canary, 2026-09-06, WI-091).
+    const template = readFileSync(resolve('modules', 'adr', 'files', '{{path}}', 'README.md'), 'utf8')
+      .replaceAll('{{path}}', 'docs/decisions')
+      .replaceAll('{{id_prefix}}', 'ADR');
+    seed({
+      '.ai/gates.toml': registry('adr-index-current', 'render-freshness', 'adr/adr.toml'),
+      'docs/decisions/README.md': template,
+    });
+    assert.equal(only('adr-index-current').status, 'pass', 'a placeholder-only index beside zero records passes');
+    assert.deepEqual(renderDerivedBlocks(dir), [], 'the shipped template is byte for byte what render emits for zero sources');
+    seed({ 'docs/decisions/ADR-0001-a.md': adr(1) });
+    assert.match(only('adr-index-current').findings[0]?.message ?? '', /lists 0 row\(s\) for 1 source file\(s\)/);
+    assert.deepEqual(renderDerivedBlocks(dir), ['docs/decisions/README.md']);
+    assert.equal(only('adr-index-current').status, 'pass');
+    rmSync(join(dir, 'docs', 'decisions', 'ADR-0001-a.md'));
+    assert.deepEqual(renderDerivedBlocks(dir), ['docs/decisions/README.md'], 'removing the last record renders the placeholder back');
+    assert.equal(readFileSync(join(dir, 'docs', 'decisions', 'README.md'), 'utf8'), template, 'and the index is the template again');
+
+    // `file-index`: an empty index beside records fails, and `render` is what fixes it.
     seed({
       '.ai/gates.toml': registry('adr-index-current', 'render-freshness', 'adr/adr.toml'),
       'docs/decisions/README.md': '# Decisions\n\n<!-- rungs:begin adr-index -->\n<!-- rungs:end adr-index -->\n',

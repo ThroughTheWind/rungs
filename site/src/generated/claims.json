@@ -51,7 +51,7 @@
     },
     {
       "name": "adr",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "rung": 1,
       "summary": "Numbered, immutable decision records, with an admission rule that keeps the directory from becoming a second documentation tree.",
       "requires": []
