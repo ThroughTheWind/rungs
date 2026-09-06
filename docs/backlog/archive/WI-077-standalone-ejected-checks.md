@@ -157,7 +157,7 @@ What was built, following the Approach:
    ejection, so re-substituting is impossible), the raw TOML is what the meta-gate's fixtures and the
    skill-extension lookup read. One source of truth per question.
 2. The retained launcher surface is declared as a list (`EJECTED_RETAINED`, currently `check`)
-   rather than hard-coded, because [WI-086](../items/WI-086-consumer-hook-delivery.md) dispatches the
+   rather than hard-coded, because [WI-086](WI-086-consumer-hook-delivery.md) dispatches the
    shell-safety hook through the same launcher and must add `hook` to it; a hook adapter that points
    at a command ejection removed would block every tool call in an ejected repo.
 3. Ejection adds one markdown file, `.rungs/README.md`, so `gates-links-resolve` examines one file
