@@ -13,7 +13,7 @@ children: []
 
 ## Proposal (rationale)
 
-The disposable Arena Lab canary run by [WI-090](../items/WI-090-integrated-consumer-verification.md) on
+The disposable Arena Lab canary run by [WI-090](WI-090-integrated-consumer-verification.md) on
 2026-09-06 (producer `675780c7`, consumer `f4ede793`) failed one gate on an untouched, freshly
 scaffolded consumer: `adr-index-current` reported that `docs/adr/README.md` "lists 1 row(s) for 0
 source file(s)". The one row is `| — | *none yet* | | |`, the placeholder the `adr` module's own

@@ -5,7 +5,7 @@ type: epic
 status: accepted
 branch:
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-06
 related: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070, WI-071, WI-072, WI-073, WI-074, WI-075, WI-076, WI-077, WI-078, WI-079, WI-080, WI-081, WI-082, WI-083]
 epic:
 children: [WI-065, WI-066, WI-067, WI-068, WI-069, WI-070, WI-071, WI-072, WI-073, WI-074, WI-075, WI-076, WI-077, WI-078, WI-079, WI-080, WI-081, WI-082, WI-083]
@@ -72,7 +72,38 @@ child remains independently reviewable and supplies its own regression.
 
 ## Execution
 
-Not started. Children carry implementation.
+Children carry implementation. Handoff from [WI-090](../archive/WI-090-integrated-consumer-verification.md),
+2026-09-06, for the flow's remaining steps:
+
+- **Producer candidate.** The commit `rungs land` produces for WI-090 on `main` (recorded in that
+  item's Execution once landed); every code change of the WI-085 programme is on `main` at or before
+  `34f36243`. Nothing is pushed, so the exact-SHA CI matrix is pending.
+- **Tarball and integrity.** Computed from the exact commit at release time with
+  `npm pack --dry-run --json` (prepack builds `dist/`; `README.md` is packed, so any README edit
+  changes the integrity). At the clean tree of `22edbe3148d16f897a1722ecda02bd0a9ae3464a` the canary
+  packed `rungs-cli-0.4.0.tgz`, 121 entries,
+  `sha512-T8t0GkgxfcozjA8NRFq8H0C1rk3pD8BVaE1PUIs1aXQ69HDMo8W/5ws05PC8XZnxJ/AMZ3gwvRYow8uD36EzXA==`;
+  the landed commit's integrity differs because its README changed after that run.
+- **Disposable canary — run, twice.** Consumer Arena Lab at `f4ede7931a7012c45308bb6f32f9fcd027e8dea7`
+  (its `main` on 2026-09-06; the earlier-recorded `e927d5fe` is an ancestor). Throwaway clone via
+  `git clone --no-hardlinks` of the local checkout, detached at that commit; the maintained checkout,
+  which sits on a feature branch with uncommitted work, was only read. First run at producer
+  `675780c7`: 1 of 24 gates failed on the untouched scaffold (`adr-index-current`; fixed by WI-091) and
+  the eject summary understated the retained surface (WI-092). Second run at `22edbe3` after both
+  landed: `doctor` 0; `check` 23 pass before upgrade; `upgrade` plans `instructions 1.2.0 → 1.4.0`,
+  `adr 1.2.0 → 1.2.1`, one stale `gates` file, one diverged findings register left alone; `upgrade
+  --apply` 0 writing `.ai/gates.toml`, `.ai/rungs.toml`, `.claude/skills/harden-rule/SKILL.md` and a
+  new `.claude/settings.json` carrying the hook entry; `check` and `check . full` 24 pass; `doctor
+  --explain` 22 imperative rows and the fast-tier budget report (median 1,653 ms against 30,000);
+  hook 2 then 0; `eject --dry-run` and `eject` 0; with the tool prefix renamed away, `node
+  .ai/rungs.mjs check` and `check full` 24 pass and the ejected hook 2 then 0. Script and log:
+  the WI-090 item names them. Not adoption: a synthetic disposable clone, nothing committed anywhere.
+- **Remaining steps, not authorized by WI-085.** (1) Push `main` and read the CI matrix for the exact
+  SHA. (2) Cut the release per the `release` module (`changelog.d/0.5.0.md` is the fragment; version
+  bump to 0.5.0; immutable tag; `npm publish`). (3) In Arena Lab, a dedicated item that runs
+  `node .ai/rungs.mjs upgrade --to 0.5.0` on a branch and commits the result — the launcher pin is
+  the only sibling-path-free mechanism, and it cannot resolve an unpublished version, which is why
+  the canary drove the packed prefix directly.
 
 ## Review
 

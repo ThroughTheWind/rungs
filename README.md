@@ -263,7 +263,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~8,747 lines (`wc -l src/*.ts`, 2026-09-06; held within 10% by `docs-version-claims`) |
+| [`src/`](src/) | The CLI, ~9,691 lines (`wc -l src/*.ts`, 2026-09-06; held within 10% by `docs-version-claims`) |
 
 ## Licence
 

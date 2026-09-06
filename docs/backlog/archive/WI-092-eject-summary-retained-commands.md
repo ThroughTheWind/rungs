@@ -13,7 +13,7 @@ children: []
 
 ## Proposal (rationale)
 
-The disposable Arena Lab canary run by [WI-090](../items/WI-090-integrated-consumer-verification.md) on
+The disposable Arena Lab canary run by [WI-090](WI-090-integrated-consumer-verification.md) on
 2026-09-06 printed, at the end of `rungs eject`, "Only `check` survives ejection; add, upgrade,
 render and the rest are gone until you re-adopt." Two commands later the same canary ran
 `node .ai/rungs.mjs hook instructions-shell-backticks` against the ejected launcher and got the

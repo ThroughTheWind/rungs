@@ -10,7 +10,7 @@ date: 2026-09-06
 - **Status:** accepted
 - **Date:** 2026-09-06
 - **Phase:** post-7, from [WI-086](../backlog/archive/WI-086-consumer-hook-delivery.md) under
-  [WI-085](../backlog/items/WI-085-existing-promises-remediation.md)
+  [WI-085](../backlog/archive/WI-085-existing-promises-remediation.md)
 - Extends [ADR-0001](ADR-0001-multi-harness-rendering.md) (P4 hooks are Claude-only and degrade
   loudly) and [ADR-0002](ADR-0002-stack-and-runtime-footprint.md) (no gate scripts in a
   scaffolded repo; engines live in the CLI).

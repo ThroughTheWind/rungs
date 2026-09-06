@@ -7,54 +7,58 @@ Keep it short. This document is read at the start of every session, and a long o
 
 ## Current objective
 
-Use the [existing-promises remediation prompt](../docs/design/existing-promises-remediation-prompt.md)
-as the next implementation handoff when execution is requested.
+Take the integrated 0.5.0 candidate on `main` through [WI-064](../docs/backlog/items/WI-064-arena-lab-dogfood-bootstrap.md)'s
+release flow: exact commit → CI matrix → immutable release → Arena Lab pin. Every producer-side step
+the flow needs is done and recorded; the remaining steps need authorization this repository's
+sessions have not been given (push, publish, edit Arena Lab's maintained branch).
 
 ## In progress
 
-No remediation implementation is active in this task. The assessment and its companion prompt are
-complete; [WI-084](../docs/backlog/archive/WI-084-tool-evaluation.md) records the merge closeout.
+Nothing. [WI-085](../docs/backlog/archive/WI-085-existing-promises-remediation.md) and all nine items
+it ran (WI-077, WI-086, WI-087, WI-061, WI-088, WI-089, WI-090, WI-091, WI-092) are done and archived;
+`main` and `green/main` point at the WI-090 landing.
 
 ## Resume from
 
-Read the remediation prompt, re-derive its baseline from implementation/tests/Git, then open WI-077
-if the user requests execution of that programme.
+Read WI-064 § Execution (the handoff: commits, tarball, canary result, remaining commands) and
+[`existing-promises-evidence-2026-09-06.md`](../docs/design/existing-promises-evidence-2026-09-06.md).
+Re-derive before acting: `git log --oneline -3`, `node src/cli.ts check`, and the serial suite
+`NODE_OPTIONS=--max-old-space-size=2048 node --test --test-concurrency=1 test/*.test.js`.
 
 ## Up next
 
-1. Begin the prepared remediation task when requested.
-2. Reuse WI-077 and WI-061; promote only findings still supported by fresh evidence.
+1. Decide F-061 (`add` after `init` rewrites `.ai/rungs.toml`; high) before cutting 0.5.0 — fix it or
+   name it in the release notes.
+2. With authorization: push `main`, read the exact-SHA CI matrix, cut and publish 0.5.0 per the
+   `release` module, then open a dedicated Arena Lab item for `upgrade --to 0.5.0`.
+3. F-063 (`check full` differs between the CLI and the ejected launcher) when `check` is next touched.
 
 ## Active constraints — do not reopen
 
-<!-- Decisions already settled that a fresh session would otherwise relitigate, each with why it
-     is closed. Name them specifically: "the storage boundary is fixed by ADR-0007, do not
-     re-scope it" beats "architecture is settled".
-
-     This is the section that pays for the document. Without it every session re-derives, and
-     re-derivation reaches a different answer often enough to matter. -->
-
-- The public-framework corpus is a second, architecture-focused research axis; do not redefine the
-  existing workflow corpus in place (WI-009).
-- Every framework extraction pins a commit SHA and records its license because these sources move
-  and are licensed (WI-009).
-- WI-009 changes no files under `modules/`; any evidence-backed product change is a later item.
-- WI-011 may correct the WI-010 template, but every correction records the evidence and reason.
+- Hooks dispatch through the pinned launcher and never block on their own failure; the one-second
+  `npm exec` cost per matching tool call is ADR-0010's recorded revisit trigger, not a defect to fix
+  by bypassing the launcher.
+- The imperative census is explain-only and asserts nothing about enforcement (ADR-0011); do not
+  promote it to a gate or add an "unenforced" verdict.
+- `eject` retains exactly `check` and `hook`; the retained list is `EJECTED_RETAINED` and every
+  sentence about it derives from that list (WI-092).
+- Defects a verification item finds become new items; the verifier's scope stays verification
+  (WI-090 → WI-091, WI-092).
+- Run the test suite serially with a capped heap and one heavy process at a time; compare large values
+  as digests (F-059 — three host crashes).
+- A synthetic or disposable consumer run is never described as adoption (WI-064 decision).
 
 ## Working assumptions
 
-<!-- Things believed true and not verified this session. Being wrong here is normal; the value is
-     that the next session knows which claims to distrust first. -->
-
-- A static local inspector may improve evidence review; demand and repeated use remain untested.
-- The backlog's active implementation statuses require fresh artifact/Git verification before reuse.
+- The CI matrix will pass on the exact SHA; it has not run because nothing is pushed.
+- Arena Lab's `main` at `f4ede793` is still the commit a real adoption would start from; its
+  maintained checkout sits on a feature branch with uncommitted work and was only read.
+- The `integ/feature/WI-091-index-placeholder-rows` recovery ref left by a refused first `land` is
+  safe to delete; nobody has decided to.
 
 ## Open questions
 
-<!-- Blocking and non-blocking, marked. "None blocking" is a useful thing to state. -->
-
-- None blocking the merged documentation. Preparing the prompt did not execute remediation or
-  authorize publication or a maintained downstream-repository change.
+- None blocking. Whether to fix F-061 before 0.5.0 is a release decision, not a technical one.
 
 ## Archive
 

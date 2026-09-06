@@ -24,7 +24,7 @@ declaration nobody dispatches.
 
 ## Decision
 
-`accepted` — 2026-09-06 under [WI-085](../items/WI-085-existing-promises-remediation.md). Implement the
+`accepted` — 2026-09-06 under [WI-085](WI-085-existing-promises-remediation.md). Implement the
 engine centrally and dispatch it through the consumer's pinned launcher; record the dispatch
 contract as ADR-0010 (written with the implementation, on this item's branch) so that ADR-0002's
 no-scripts boundary is resolved rather than quietly crossed.
