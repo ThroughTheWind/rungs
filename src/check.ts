@@ -300,25 +300,107 @@ export function installedParams(repoRoot: string): Params {
 /**
  * ADR-0005 tier A. One line per gate per run: what the runner directly observes
  * and nothing that needs interpretation. Local, gitignored, never transmitted.
+ *
+ * The ADR's schema names gate id, timestamp, exit status, wall-clock and tier.
+ * The rows carried `at` as a date and no tier, so two runs on one day could not
+ * be told apart and a tier's cost could not be summed — which is why nothing had
+ * ever read `fast_budget_ms` (F-055, WI-088). `run` is one timestamp shared by
+ * every row of a run; `tier` is the gate's own.
  */
-export function appendLedger(repoRoot: string, runs: GateRun[], stamp: string) {
+export function appendLedger(repoRoot: string, runs: GateRun[], stamp: string, run = new Date().toISOString()) {
   const { runner } = loadRegistry(repoRoot);
   if (runner.ledger === false) return;
   const path = join(repoRoot, '.ai', '.gate-ledger.jsonl');
   const lines = runs
-    .map((r) => JSON.stringify({ at: stamp, id: r.id, status: r.status, ms: r.ms, examined: r.examined }))
+    .map((r) => JSON.stringify({ at: stamp, run, id: r.id, status: r.status, ms: r.ms, examined: r.examined, tier: r.tier }))
     .join('\n');
   appendFileSync(path, lines + '\n');
+}
+
+export type BudgetReport =
+  | { state: 'disabled' }
+  | { state: 'absent' }
+  | { state: 'no-budget' }
+  | { state: 'too-short'; usable: number; unreadable: number; needed: number }
+  | {
+      state: 'report';
+      tier: string;
+      budgetMs: number;
+      runs: number;
+      medianMs: number;
+      maxMs: number;
+      over: number;
+      unreadable: number;
+    };
+
+/**
+ * ADR-0005 Tier A's first consumer: the declared fast-tier budget beside what
+ * the ledger actually observed. A measurement of this machine's recorded runs —
+ * serial sum of the first declared tier's gates per run, most recent runs first
+ * — and never a verdict, a score, or an input to gate selection (ADR-0008
+ * rejected budget-driven selection). Rows written before `run` and `tier`
+ * existed are counted as unreadable history, not guessed at.
+ */
+export function ledgerBudget(repoRoot: string, recent = 10, minimumRuns = 3): BudgetReport {
+  const { runner } = loadRegistry(repoRoot);
+  if (runner.ledger === false) return { state: 'disabled' };
+  const path = join(repoRoot, '.ai', '.gate-ledger.jsonl');
+  if (!existsSync(path)) return { state: 'absent' };
+  const tiers: string[] = Array.isArray(runner.tiers) ? runner.tiers.map(String) : [];
+  const budgetMs = typeof runner.fast_budget_ms === 'number' ? runner.fast_budget_ms : NaN;
+  if (!tiers.length || !Number.isFinite(budgetMs)) return { state: 'no-budget' };
+  const tier = tiers[0];
+
+  const perRun = new Map<string, number>();
+  let unreadable = 0;
+  for (const line of readFileSync(path, 'utf8').split('\n').filter((l) => l.trim())) {
+    let row: any;
+    try {
+      row = JSON.parse(line);
+    } catch {
+      unreadable++;
+      continue;
+    }
+    if (typeof row?.run !== 'string' || typeof row?.tier !== 'string' || typeof row?.ms !== 'number') {
+      unreadable++;
+      continue;
+    }
+    if (row.tier !== tier) continue;
+    perRun.set(row.run, (perRun.get(row.run) ?? 0) + row.ms);
+  }
+  const totals = [...perRun.entries()].sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0)).slice(0, recent).map(([, ms]) => ms);
+  if (totals.length < minimumRuns) return { state: 'too-short', usable: totals.length, unreadable, needed: minimumRuns };
+  const sorted = [...totals].sort((a, b) => a - b);
+  const medianMs = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : Math.round((sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2);
+  return {
+    state: 'report',
+    tier,
+    budgetMs,
+    runs: totals.length,
+    medianMs,
+    maxMs: sorted[sorted.length - 1],
+    over: totals.filter((ms) => ms > budgetMs).length,
+    unreadable,
+  };
 }
 
 /** The two questions ADR-0005 tier B allows, both binary facts. */
 export function ledgerQuestions(repoRoot: string, gates: RegistryGate[]) {
   const path = join(repoRoot, '.ai', '.gate-ledger.jsonl');
   if (!existsSync(path)) return { neverFired: [], alwaysFires: [], runs: 0 };
+  // A row that does not parse is skipped, not thrown: one damaged line used to
+  // take `doctor` down with a SyntaxError before it said anything (WI-088).
   const rows = readFileSync(path, 'utf8')
     .split('\n')
     .filter(Boolean)
-    .map((l) => JSON.parse(l) as { id: string; status: Status });
+    .flatMap((l) => {
+      try {
+        const row = JSON.parse(l);
+        return typeof row?.id === 'string' && typeof row?.status === 'string' ? [row as { id: string; status: Status }] : [];
+      } catch {
+        return [];
+      }
+    });
   const by = new Map<string, { total: number; failed: number }>();
   for (const r of rows) {
     const e = by.get(r.id) ?? { total: 0, failed: 0 };
