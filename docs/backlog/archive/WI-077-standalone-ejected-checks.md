@@ -116,7 +116,7 @@ table inventory.
 ## Execution
 
 Executed 2026-09-06 on `feature/WI-077-standalone-ejected-checks`, cut from `main`
-`3de9111` under the [WI-085](../items/WI-085-existing-promises-remediation.md) programme, after WI-073's
+`3de9111` under the [WI-085](WI-085-existing-promises-remediation.md) programme, after WI-073's
 path boundary had landed (2026-09-05). Baseline reproduction before any change: the built CLI's
 `eject` failed before writing (it resolved `dist/glob.ts`), and the source CLI's ejected gate failed
 with `ERR_MODULE_NOT_FOUND` for `smol-toml` — `engines.ts` imports the TOML parser, the self-test

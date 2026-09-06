@@ -2,7 +2,7 @@
 id: WI-085
 title: Complete the consumer promises rungs already ships or has accepted
 type: epic
-status: accepted
+status: done
 branch:
 created: 2026-09-06
 updated: 2026-09-06
@@ -13,7 +13,7 @@ children: [WI-086, WI-087, WI-088, WI-089, WI-090]
 
 ## Proposal (rationale)
 
-[WI-084](../archive/WI-084-tool-evaluation.md) assessed rungs on 2026-09-05 and found that several
+[WI-084](WI-084-tool-evaluation.md) assessed rungs on 2026-09-05 and found that several
 promises the README, module manifests and accepted plans make are not kept by the shipped artifact:
 `eject` leaves a runner that cannot load, the `instructions` module declares a shell-safety hook no
 consumer receives, most self-test fixtures never execute, the accepted imperative and stale-command
@@ -30,8 +30,8 @@ is the precondition for claiming more.
 
 `accepted` — 2026-09-06, by executing the prepared prompt at the user's request. One bounded
 programme; separately scoped children; two existing items reused rather than duplicated:
-[WI-077](../archive/WI-077-standalone-ejected-checks.md) (ejection, child of WI-064) and
-[WI-061](../archive/WI-061-imperative-staleness-detection.md) (instruction diagnostics) keep their own
+[WI-077](WI-077-standalone-ejected-checks.md) (ejection, child of WI-064) and
+[WI-061](WI-061-imperative-staleness-detection.md) (instruction diagnostics) keep their own
 records and are executed in this programme's order.
 
 Baseline reconciled on 2026-09-06 before any child opened, from Git and the tests rather than from
@@ -94,8 +94,30 @@ discoveries become findings, not scope.
 
 ## Execution
 
-Opened 2026-09-06. Children carry implementation.
+Opened and closed 2026-09-06. Children carried implementation in the prompt's order, each on its own
+branch and landed through `rungs land` with a green merged tree: WI-077 (`f7db44e`), WI-086 (`1670d1f`), WI-087 (`6acfc39`), WI-061 (`eaf5fe1`),
+WI-088 (`bc8cc32`), WI-089 (`675780c7`), then WI-090's canary spawned two items that landed
+before it — WI-091 (`0a50515f`) and WI-092 (`34f36243`) — and WI-090 itself. Deviation from the plan:
+the children list grew by two, for defects the integrated candidate showed on a real consumer's
+untouched scaffold; both were opened as items rather than folded into WI-090, per the work-item rule.
+The user's uncommitted F-058 row stayed stashed for the whole programme and was restored afterwards.
 
 ## Review
 
-Not started.
+Against the acceptance criteria, 2026-09-06:
+
+1. Every child is `done` and archived: WI-086, WI-087, WI-088, WI-089, WI-090, plus the two the
+   canary spawned, WI-091 and WI-092; the reused WI-077 and WI-061 are done and archived under their
+   own records. None was removed.
+2. [`existing-promises-evidence-2026-09-06.md`](../../design/existing-promises-evidence-2026-09-06.md)
+   carries one row per promise with implementation path, the command run, its result and the remaining
+   limitation; every row reads **implemented, verified locally**, none **released**, which is what Git
+   says: all on `main`, nothing pushed or published.
+3. On the integrated tree (WI-090's branch, rebased on `34f36243`): serial suite 152 tests, 149 pass,
+   0 fail, 3 skipped (the run with the WI-090 docs edits complete; an earlier run during this closeout
+   failed its producer-status assertion because a session note was written mid-run, and is recorded
+   as such in WI-090's Review); `node src/cli.ts check` 31 pass; `node src/cli.ts modules` 15 modules;
+   `npm pack --dry-run --json` `rungs-cli-0.4.0.tgz`, 121 entries; site built and link-checked with
+   0 broken. The exact-SHA CI matrix is **pending**: nothing was pushed.
+4. No push, tag, publish, deploy, or write to a maintained downstream repository. Arena Lab's
+   maintained checkout was read only; the canary ran on a throwaway clone.

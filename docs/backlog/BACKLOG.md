@@ -24,14 +24,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-090](items/WI-090-integrated-consumer-verification.md) | Verify the integrated candidate as a packed consumer and hand the canary step to WI-064 | chore | — |
+| — | | | |
 
 ## Accepted
 
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-064](items/WI-064-arena-lab-dogfood-bootstrap.md) | Bootstrap Arena Lab as the first direct Rungs consumer | epic |
-| [WI-085](items/WI-085-existing-promises-remediation.md) | Complete the consumer promises rungs already ships or has accepted | epic |
 
 ## Proposed
 
@@ -39,8 +38,8 @@ The board. One row per live work item, grouped by status. Items live in
 | --- | --- | --- |
 | [WI-063](items/WI-063-external-module-roots.md) | Resolve modules from roots outside the package, and record where each installed module came from | feature |
 
-[WI-085](items/WI-085-existing-promises-remediation.md), accepted 2026-09-06 — **the programme that
-completes what the tool already claims.** [WI-084](archive/WI-084-tool-evaluation.md) found six
+[WI-085](archive/WI-085-existing-promises-remediation.md), accepted and completed 2026-09-06 — **the
+programme that completed what the tool already claimed.** [WI-084](archive/WI-084-tool-evaluation.md) found six
 promises a consumer can read today and not rely on: an `eject` whose runner cannot load, a hook
 declared and never dispatched, fixtures that never execute, accepted detectors with a corpus and no
 engine, a budget parameter nothing reads, and a worktree row that calls an unreadable state clean.

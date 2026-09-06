@@ -10,7 +10,7 @@ date: 2026-09-06
 - **Status:** accepted
 - **Date:** 2026-09-06
 - **Phase:** post-7, from [WI-061](../backlog/archive/WI-061-imperative-staleness-detection.md)
-  requirement R7, executed under [WI-085](../backlog/items/WI-085-existing-promises-remediation.md)
+  requirement R7, executed under [WI-085](../backlog/archive/WI-085-existing-promises-remediation.md)
 - Extends [ADR-0005](ADR-0005-self-instrumentation.md) (record what is observed; refuse judgement)
   and [ADR-0007](ADR-0007-detector-applicability.md) (a detector declares what it may read).
 

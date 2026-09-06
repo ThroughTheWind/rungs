@@ -173,7 +173,7 @@ Remaining, none of it started: the hand-classified oracle, R7's ADR, the two eng
 per-repo false-positive rates against WI-053's one-in-five threshold.
 
 **Steps 2–5, 2026-09-06**, on `feature/WI-061-imperative-staleness-detection` under
-[WI-085](../items/WI-085-existing-promises-remediation.md), in the order the Approach fixed:
+[WI-085](WI-085-existing-promises-remediation.md), in the order the Approach fixed:
 
 1. **The oracle** — [`imperative-oracle-2026-09-06.md`](../../design/imperative-oracle-2026-09-06.md).
    The corpus grep re-run at the recorded commits produced the corpus document's counts exactly
