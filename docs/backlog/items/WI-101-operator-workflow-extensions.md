@@ -161,7 +161,7 @@ adds no consumer enforcement. Every eventual rule must declare gated or review-o
 
 ### Out of scope
 
-The [WI-100](WI-100-local-operator-interface.md) interface, UI authoring, production implementations
+The [WI-100](../archive/WI-100-local-operator-interface.md) interface, UI authoring, production implementations
 of either pilot, external module infrastructure (WI-063), a generic registry engine, stack-specific
 service inventories, tracker synchronization, cloud collection, workflow scoring, agent orchestration
 and automatic scheduling. No new bundled module or additional pilot is included. Potential future

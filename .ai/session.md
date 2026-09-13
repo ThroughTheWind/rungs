@@ -7,38 +7,37 @@ Keep it short. This document is read at the start of every session, and a long o
 
 ## Current objective
 
-Review the next operator-facing proposals: [WI-100](../docs/backlog/items/WI-100-local-operator-interface.md)
-for a foreground local interface and [WI-101](../docs/backlog/items/WI-101-operator-workflow-extensions.md)
-for a subsequent, bounded workflow-extension spike. Both are proposed; their drafted plans are
-not implementation approval. The release/adoption work in
+No implementation is active. [WI-101](../docs/backlog/items/WI-101-operator-workflow-extensions.md)
+is the next operator-workflow proposal awaiting a decision; its draft plan is not implementation
+approval. The release/adoption work in
 [WI-064](../docs/backlog/items/WI-064-arena-lab-dogfood-bootstrap.md) remains independent: v0.5.0 is
 published, while the maintained Arena Lab pin still needs its own authorized item.
 
 ## In progress
 
-No implementation item is in progress. The proposal documents are on
-`docs/WI-100-operator-interface-proposals`; inspect git before deciding how to integrate them.
-`items/` holds WI-063, WI-064, WI-100 and WI-101. F-056 remains the only open finding; WI-100 avoids
-treating session prose as current-work truth, and WI-101 proposes the explicit-reference contract.
+The checkout is on `main`. `items/` holds WI-063, WI-064 and WI-101. F-056 remains the only open
+finding; the interface treats session prose as authored source, and WI-101 proposes the separate
+explicit-reference contract. The local interface is unreleased; `changelog.d/WI-100.md` is pending
+the next separately authorized release.
 
 ## Resume from
 
-Read [WI-100's Decision and draft Plan](../docs/backlog/items/WI-100-local-operator-interface.md),
-then its [assessment](../docs/design/local-operator-interface-2026-09-13.md) for the verified baseline
-and source limitations. Record acceptance before execution; re-fetch and compare local/remote
-product changes at that time. Current-work status comes from item files, not this handoff's prose.
+Read [WI-101's Decision and draft Plan](../docs/backlog/items/WI-101-operator-workflow-extensions.md)
+before deciding its two pilots and register admission test. Re-fetch and compare local/remote
+product changes before any new execution. To inspect this checkout, use `npm run rungs -- ui .`;
+the command and limits belong to [the interface contract](../docs/design/local-interface.md).
+Current-work status comes from item files, not this handoff's prose.
 
 ## Up next
 
-1. Decide WI-100's local interface scope, then WI-101's two workflow pilots and register admission
-   test. Neither adds consumer behaviour merely by being proposed.
+1. Decide WI-101's workflow pilots and register admission test. A proposal does not authorize
+   implementation; keep F-056 open until an explicit-reference contract is delivered and verified.
 2. With authorization: a dedicated Arena Lab item that runs `node .ai/rungs.mjs upgrade --to 0.5.0`
    on a branch of the maintained checkout, commits the result and records what `upgrade` changed —
    the first real adoption of a released version, as WI-064 criterion 3 requires.
-3. Open the next changelog fragment when the first post-0.5.0 code change lands; `changelog.d/` is
-   empty by design after a cut.
-4. Revisit F-056 when implementing explicit session references; a pilot alone does not close it.
-5. Inspect whether the parked `integ/feature/WI-091-index-placeholder-rows` branch is still wanted
+3. Review the pending interface fragment when a version cut is requested; do not infer publishing
+   permission from implementation acceptance.
+4. Inspect whether the parked `integ/feature/WI-091-index-placeholder-rows` branch is still wanted
    before cleanup. Recheck the workflow dependency notices recorded in the September 6 handoff
    when CI is next touched.
 
@@ -64,22 +63,25 @@ product changes at that time. Current-work status comes from item files, not thi
 - A gate that examines nothing is retired, not kept for its intent (WI-097); a CLI `design pull` is a
   separate proposal if a consumer ever needs one.
 - A synthetic or disposable consumer run is never described as adoption (WI-064 decision).
+- The local interface is a foreground view over repository files with explicitly planned check
+  execution; no automatic apply, browser authoring or consumer service. Its accepted contract owns
+  these boundaries, and it adds no retained `ui` command to eject (WI-100).
 
 ## Working assumptions
 
-- The interface will reduce source-navigation work; WI-100 requires task evidence before claiming
-  a measured improvement. No independent demand or usability study has been established.
-- Arena Lab's maintained checkout has not been re-inspected in this planning session. Its branch,
+- The interface may reduce source-navigation work. The recorded agent walkthrough is not an
+  independent operator study or measured task speedup; demand and ongoing upkeep remain unverified.
+- Arena Lab's maintained checkout has not been re-inspected in this execution session. Its branch,
   worktree changes and pin must be checked again before any adoption work.
 
 ## Open questions
 
-- None blocking proposal review. Implementation acceptance, optional extension selection and the
-  separate Arena Lab adoption decision remain open.
+- None blocking the completed interface. WI-101 acceptance, optional extension selection, a version
+  cut and the separate Arena Lab adoption decision remain open.
 
 ## Archive
 
-Latest closeout: [operator proposals and next scope decision](archive/2026-09-13_session-04_operator-proposals-and-scope-decision.md).
+Latest closeout: [local interface and workflow review](archive/2026-09-13_session-05_local-interface-and-workflow-review.md).
 
 <!-- rungs:begin session-archive -->
 <!-- Generated by `rungs render` from .ai/archive/. The link above is relative and assumes

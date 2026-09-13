@@ -141,8 +141,8 @@ agent dispatch, multiple-repository management, cloud sync, telemetry, scores an
 framework. Browser authoring is a revisit trigger, not another deliverable hidden in this item.
 
 New dependencies, session-reference validation, validation-routing declarations and register
-admission belong to [WI-101](WI-101-operator-workflow-extensions.md). External module distribution
-belongs to [WI-063](WI-063-external-module-roots.md). No other implementation is deferred by this item.
+admission belong to [WI-101](../items/WI-101-operator-workflow-extensions.md). External module distribution
+belongs to [WI-063](../items/WI-063-external-module-roots.md). No other implementation is deferred by this item.
 
 ## Execution
 

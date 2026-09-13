@@ -3,7 +3,7 @@
 ## Delivered
 
 Prepared [the local interface assessment](../../docs/design/local-operator-interface-2026-09-13.md),
-[WI-100](../../docs/backlog/items/WI-100-local-operator-interface.md) and
+[WI-100](../../docs/backlog/archive/WI-100-local-operator-interface.md) and
 [WI-101](../../docs/backlog/items/WI-101-operator-workflow-extensions.md) on
 `docs/WI-100-operator-interface-proposals`. Both items were proposed with complete draft plans,
 acceptance criteria and exclusions. Claimed WI-100/101 and advanced NEXT-ID to WI-102. No proposal

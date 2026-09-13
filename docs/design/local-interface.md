@@ -1,6 +1,6 @@
 # Local interface contract
 
-> Authoritative for the local inspector delivered by [WI-100](../backlog/items/WI-100-local-operator-interface.md).
+> Authoritative for the local inspector delivered by [WI-100](../backlog/archive/WI-100-local-operator-interface.md).
 > Accepted 2026-09-13. The [dated assessment](local-operator-interface-2026-09-13.md) records the
 > baseline and alternatives. Repository files and existing engines retain their respective authority.
 

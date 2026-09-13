@@ -1,6 +1,6 @@
 # Local interface verification — 2026-09-13
 
-Evidence for [WI-100](../backlog/items/WI-100-local-operator-interface.md), against the
+Evidence for [WI-100](../backlog/archive/WI-100-local-operator-interface.md), against the
 [accepted contract](local-interface.md). This records measured behaviour, not independent adoption
 or a claim that the interface makes arbitrary repositories faster.
 
@@ -31,7 +31,7 @@ The documentation site's React/component/runtime stack was not imported into the
 | Installed consumer | Packed-candidate journey in `test/package.test.js`, extended by `test/ui-packed.js` | Exact runtime dependencies installed offline; installed CLI starts UI, worker resolves modules, assets load, matching pin is displayed, read-only refuses jobs, export agrees |
 | Platform matrix at `fa23eb5` | [GitHub Actions run 34758620317](https://github.com/ThroughTheWind/rungs/actions/runs/34758620317) | Ubuntu, macOS and Windows × Node 22.18 and 22: all six passed, plus the site job |
 | Final matrix at `f48a76b` | [GitHub Actions run 34759042364](https://github.com/ThroughTheWind/rungs/actions/runs/34759042364) | All six passed: 184 tests pass on each Linux/macOS cell; 183 pass, one POSIX-only skip on each Windows cell. All repository gates pass. Site: 183 routes, 2,803 internal links, 0 broken; 0 source errors/warnings/hints |
-| Local website | `npm run build --prefix site` followed by `npm run check --prefix site` | 182 routes; 2,791 internal links, 0 broken; 51 checked source files, 0 errors/warnings/hints |
+| Local website after merge/archive | `npm run build --prefix site` followed by `npm run check --prefix site` | 183 routes; 2,803 internal links, 0 broken; 51 checked source files, 0 errors/warnings/hints |
 
 The three local skips were a POSIX-only filename case and two existing file-symlink cases that this
 Windows host cannot create. The POSIX matrix covers those paths; the UI's escaping-junction and

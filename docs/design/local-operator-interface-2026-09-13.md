@@ -1,7 +1,7 @@
 # Local operator interface assessment
 
 > Assessed 2026-09-13. **Proposal, not shipped behaviour or an accepted product decision.**
-> [WI-100](../backlog/items/WI-100-local-operator-interface.md) owns implementation scope and
+> [WI-100](../backlog/archive/WI-100-local-operator-interface.md) owns implementation scope and
 > acceptance. [WI-101](../backlog/items/WI-101-operator-workflow-extensions.md) owns the subsequent
 > evaluation of relationships, validation routing and additional registers. Pattern definitions
 > remain in the [catalogue](../research/pattern-catalog.md).
