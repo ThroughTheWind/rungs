@@ -105,3 +105,10 @@ Appended as items land; each entry names the commit it was run against.
   `node --experimental-strip-types src/cli.ts check`, `node dist/cli.js --help`) plus the site build
   and link check. This supersedes every "CI matrix pending (unpushed)" note in the rows above: the
   matrix has now been observed on a commit that contains all of that work. Not yet released.
+- 2026-09-13 · **released.** WI-099 prepared v0.5.0 at `d21e3f5fd10b3da75d127843c718c0d154a5afab`
+  (2026-09-07; matrix runs 34067488381 and 34067488671 green, seven of seven jobs each); the user
+  tagged `v0.5.0` on that commit, pushed `release/0.5.0`, and published — `npm view @rungs/cli
+  dist-tags` → `latest: 0.5.0`, `time["0.5.0"]` 2026-09-13T11:17:59Z. Every promise in the rows above
+  is therefore **released** in the vocabulary at the top of this document; the remaining limitation
+  common to all of them is that no consumer other than this repository and the disposable canary has
+  run the released version yet.

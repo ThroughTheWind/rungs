@@ -31,10 +31,11 @@ const packageVersion = packageJson.version as string;
 // Written in the same session as the publish, which is runbook §6's last step for a measured
 // reason: this constant read "0.1.2" for two days after 0.1.3 went out, and the page rendered
 // "0.1.3 · npm publication pending" above a version anyone could already install.
-// Re-verified 2026-09-07 while preparing 0.5.0: `npm view @rungs/cli dist-tags` → `{ latest: '0.4.0' }`,
-// which is what makes 0.5.0 render as pending below rather than as the published latest.
-const publishedVersion = "0.4.0";
-const publishedDate = "2026-09-05";
+// Re-verified 2026-09-07 while preparing 0.5.0: `npm view @rungs/cli dist-tags` → `{ latest: '0.4.0' }`.
+// Re-verified 2026-09-13 after the publish: `{ latest: '0.5.0' }`, `time["0.5.0"]` 2026-09-13T11:17:59Z,
+// tag v0.5.0 and release/0.5.0 both at d21e3f5f on origin — so 0.5.0 renders as the published latest.
+const publishedVersion = "0.5.0";
+const publishedDate = "2026-09-13";
 
 // Whether a release is pending is derived, not asserted. The page used to state
 // "<version> is tagged and ready for npm publication" from the package version alone — which is
