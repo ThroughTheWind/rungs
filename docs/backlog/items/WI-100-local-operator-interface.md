@@ -2,8 +2,8 @@
 id: WI-100
 title: Add a local interface for repository inspection and gate execution
 type: feature
-status: proposed
-branch:
+status: in_progress
+branch: feature/WI-100-local-operator-interface
 created: 2026-09-13
 updated: 2026-09-13
 related: [WI-084, WI-085, WI-101, ADR-0002, ADR-0005, ADR-0008, ADR-0011]
@@ -25,14 +25,13 @@ demand remain to be demonstrated. It does not reopen the completed existing-prom
 
 ## Decision
 
-Awaiting acceptance. The user authorized evaluation and creation of this item on 2026-09-13,
-not implementation. The complete draft below makes the proposal reviewable; it is not adopted by
-having been written.
+Accepted 2026-09-13 by the operator: "Execute wi-100". Implement the complete bounded interface
+scope, including explicit check execution. WI-101 remains a separate proposed spike.
 
 ## Plan
 
-> Drafted before acceptance. The linked assessment owns the proposed interface/data boundary;
-> this item owns delivery and acceptance. No current product claim changes in this planning work.
+> Accepted plan. The [implementation contract](../../design/local-interface.md) specifies the
+> command, data and execution boundary; the dated assessment records the alternatives and baseline.
 
 ### Requirements
 
@@ -147,8 +146,13 @@ belongs to [WI-063](WI-063-external-module-roots.md). No other implementation is
 
 ## Execution
 
-Not started. Assessment and this draft plan were prepared on 2026-09-13; no UI code exists as a
-result of this item. The planning branch is not an implementation branch.
+Started 2026-09-13 on `feature/WI-100-local-operator-interface`. Fetched origin again: remote main
+remained `d21e3f5`; the local proposal commit `d505f99` contains no product-code delta. Fast-forwarded
+the planning documents onto local main before cutting this implementation branch. The local release
+recording commits remain intact.
+
+The implementation contract is written before code. A small browser client and separate lazy-loaded
+server/worker bundles avoid coupling normal CLI startup or consumer installation to the site stack.
 
 ## Review
 

@@ -159,7 +159,10 @@ somewhere — never silent divergence, and never forced convergence either.
 
 - **Not a project scaffolder.** It does not create Angular workspaces or .NET solutions. It
   installs the workflow around whatever is there.
-- **Not a runtime.** It generates files and checks files. Nothing daemonizes.
+- **Not an agent runtime.** It generates files and checks files. Nothing daemonizes. The optional
+  [local interface](local-interface.md) is a user-started foreground CLI process that inspects one
+  repository and invokes explicitly selected existing checks. It installs no service or workflow
+  database and exits with its invocation (WI-100, accepted 2026-09-13).
 - **Not opinionated about the product.** Modules encode how work is tracked and verified, never
   what to build.
 - **Not a skills marketplace.** Modules ship skills; discovering third-party skills belongs to the

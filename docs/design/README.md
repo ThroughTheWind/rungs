@@ -4,6 +4,7 @@ What the CLI is, and how it is specified.
 
 | Document | Status |
 | --- | --- |
+| [`local-interface.md`](local-interface.md) | **Accepted 2026-09-13 for [WI-100](../backlog/items/WI-100-local-operator-interface.md).** Foreground interface command, snapshot/read states, process and HTTP boundary, design and measured-cost budgets; implementation in progress |
 | [`local-operator-interface-2026-09-13.md`](local-operator-interface-2026-09-13.md) | **Proposed 2026-09-13 for [WI-100](../backlog/items/WI-100-local-operator-interface.md).** Freshness-verified 0.5.0 assessment, local interface scope, shared state and execution boundaries; [WI-101](../backlog/items/WI-101-operator-workflow-extensions.md) separately evaluates operator workflow extensions and register admission |
 | [`tool-evaluation-2026-09-05.md`](tool-evaluation-2026-09-05.md) | **Assessed 2026-09-05 for [WI-084](../backlog/archive/WI-084-tool-evaluation.md).** Implementation maturity, reproduced consumer gaps, prioritized improvements, repeated-pattern candidates and the case for a local inspector; recommendations, not implementation approval |
 | [`existing-promises-evidence-2026-09-06.md`](existing-promises-evidence-2026-09-06.md) | **Opened 2026-09-06 for [WI-085](../backlog/archive/WI-085-existing-promises-remediation.md).** The reconciled baseline and one row per consumer promise the programme completes — authoritative claim, implementation path, the command actually run and its result, owning item, remaining limitation. Appended as items land |
