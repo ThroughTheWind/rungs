@@ -106,14 +106,18 @@ codes and a human-readable reason. Oversized bodies and unsupported actions are 
 
 The check-plan display names the root, tier/default, command list and inherited environment/network
 authority. The Run action executes it directly; unchanged plans do not need repeated confirmation.
-Plans are short-lived, single-use and server-owned. No arbitrary argv/shell input from the browser.
-Only one check job runs per server; unrelated processes are not locked. Reads continue during a job.
+Plans expire after five minutes, are single-use and server-owned; retain at most 20 prepared plans.
+No arbitrary argv/shell input comes from the browser. Only one check job runs per server; unrelated
+processes are not locked. Reads continue during a job, up to three concurrent read workers, each
+with a 60-second deadline. Retain at most eight runs per launch; export and restart to run more.
 
 Worker execution shares the existing runner's gate selection, declared-engine evaluation and result
 meaning. Command gates run their already-registered shell strings. Streaming command output is bounded;
 overflow is explicit, never silently presented as full output. Complete structured findings remain
 available up to an explicit result size bound; an exceeded result limit is an error, not success.
-The existing local ledger schema is unchanged, including its disabled mode.
+The existing local ledger schema is unchanged, including its disabled mode. A command stream over
+the existing runner's 1 MiB limit stops the UI job with an incomplete-output error and requests
+owned-worker termination. It is not a complete run and is not appended to the ledger.
 
 Cancel/shutdown stops the owned worker and requests its process tree: a process group on POSIX and
 `taskkill /T` on Windows. Report delivery/failure, not a universal guarantee that detached descendants

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>rungs · local repository</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to repository content</a>
+    <div class="shell">
+      <aside class="rail">
+        <a class="brand" href="/" aria-label="rungs local inspector"
+          ><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 27V5M25 27V5M7 9h18M7 16h18M7 23h18" /></svg
+          ><span>rungs<small>Local inspector</small></span></a
+        >
+        <nav aria-label="Repository views" id="navigation">
+          <button type="button" data-view="work">Work<span id="work-count"></span></button>
+          <button type="button" data-view="gates">Gates<span id="gate-count"></span></button>
+          <button type="button" data-view="repository">Installation</button>
+          <button type="button" data-view="diagnostics">Diagnostics</button>
+        </nav>
+        <div class="rail-note">
+          <span class="local-dot"></span>On this machine
+          <p>Your repository files are the source.</p>
+          <p id="mode"></p>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <div class="identity">
+            <strong id="repo-name">Connecting to repository</strong><span id="repo-branch"></span
+            ><small id="repo-root"></small>
+          </div>
+          <div class="top-actions">
+            <button id="refresh" type="button">Refresh</button
+            ><button id="export" type="button" class="quiet">Export</button>
+          </div>
+        </header>
+        <div class="freshness" id="freshness" role="status" aria-live="polite">Reading a local snapshot…</div>
+        <main id="main" tabindex="-1">
+          <div class="empty">
+            <h1>Opening the repository</h1>
+            <p>Reading installation, work records and the gate registry. No checks are running.</p>
+          </div>
+        </main>
+        <section id="job-region" class="job-region" aria-label="Check run" hidden></section>
+        <footer><span id="version">rungs</span><span>Declared state and recorded evidence</span></footer>
+      </div>
+    </div>
+    <dialog id="detail" aria-labelledby="detail-title">
+      <div class="detail-bar">
+        <h2 id="detail-title">Evidence</h2>
+        <button id="close-detail" type="button" aria-label="Close details">Close</button>
+      </div>
+      <div id="detail-content"></div>
+    </dialog>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

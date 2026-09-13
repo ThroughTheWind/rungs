@@ -13,6 +13,7 @@
 export const COMMANDS: [usage: string, blurb: string][] = [
   ['init [path] [profile]', 'scaffold a repo — minimal · tracked · disciplined · hardened · fleet'],
   ['doctor [path]', 'detect what a repo already has, installed or not'],
+  ['ui [path]', 'open a foreground local inspector for installation, work, gates and diagnostics'],
   ['add <module…> [--into p]', 'install modules, resolving dependencies and adopting what exists'],
   ['check [path] [tier]', 'run the registered gates and record the ledger'],
   ['hook <gate-id>', 'evaluate a lifecycle hook gate against the harness payload on stdin; exit 2 blocks'],
@@ -30,6 +31,9 @@ export const COMMANDS: [usage: string, blurb: string][] = [
 
 /** Every flag the parser honours. A flag absent here is a flag nobody can find. */
 export const FLAGS: [flag: string, blurb: string][] = [
+  ['--port <number>', 'ui: choose a loopback port instead of an available one'],
+  ['--no-open', 'ui: print the local launch address without opening a browser'],
+  ['--read-only', 'ui: inspect and preview without enabling check jobs'],
   ['--dry-run', 'report what would happen, write nothing'],
   ['--explain', "doctor: also run the detectors over what this repo already has"],
   ['--confirm-paradigm', 'add: install a module this repo already solves another way'],

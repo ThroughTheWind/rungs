@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, readFileSync, realpathSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { parse } from 'smol-toml';
 import { ENGINES, isImplemented, type Finding } from './engines.ts';
@@ -103,11 +103,9 @@ function normalizeCommandText(value: unknown, repoRoot: string): string {
     // A command failure still needs a diagnostic if the checkout disappears or
     // cannot be canonicalized while its error is being reported.
   }
-  const variants = [...new Set(roots.flatMap((root) => [
-    root,
-    root.replaceAll('\\', '/'),
-    root.replaceAll('/', '\\'),
-  ]))].sort((left, right) => right.length - left.length);
+  const variants = [
+    ...new Set(roots.flatMap((root) => [root, root.replaceAll('\\', '/'), root.replaceAll('/', '\\')])),
+  ].sort((left, right) => right.length - left.length);
   for (const variant of variants) {
     const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     text = text.replace(new RegExp(escaped, process.platform === 'win32' ? 'gi' : 'g'), '<repo>');
@@ -120,15 +118,9 @@ function commandFailure(error: any, repoRoot: string): Finding {
   const stderr = normalizeCommandText(error?.stderr, repoRoot);
   const stdout = normalizeCommandText(error?.stdout, repoRoot);
   const fallback = normalizeCommandText(error?.message, repoRoot);
-  const status = typeof error?.status === 'number'
-    ? String(error.status)
-    : error?.signal
-      ? `signal ${error.signal}`
-      : 'unknown';
-  const streams = [
-    ...(stderr ? [`stderr:\n${stderr}`] : []),
-    ...(stdout ? [`stdout:\n${stdout}`] : []),
-  ];
+  const status =
+    typeof error?.status === 'number' ? String(error.status) : error?.signal ? `signal ${error.signal}` : 'unknown';
+  const streams = [...(stderr ? [`stderr:\n${stderr}`] : []), ...(stdout ? [`stdout:\n${stdout}`] : [])];
   const detail = streams.length ? streams.join('\n') : fallback;
   const diagnostic = `command exited with status ${status}${detail ? `\n${detail}` : ''}`;
   return {
@@ -166,6 +158,27 @@ export function runGates(
   only?: ReadonlySet<string>,
   mode: RunMode = {},
 ): GateRun[] {
+  const gates = selectRunnerGates(repoRoot, tier, only);
+  const files = walk(repoRoot);
+  const runs: GateRun[] = [];
+  for (const g of gates) {
+    const started = now();
+    let outcome: GateOutcome;
+    if (g.kind === 'command' && g.command && !(mode.ejected && isFrozenGate(g))) {
+      try {
+        execSync(g.command, { cwd: repoRoot, stdio: 'pipe' });
+        outcome = { status: 'pass', findings: [], examined: 0 };
+      } catch (error) {
+        outcome = { status: 'fail', findings: [commandFailure(error, repoRoot)], examined: 0 };
+      }
+    } else outcome = evaluateDeclaredGate(g, repoRoot, files);
+    runs.push(gateResult(g, outcome, now() - started));
+  }
+  return runs;
+}
+
+/** Shared selection for synchronous CLI checks and the local interface worker. */
+export function selectRunnerGates(repoRoot: string, tier?: string, only?: ReadonlySet<string>): RegistryGate[] {
   const { runner, gates } = loadRegistry(repoRoot);
   const runnerTiers: string[] = Array.isArray(runner?.tiers) ? runner.tiers : [];
   // A tier nobody declared selects nothing, and "selected nothing" is
@@ -174,69 +187,133 @@ export function runGates(
   if (tier && runnerTiers.length && !runnerTiers.includes(tier)) {
     throw new UnknownTierError(tier, runnerTiers);
   }
-  const files = walk(repoRoot);
-  const runs: GateRun[] = [];
+  return gates.filter(
+    (g) => runnerGate(g) && (!only || only.has(g.id)) && (!tier || tierSelects(runnerTiers, tier, g.tier)),
+  );
+}
 
-  for (const g of gates) {
-    // A hook fires on a tool call, not in the runner, and an explain-only
-    // detector reports evidence rather than a verdict (ADR-0011). Skipping both
-    // here is correct; counting either as a pass would not be.
-    if (!runnerGate(g)) continue;
-    if (only && !only.has(g.id)) continue;
-    if (tier && !tierSelects(runnerTiers, tier, g.tier)) continue;
+type GateOutcome = Pick<GateRun, 'status' | 'findings' | 'examined'>;
 
-    const started = now();
-    let status: Status = 'pass';
-    let findings: Finding[] = [];
-    let examined = 0;
-    const frozen = mode.ejected && isFrozenGate(g);
-
-    if (g.kind === 'command' && g.command && !frozen) {
-      try {
-        execSync(g.command, { cwd: repoRoot, stdio: 'pipe' });
-      } catch (e: any) {
-        status = 'fail';
-        findings = [commandFailure(e, repoRoot)];
-      }
-    } else if (!g.engine || !isImplemented(g.engine)) {
-      // Never green. An engine named in a table and missing from the CLI is an
-      // unknown, and a registry reporting green because most of its gates do
-      // nothing is the worst failure this tool could have.
-      status = 'unimplemented';
-      findings = [{ message: `engine '${g.engine ?? '(none)'}' is not implemented` }];
+function evaluateDeclaredGate(g: RegistryGate, repoRoot: string, files: string[]): GateOutcome {
+  let status: Status = 'pass',
+    findings: Finding[] = [],
+    examined = 0;
+  if (!g.engine || !isImplemented(g.engine)) {
+    // Never green. An engine named in a table and missing from the CLI is an
+    // unknown, and a registry reporting green because most of its gates do
+    // nothing is the worst failure this tool could have.
+    status = 'unimplemented';
+    findings = [{ message: `engine '${g.engine ?? '(none)'}' is not implemented` }];
+  } else {
+    const table = loadTable(g.table, repoRoot);
+    if (!table) {
+      status = 'error';
+      findings = [{ message: `table '${g.table}' not found` }];
     } else {
-      const table = loadTable(g.table, repoRoot);
-      if (!table) {
+      try {
+        const section = selectEngineTable(table, g.engine, g.id);
+        const r = ENGINES[g.engine](section, repoRoot, files);
+        findings = r.findings;
+        examined = r.examined;
+        status = r.findings.length ? 'fail' : 'pass';
+      } catch (e: any) {
         status = 'error';
-        findings = [{ message: `table '${g.table}' not found` }];
-      } else {
-        try {
-          const section = selectEngineTable(table, g.engine, g.id);
-          const r = ENGINES[g.engine](section, repoRoot, files);
-          findings = r.findings;
-          examined = r.examined;
-          status = r.findings.length ? 'fail' : 'pass';
-        } catch (e: any) {
-          status = 'error';
-          findings = [{ message: e.message }];
-        }
+        findings = [{ message: e.message }];
       }
     }
+  }
 
-    runs.push({
-      id: g.id,
-      module: g.module,
-      kind: g.kind,
-      engine: g.engine,
-      tier: g.tier ?? 'fast',
-      status,
-      ms: now() - started,
-      examined,
-      findings,
-      why: g.why,
-    });
+  return { status, findings, examined };
+}
+
+function gateResult(g: RegistryGate, outcome: GateOutcome, ms: number): GateRun {
+  return {
+    id: g.id,
+    module: g.module,
+    kind: g.kind,
+    engine: g.engine,
+    tier: g.tier ?? 'fast',
+    ...outcome,
+    ms,
+    why: g.why,
+  };
+}
+
+export interface RunObserver {
+  start?: (gate: RegistryGate) => void;
+  result?: (run: GateRun) => void;
+  output?: (gate: string, stream: 'stdout' | 'stderr', text: string) => void;
+  limit?: (message: string) => void;
+}
+
+/** Asynchronous command transport; gate selection, engine evaluation and verdicts stay shared. */
+export async function runGatesObserved(
+  repoRoot: string,
+  tier: string | undefined,
+  observer: RunObserver = {},
+): Promise<GateRun[]> {
+  const gates = selectRunnerGates(repoRoot, tier),
+    files = walk(repoRoot),
+    runs: GateRun[] = [];
+  for (const gate of gates) {
+    observer.start?.(gate);
+    const started = Date.now();
+    const outcome =
+      gate.kind === 'command' && gate.command
+        ? await observedCommand(gate, repoRoot, observer)
+        : evaluateDeclaredGate(gate, repoRoot, files);
+    const result = gateResult(gate, outcome, Date.now() - started);
+    runs.push(result);
+    observer.result?.(result);
   }
   return runs;
+}
+
+function observedCommand(gate: RegistryGate, root: string, observer: RunObserver): Promise<GateOutcome> {
+  return new Promise((done) => {
+    // This is the registry's existing shell command, never text supplied by an HTTP request.
+    const child = spawn(gate.command!, {
+      cwd: root,
+      shell: true,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const chunks: Record<string, Buffer[]> = { stdout: [], stderr: [] };
+    const sizes: Record<string, number> = { stdout: 0, stderr: 0 };
+    const maxBuffer = 1024 * 1024; // execSync's existing per-stream default.
+    let failure: Error | undefined;
+    for (const stream of ['stdout', 'stderr'] as const)
+      child[stream]!.on('data', (chunk: Buffer) => {
+        const remaining = Math.max(0, maxBuffer - sizes[stream]);
+        const kept = chunk.subarray(0, remaining);
+        sizes[stream] += chunk.length;
+        if (kept.length) {
+          chunks[stream].push(kept);
+          observer.output?.(gate.id, stream, kept.toString('utf8'));
+        }
+        if (sizes[stream] > maxBuffer && !failure) {
+          failure = new Error(`Command ${stream} exceeded the ${maxBuffer}-byte limit; output is incomplete.`);
+          observer.limit?.(failure.message);
+          child.kill();
+        }
+      });
+    child.on('error', (error) => {
+      failure = error;
+    });
+    child.on('close', (status, signal) => {
+      if (status === 0 && !failure) return done({ status: 'pass', examined: 0, findings: [] });
+      const error = {
+        status,
+        signal,
+        message: failure?.message,
+        stdout: Buffer.concat(chunks.stdout),
+        stderr: Buffer.concat(chunks.stderr),
+      };
+      const findings = [commandFailure(error, root)];
+      if (failure) findings.push({ message: failure.message });
+      done({ status: 'fail', examined: 0, findings });
+    });
+  });
 }
 
 /**
@@ -312,7 +389,9 @@ export function appendLedger(repoRoot: string, runs: GateRun[], stamp: string, r
   if (runner.ledger === false) return;
   const path = join(repoRoot, '.ai', '.gate-ledger.jsonl');
   const lines = runs
-    .map((r) => JSON.stringify({ at: stamp, run, id: r.id, status: r.status, ms: r.ms, examined: r.examined, tier: r.tier }))
+    .map((r) =>
+      JSON.stringify({ at: stamp, run, id: r.id, status: r.status, ms: r.ms, examined: r.examined, tier: r.tier }),
+    )
     .join('\n');
   appendFileSync(path, lines + '\n');
 }
@@ -353,7 +432,9 @@ export function ledgerBudget(repoRoot: string, recent = 10, minimumRuns = 3): Bu
 
   const perRun = new Map<string, number>();
   let unreadable = 0;
-  for (const line of readFileSync(path, 'utf8').split('\n').filter((l) => l.trim())) {
+  for (const line of readFileSync(path, 'utf8')
+    .split('\n')
+    .filter((l) => l.trim())) {
     let row: any;
     try {
       row = JSON.parse(line);
@@ -368,10 +449,17 @@ export function ledgerBudget(repoRoot: string, recent = 10, minimumRuns = 3): Bu
     if (row.tier !== tier) continue;
     perRun.set(row.run, (perRun.get(row.run) ?? 0) + row.ms);
   }
-  const totals = [...perRun.entries()].sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0)).slice(0, recent).map(([, ms]) => ms);
-  if (totals.length < minimumRuns) return { state: 'too-short', usable: totals.length, unreadable, needed: minimumRuns };
+  const totals = [...perRun.entries()]
+    .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
+    .slice(0, recent)
+    .map(([, ms]) => ms);
+  if (totals.length < minimumRuns)
+    return { state: 'too-short', usable: totals.length, unreadable, needed: minimumRuns };
   const sorted = [...totals].sort((a, b) => a - b);
-  const medianMs = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : Math.round((sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2);
+  const medianMs =
+    sorted.length % 2
+      ? sorted[(sorted.length - 1) / 2]
+      : Math.round((sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2);
   return {
     state: 'report',
     tier,
@@ -396,7 +484,9 @@ export function ledgerQuestions(repoRoot: string, gates: RegistryGate[]) {
     .flatMap((l) => {
       try {
         const row = JSON.parse(l);
-        return typeof row?.id === 'string' && typeof row?.status === 'string' ? [row as { id: string; status: Status }] : [];
+        return typeof row?.id === 'string' && typeof row?.status === 'string'
+          ? [row as { id: string; status: Status }]
+          : [];
       } catch {
         return [];
       }
@@ -454,8 +544,10 @@ export function checkCommand(
     const runnable = loadRegistry(root).gates.filter(runnerGate);
     if (runnable.length && tier) {
       const tiers = [...new Set(runnable.map((g) => g.tier).filter(Boolean))];
-      log(c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
-        c.dim(` (${tiers.length ? tiers.join(', ') : 'none tiered'}).`));
+      log(
+        c.yellow(`\n  no gates in the ${tier} tier — ${runnable.length} are registered`) +
+          c.dim(` (${tiers.length ? tiers.join(', ') : 'none tiered'}).`),
+      );
       log(c.dim('  Nothing ran. Use `rungs check` to run every registered gate.\n'));
     } else {
       log(c.yellow('\n  no gates registered — is this a rungs repo?\n'));
@@ -487,7 +579,9 @@ export function checkCommand(
   if (n('unimplemented')) {
     log(
       c.yellow('\n  Unimplemented gates are not passes.') +
-        c.dim(' A registry reporting green because most of its\n  gates do nothing is the worst failure this tool could have, so they block.'),
+        c.dim(
+          ' A registry reporting green because most of its\n  gates do nothing is the worst failure this tool could have, so they block.',
+        ),
     );
   }
 

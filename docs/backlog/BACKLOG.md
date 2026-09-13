@@ -10,13 +10,13 @@ The board. One row per live work item, grouped by status. Items live in
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| [WI-100](items/WI-100-local-operator-interface.md) | Add a local interface for repository inspection and gate execution | feature | `feature/WI-100-local-operator-interface` |
+| — | | | |
 
 ## Review
 
 | Id | Title | Type | Branch |
 | --- | --- | --- | --- |
-| — | | | |
+| [WI-100](items/WI-100-local-operator-interface.md) | Add a local interface for repository inspection and gate execution | feature | `feature/WI-100-local-operator-interface` |
 
 ## Planned
 

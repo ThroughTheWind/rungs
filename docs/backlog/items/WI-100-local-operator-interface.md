@@ -2,7 +2,7 @@
 id: WI-100
 title: Add a local interface for repository inspection and gate execution
 type: feature
-status: in_progress
+status: review
 branch: feature/WI-100-local-operator-interface
 created: 2026-09-13
 updated: 2026-09-13
@@ -156,5 +156,32 @@ server/worker bundles avoid coupling normal CLI startup or consumer installation
 
 ## Review
 
-Implementation acceptance has not been run. The planning review is against the current source
-and the stated product boundary; its evidence is in the linked assessment.
+Implementation is complete; acceptance review is in progress. The source and packed CLI now provide
+the four inspection views, complete source/export data, current-plan check execution and bounded
+foreground workers. No consumer runtime or dependency was added. ADR admission criterion 4 does not
+hold: the interface contract already owns these choices; no duplicate ADR was created.
+
+1. The offline installed-candidate journey passes, including bundled assets and worker resolution,
+   pin/version identity and read-only execution refusal. Port conflicts, invalid flags, no-Git and
+   browser-opening failure have explicit tests. The unchanged baseline compressed package was
+   524,159 bytes; the candidate measured 632,587 bytes before final presentation fixes.
+2. Inspection tests cover custom paths/prefixes, archives, malformed/partial data, unknown statuses,
+   duplicate ids, foreign tracker evidence, alias refusal and bounded/non-regular source reads.
+3. Shared runner parity and a 60-finding diagnostic/check/export fixture pass. Browser inspection
+   caught and fixed nested result arrays becoming text; all 60 source-linked findings now render.
+4. Refresh/configuration, registry/pin changes, continuous in-flight edits, legacy/corrupt/disabled
+   history and stale-plan refusal are exercised. Previews and diagnostics label their generation;
+   historical results never claim current-tree validation.
+5. A browser fixture creates its sentinel only after the displayed Run action. Default and cumulative
+   tier semantics, read-only refusal, pin/eject routing and actual pasted shell quoting are tested.
+   Upgrade coverage explicitly excludes gate/hook/record phases even when no module files change.
+6. Slow, failed, noisy, cancelled and output-overflow jobs are tested on Windows. Child-tree exit,
+   responsive HTTP, retained output limits and absence of a completed ledger row after interruption
+   pass. The existing platform CI matrix remains to be verified before merge.
+7. Unauthorized access, Host/Origin, action methods/bodies, allowlisted paths, aliases and inert
+   source content are covered. Packaged assets load without remote resources.
+8. Local full suite: 178 pass, 3 existing platform/permission skips, zero failures on Node 22.22.3;
+   subsequent focused suite: 26 pass including the added cases. All 32 repository gates pass.
+   The 1,000-item/5,000-finding snapshot took 958ms in the final focused run. Browser walkthrough,
+   final size/startup measurements, site checks and supported-platform CI evidence are being
+   recorded in the verification note before the item can become done.

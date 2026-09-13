@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import assert from './assert.js';
+import { inspectPackedUi } from './ui-packed.js';
 
 const root = resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
@@ -424,7 +425,7 @@ test('the package authority scan rejects bare Rungs CLI invocations without mist
   }
 });
 
-test('a packed candidate retrofits an existing repository without taking over its authorities', () => {
+test('a packed candidate retrofits an existing repository without taking over its authorities', async () => {
   const producerStatus = gitText(root, ['status', '--porcelain=v1', '--untracked-files=all']);
   const temporaryRoot = mkdtempSync(join(tmpdir(), 'rungs-existing-consumer-'));
   const packRoot = join(temporaryRoot, 'pack');
@@ -642,6 +643,7 @@ test('a packed candidate retrofits an existing repository without taking over it
     for (const required of ['.ai/gates.toml', '.ai/rungs.mjs', '.ai/rungs.toml', 'docs/backlog/BACKLOG.md']) {
       assert.ok(generatedFiles.includes(required), `${required} should be generated`);
     }
+    await inspectPackedUi(installedPackageRoot, realpathSync.native(consumer), isolatedEnv);
 
     for (const rel of [
       'README.md',
