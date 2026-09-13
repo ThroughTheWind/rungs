@@ -8,10 +8,11 @@ Keep it short. This document is read at the start of every session, and a long o
 ## Current objective
 
 Take the integrated 0.5.0 candidate on `main` through [WI-064](../docs/backlog/items/WI-064-arena-lab-dogfood-bootstrap.md)'s
-release flow: exact commit → CI matrix → immutable release → Arena Lab pin. `main` is pushed at
-`2791a21b` and the matrix passed on it (run 34052948336, seven of seven jobs); the remaining steps —
-cut and publish 0.5.0, then pin it in Arena Lab — need authorization this repository's sessions
-have not been given.
+release flow: exact commit → CI matrix → immutable release → Arena Lab pin. Three of four are done:
+v0.5.0 was prepared by WI-099 at `d21e3f5f`, the matrix passed on that commit (runs 34067488381 and
+34067488671, seven of seven jobs each), and the user tagged, branched and published it on
+2026-09-13 (`npm view @rungs/cli dist-tags` → `latest: 0.5.0`). What remains is the Arena Lab pin,
+which is Arena Lab's own item and needs authorization to write to its maintained branch.
 
 ## In progress
 
@@ -32,10 +33,11 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Up next
 
-1. With authorization: the irreversible half of the 0.5.0 cut — WI-099 prepared it (fragment consumed
-   into the versions page, boundary and both manifests at 0.5.0): green CI on the exact prepared
-   commit, `npm whoami`, annotated tag, the deploy branch for 0.5.0, `npm publish`; then a dedicated
-   Arena Lab item for `upgrade --to 0.5.0`.
+1. With authorization: a dedicated Arena Lab item that runs `node .ai/rungs.mjs upgrade --to 0.5.0`
+   on a branch of the maintained checkout, commits the result and records what `upgrade` changed —
+   the first real adoption of a released version, as WI-064 criterion 3 requires.
+2. Open the next changelog fragment when the first post-0.5.0 code change lands; `changelog.d/` is
+   empty by design after a cut.
 2. F-056 (a session can name a done item as active) when the session module is next touched.
 3. Delete `integ/feature/WI-091-index-placeholder-rows` if nobody wants the parked merge.
 4. Bump `actions/checkout` and `actions/setup-node` past v4 when the workflow is next touched; GitHub
@@ -73,7 +75,7 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Open questions
 
-- None blocking. 0.5.0 is prepared and not published; cutting it is a release decision.
+- None blocking. 0.5.0 is published; whether Arena Lab adopts it now is Arena Lab's decision.
 
 ## Archive
 

@@ -103,8 +103,10 @@ Children carry implementation. Handoff from [WI-090](../archive/WI-090-integrate
   .ai/rungs.mjs check` and `check full` 24 pass and the ejected hook 2 then 0. Script and log:
   the WI-090 item names them. Not adoption: a synthetic disposable clone, nothing committed anywhere.
 - **Remaining steps, not authorized by WI-085.** (1) ~~Push `main` and read the CI matrix for the
-  exact SHA~~ — done, above. (2) Cut the release per the `release` module (`changelog.d/0.5.0.md` is the fragment; version
-  bump to 0.5.0; immutable tag; `npm publish`). (3) In Arena Lab, a dedicated item that runs
+  exact SHA~~ — done, above. (2) ~~Cut the release per the `release` module~~ — done: WI-099
+  prepared v0.5.0 at `d21e3f5f` (2026-09-07, matrix green on that commit), and the user tagged
+  `v0.5.0`, pushed `release/0.5.0` and published on 2026-09-13 (`npm view @rungs/cli dist-tags` →
+  `latest: 0.5.0`). (3) In Arena Lab, a dedicated item that runs
   `node .ai/rungs.mjs upgrade --to 0.5.0` on a branch and commits the result — the launcher pin is
   the only sibling-path-free mechanism, and it cannot resolve an unpublished version, which is why
   the canary drove the packed prefix directly.
