@@ -130,6 +130,7 @@ reported as diverged and left alone.
 | `rungs init [path] [profile]` | Scaffold — `minimal` · `tracked` · `disciplined` · `hardened` · `fleet` |
 | `rungs doctor [path]` | What does this repo already have? Works on repos that never installed anything |
 | `rungs doctor --explain` | Also run the detectors over what it found — evidence rows, never a score |
+| `rungs ui [path]` | Open the foreground local inspector for installation, work, gates and diagnostics |
 | `rungs add <module…>` | Install one module, resolving dependencies and adopting what exists |
 | `rungs check [path]` | Run the gates, record the ledger |
 | `rungs hook <gate-id>` | Evaluate a lifecycle hook against the harness payload on stdin; exit 2 blocks the tool call |
@@ -146,6 +147,9 @@ reported as diverged and left alone.
 
 | Option | Effect |
 | --- | --- |
+| `--port <number>` | `ui`: request a loopback port instead of an available one |
+| `--no-open` | `ui`: print the launch address without opening a browser |
+| `--read-only` | `ui`: inspect, preview and export with check execution disabled |
 | `--dry-run` | Report what would happen, write nothing. Any write command |
 | `--explain` | `doctor`: run the detectors too. Read-only, and it runs no command your repo owns |
 | `--into <path>` | `add`: install into this repo rather than the working directory |
@@ -160,6 +164,16 @@ reported as diverged and left alone.
 `rungs --help` prints the same two tables. For module parameters run `rungs
 modules --params`, which renders them from the manifests; what a parameter *is*
 and how to set one is [`docs/design/parameters.md`](docs/design/parameters.md).
+
+The local inspector is included in the current checkout for the next release. Run `rungs ui .`
+from an installed candidate or `npm run rungs -- ui .` here. It serves packaged assets on
+`127.0.0.1`, opens one repository, and stops with Ctrl+C. The terminal address grants access to
+that process; keep it local. Work records, findings, decisions, installed artifacts and gate evidence
+link back to their files. Refresh does not run checks. **Prepare check run** shows the declared
+commands and their inherited authority before **Run checks** starts them. Cancellation stops the
+owned worker tree where supported; it does not undo command side effects or contain detached work.
+Upgrade/archive previews lead to CLI handoffs. See the [interface contract](docs/design/local-interface.md)
+for source states, pin compatibility, limits and the read-only mode.
 
 ## Modules
 
@@ -263,7 +277,7 @@ nobody paid for does not ship.
 | [`docs/design/`](docs/design/README.md) | Product brief, module catalogue, verification |
 | [`docs/decisions/`](docs/decisions/README.md) | ADRs |
 | [`modules/`](modules/README.md) | The fifteen modules |
-| [`src/`](src/) | The CLI, ~9,691 lines (`wc -l src/*.ts`, 2026-09-06; held within 10% by `docs-version-claims`) |
+| [`src/`](src/) | The CLI, ~14,200 lines (recursive TypeScript, browser JS/CSS/HTML, 2026-09-13; held within 10% by `docs-version-claims`) |
 
 ## Licence
 

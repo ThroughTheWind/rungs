@@ -2,8 +2,8 @@
 id: WI-100
 title: Add a local interface for repository inspection and gate execution
 type: feature
-status: proposed
-branch:
+status: done
+branch: feature/WI-100-local-operator-interface
 created: 2026-09-13
 updated: 2026-09-13
 related: [WI-084, WI-085, WI-101, ADR-0002, ADR-0005, ADR-0008, ADR-0011]
@@ -25,14 +25,13 @@ demand remain to be demonstrated. It does not reopen the completed existing-prom
 
 ## Decision
 
-Awaiting acceptance. The user authorized evaluation and creation of this item on 2026-09-13,
-not implementation. The complete draft below makes the proposal reviewable; it is not adopted by
-having been written.
+Accepted 2026-09-13 by the operator: "Execute wi-100". Implement the complete bounded interface
+scope, including explicit check execution. WI-101 remains a separate proposed spike.
 
 ## Plan
 
-> Drafted before acceptance. The linked assessment owns the proposed interface/data boundary;
-> this item owns delivery and acceptance. No current product claim changes in this planning work.
+> Accepted plan. The [implementation contract](../../design/local-interface.md) specifies the
+> command, data and execution boundary; the dated assessment records the alternatives and baseline.
 
 ### Requirements
 
@@ -147,10 +146,49 @@ belongs to [WI-063](WI-063-external-module-roots.md). No other implementation is
 
 ## Execution
 
-Not started. Assessment and this draft plan were prepared on 2026-09-13; no UI code exists as a
-result of this item. The planning branch is not an implementation branch.
+Started 2026-09-13 on `feature/WI-100-local-operator-interface`. Fetched origin again: remote main
+remained `d21e3f5`; the local proposal commit `d505f99` contains no product-code delta. Fast-forwarded
+the planning documents onto local main before cutting this implementation branch. The local release
+recording commits remain intact.
+
+The implementation contract is written before code. A small browser client and separate lazy-loaded
+server/worker bundles avoid coupling normal CLI startup or consumer installation to the site stack.
 
 ## Review
 
-Implementation acceptance has not been run. The planning review is against the current source
-and the stated product boundary; its evidence is in the linked assessment.
+Implementation and acceptance review are complete. Merged to main on 2026-09-13 with this status
+change. The [verification record](../../design/local-interface-verification-2026-09-13.md) records
+the commands, platform run, fixtures, browser observations, costs and limits. The source and packed CLI now provide
+the four inspection views, complete source/export data, current-plan check execution and bounded
+foreground workers. No consumer runtime or dependency was added. ADR admission criterion 4 does not
+hold: the interface contract already owns these choices; no duplicate ADR was created.
+
+1. The offline installed-candidate journey passes, including bundled assets and worker resolution,
+   pin/version identity and read-only execution refusal. Port conflicts, invalid flags, no-Git and
+   browser-opening failure have explicit tests. The compressed package grew from 524,159 to
+   633,914 bytes, within the 300KiB growth budget; cold help's median increased by 7.4029ms.
+2. Inspection tests cover custom paths/prefixes, archives, malformed/partial data, unknown statuses,
+   duplicate ids, foreign tracker evidence, alias refusal and bounded/non-regular source reads.
+   The browser also inspected a real minimal-profile install with no Git, then exposed an
+   intentionally missing installed file; the fixture file was restored after observation.
+3. Shared runner parity and a 60-finding diagnostic/check/export fixture pass. Browser inspection
+   caught and fixed nested result arrays becoming text; all 60 source-linked findings now render.
+4. Refresh/configuration, registry/pin changes, continuous in-flight edits, legacy/corrupt/disabled
+   history and stale-plan refusal are exercised. Previews and diagnostics label their generation;
+   historical results never claim current-tree validation.
+5. A browser fixture creates its sentinel only after the displayed Run action. Default and cumulative
+   tier semantics, read-only refusal, pin/eject routing and actual pasted shell quoting are tested.
+   Upgrade coverage explicitly excludes gate/hook/record phases even when no module files change.
+6. Slow, failed, noisy, cancelled and output-overflow jobs are tested on the supported matrix. Child-tree exit,
+   responsive HTTP, retained output limits and absence of a completed ledger row after interruption
+   pass. All six OS/Node cells passed at `f48a76b` in Actions run 34759042364.
+7. Unauthorized access, Host/Origin, action methods/bodies, allowlisted paths, aliases and inert
+   source content are covered. Packaged assets load without remote resources.
+8. Local full suite: 178 pass, 3 existing platform/permission skips, zero failures on Node 22.22.3;
+   subsequent focused suite: 26 pass including the added cases. All 32 repository gates pass.
+   The 1,000-item/5,000-finding snapshot took 958ms in the focused run. The four-task browser
+   walkthrough, keyboard/focus checks and desktop/tablet/narrow layouts are recorded; measured
+   filter/detail rendering stayed below 29ms. Package, startup and large-fixture budgets passed.
+   Final CI: 184 tests pass on each Linux/macOS cell; 183 pass and one POSIX-only skip on each
+   Windows cell. The site job passed with 183 routes and no broken links or source diagnostics.
+   These are synthetic-fixture and agent observations, not independent adoption or a speedup claim.

@@ -32,8 +32,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(root, rel), 'utf8');
 
 const pkg = JSON.parse(read('package.json'));
-const srcLines = readdirSync(join(root, 'src'))
-  .filter((f) => f.endsWith('.ts'))
+const srcLines = readdirSync(join(root, 'src'), { recursive: true })
+  .filter((f) => /\.(ts|js|css|html)$/.test(f))
   .reduce((n, f) => n + read(join('src', f)).split('\n').length, 0);
 // `COMMANDS` is the exact table `renderHelp` maps. Importing that dependency-free
 // authority keeps this command gate runnable in a fresh land worktree without
@@ -104,7 +104,7 @@ for (const [file, name, pattern, expected, kind] of CLAIMS) {
 
 // The command count is prose in one place and derivable, so it is checked the same way.
 const roadmapCommands = /\|\s*\*\*5\*\*\s*\|\s*CLI\s*\|\s*✅\s*(\w+) commands/.exec(read('docs/roadmap.md'));
-const WORDS = { Nine: 9, Ten: 10, Eleven: 11, Twelve: 12, Thirteen: 13, Fourteen: 14, Fifteen: 15 };
+const WORDS = { Nine: 9, Ten: 10, Eleven: 11, Twelve: 12, Thirteen: 13, Fourteen: 14, Fifteen: 15, Sixteen: 16 };
 if (!roadmapCommands) {
   problems.push('docs/roadmap.md: the Phase 5 command-count claim no longer matches its pattern');
 } else if (WORDS[roadmapCommands[1]] !== commands) {

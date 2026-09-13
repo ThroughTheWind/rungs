@@ -46,7 +46,7 @@ export function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${out}$`);
 }
 
-const SKIP = new Set([
+export const WALK_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   '.git',
   'node_modules',
   'dist',
@@ -75,7 +75,7 @@ export function walk(root: string, maxEntries = 200_000): string[] {
       continue;
     }
     for (const e of entries) {
-      if (SKIP.has(e.name)) continue;
+      if (WALK_SKIPPED_DIRECTORIES.has(e.name)) continue;
       const full = join(dir, e.name);
       if (e.isDirectory()) {
         stack.push(full);

@@ -1061,7 +1061,7 @@ function cmdEject(root: string, dryRun: boolean, stamp: string) {
  * target, and the user's actual path was reported back to them as an unknown module. Both
  * spellings now work, and the value never reaches `args` (WI-002).
  */
-const VALUE_FLAGS = new Set(['--set']);
+const VALUE_FLAGS = new Set(['--set', '--port']);
 
 function renderHelp(): string {
   const pad = Math.max(...COMMANDS.map(([u]) => u.length)) + 2;
@@ -1123,7 +1123,7 @@ const HARNESSES: Harness[] = flags.has('--copilot')
 // Both refusals run before dispatch, because either one means the argv the user typed is not the
 // argv any command would act on. Silently proceeding is what made the original failure so opaque.
 if (missingValue) {
-  console.log(c.red(`\n  ${missingValue} expects a value — ${missingValue} module.param=value\n`));
+  console.log(c.red(`\n  ${missingValue} expects a value — ${missingValue === '--port' ? '--port 4317' : `${missingValue} module.param=value`}\n`));
   process.exit(1);
 }
 if (strayOverride) {
@@ -1136,6 +1136,24 @@ if (strayOverride) {
 }
 
 switch (cmd) {
+  case 'ui': {
+    if (flags.has('--help')) { console.log(renderHelp()); break; }
+    const unknown = [...flags].find((flag) => !['--no-open', '--read-only'].includes(flag));
+    if (unknown || args.length > 1 || Object.keys(flagValues).some((key) => key !== '--port') || (flagValues['--port']?.length ?? 0) > 1 || rest.some((arg) => /^--(?:no-open|read-only)=/.test(arg))) {
+      console.error('ui accepts one path and --port, --no-open, --read-only only.');
+      process.exitCode = 1; break;
+    }
+    const rawPort = flagValues['--port']?.[0];
+    if (rawPort !== undefined && !/^\d+$/.test(rawPort)) { console.error('--port must be an integer from 1 to 65535.'); process.exitCode = 1; break; }
+    try {
+      // Keep this optional server out of the normal command startup/bundle path.
+      const entry = new URL(import.meta.url.endsWith('.ts') ? './ui/server.ts' : './ui-server.js', import.meta.url);
+      const { runUi } = await import(entry.href);
+      await runUi({ root: args[0] ?? process.cwd(), port: rawPort === undefined ? undefined : Number(rawPort),
+        noOpen: flags.has('--no-open'), readOnly: flags.has('--read-only') });
+    } catch (error) { console.error(`Local inspector could not start: ${error instanceof Error ? error.message : String(error)}`); process.exitCode = 1; }
+    break;
+  }
   case 'modules':
     process.exit(cmdModules(flags.has('--params')));
   case 'doctor':
