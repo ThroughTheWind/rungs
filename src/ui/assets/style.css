@@ -978,7 +978,8 @@ summary:hover {
     font-size: 14px;
   }
   dialog {
-    width: 100vw;
+    width: 100%;
+    max-width: 100%;
     border: 0;
   }
   .detail-bar {

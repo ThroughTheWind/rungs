@@ -1266,6 +1266,7 @@ function diagnosticsView() {
                 finding.message.split('\n')[0].slice(0, 240),
                 () =>
                   showDetail(finding.gate, [
+                    evidenceAge(result),
                     el('p', { class: 'muted', text: finding.why || '' }),
                     el('pre', { text: finding.message }),
                     finding.file ? sourceRow(finding.file) : null,
@@ -1351,7 +1352,7 @@ function renderJob() {
       el(
         'div',
         {},
-        el('h2', {}, 'Check run ', badge(job.status)),
+        el('h2', { 'aria-live': 'polite' }, 'Check run ', badge(job.status)),
         el('span', {
           class: 'secondary',
           text: job.currentGate ? `Running ${job.currentGate}` : `${job.runs.length} recorded gate results`,
