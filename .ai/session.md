@@ -7,41 +7,40 @@ Keep it short. This document is read at the start of every session, and a long o
 
 ## Current objective
 
-Take the integrated 0.5.0 candidate on `main` through [WI-064](../docs/backlog/items/WI-064-arena-lab-dogfood-bootstrap.md)'s
-release flow: exact commit → CI matrix → immutable release → Arena Lab pin. Three of four are done:
-v0.5.0 was prepared by WI-099 at `d21e3f5f`, the matrix passed on that commit (runs 34067488381 and
-34067488671, seven of seven jobs each), and the user tagged, branched and published it on
-2026-09-13 (`npm view @rungs/cli dist-tags` → `latest: 0.5.0`). What remains is the Arena Lab pin,
-which is Arena Lab's own item and needs authorization to write to its maintained branch.
+Review the next operator-facing proposals: [WI-100](../docs/backlog/items/WI-100-local-operator-interface.md)
+for a foreground local interface and [WI-101](../docs/backlog/items/WI-101-operator-workflow-extensions.md)
+for a subsequent, bounded workflow-extension spike. Both are proposed; their drafted plans are
+not implementation approval. The release/adoption work in
+[WI-064](../docs/backlog/items/WI-064-arena-lab-dogfood-bootstrap.md) remains independent: v0.5.0 is
+published, while the maintained Arena Lab pin still needs its own authorized item.
 
 ## In progress
 
-Nothing. [WI-085](../docs/backlog/archive/WI-085-existing-promises-remediation.md) and its nine items
-are done and archived, and so are the five follow-ups that closed every finding it left open:
-WI-093 (F-061), WI-094 (F-063), WI-095 (F-059), WI-096 (F-060), WI-097 (F-062), and then WI-098
-(F-058, interrupted installs are journaled, atomic and resumable). WI-060 and WI-062 were closed as
-done and WI-035 retired as superseded on 2026-09-06; `items/` holds WI-063 and WI-064 only. The
-findings register's only open row is F-056. `origin/main` is behind local `main` by the WI-098 and
-bookkeeping landings; pushing was authorized once, on 2026-09-06, and has not been repeated.
+No implementation item is in progress. The proposal documents are on
+`docs/WI-100-operator-interface-proposals`; inspect git before deciding how to integrate them.
+`items/` holds WI-063, WI-064, WI-100 and WI-101. F-056 remains the only open finding; WI-100 avoids
+treating session prose as current-work truth, and WI-101 proposes the explicit-reference contract.
 
 ## Resume from
 
-Read WI-064 § Execution (the handoff: commits, tarball, canary result, remaining commands) and
-[`existing-promises-evidence-2026-09-06.md`](../docs/design/existing-promises-evidence-2026-09-06.md).
-Re-derive before acting: `git log --oneline -3`, `node src/cli.ts check` (32 gates), and `npm test`,
-which now runs the suite serially under a heap cap by itself.
+Read [WI-100's Decision and draft Plan](../docs/backlog/items/WI-100-local-operator-interface.md),
+then its [assessment](../docs/design/local-operator-interface-2026-09-13.md) for the verified baseline
+and source limitations. Record acceptance before execution; re-fetch and compare local/remote
+product changes at that time. Current-work status comes from item files, not this handoff's prose.
 
 ## Up next
 
-1. With authorization: a dedicated Arena Lab item that runs `node .ai/rungs.mjs upgrade --to 0.5.0`
+1. Decide WI-100's local interface scope, then WI-101's two workflow pilots and register admission
+   test. Neither adds consumer behaviour merely by being proposed.
+2. With authorization: a dedicated Arena Lab item that runs `node .ai/rungs.mjs upgrade --to 0.5.0`
    on a branch of the maintained checkout, commits the result and records what `upgrade` changed —
    the first real adoption of a released version, as WI-064 criterion 3 requires.
-2. Open the next changelog fragment when the first post-0.5.0 code change lands; `changelog.d/` is
+3. Open the next changelog fragment when the first post-0.5.0 code change lands; `changelog.d/` is
    empty by design after a cut.
-2. F-056 (a session can name a done item as active) when the session module is next touched.
-3. Delete `integ/feature/WI-091-index-placeholder-rows` if nobody wants the parked merge.
-4. Bump `actions/checkout` and `actions/setup-node` past v4 when the workflow is next touched; GitHub
-   now forces them onto Node 24 runners with a deprecation notice (seen in the 2026-09-06 runs).
+4. Revisit F-056 when implementing explicit session references; a pilot alone does not close it.
+5. Inspect whether the parked `integ/feature/WI-091-index-placeholder-rows` branch is still wanted
+   before cleanup. Recheck the workflow dependency notices recorded in the September 6 handoff
+   when CI is next touched.
 
 ## Active constraints — do not reopen
 
@@ -68,16 +67,19 @@ which now runs the suite serially under a heap cap by itself.
 
 ## Working assumptions
 
-- A docs-only commit on top of `2791a21b` (this handoff) does not change the matrix result; the
-  next push will run it again and the record should be read from that run, not assumed.
-- Arena Lab's `main` at `f4ede793` is still the commit a real adoption would start from; its
-  maintained checkout sits on a feature branch with uncommitted work and was only read.
+- The interface will reduce source-navigation work; WI-100 requires task evidence before claiming
+  a measured improvement. No independent demand or usability study has been established.
+- Arena Lab's maintained checkout has not been re-inspected in this planning session. Its branch,
+  worktree changes and pin must be checked again before any adoption work.
 
 ## Open questions
 
-- None blocking. 0.5.0 is published; whether Arena Lab adopts it now is Arena Lab's decision.
+- None blocking proposal review. Implementation acceptance, optional extension selection and the
+  separate Arena Lab adoption decision remain open.
 
 ## Archive
+
+Latest closeout: [operator proposals and next scope decision](archive/2026-09-13_session-04_operator-proposals-and-scope-decision.md).
 
 <!-- rungs:begin session-archive -->
 <!-- Generated by `rungs render` from .ai/archive/. The link above is relative and assumes

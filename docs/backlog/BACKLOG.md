@@ -3,7 +3,7 @@
 The board. One row per live work item, grouped by status. Items live in
 [`items/`](items/); finished work moves to [`archive/`](archive/).
 
-<!-- NEXT-ID: WI-100 -->
+<!-- NEXT-ID: WI-102 -->
 <!-- Claim from this marker and bump it on your own branch. `rungs check` refuses a duplicate. -->
 
 ## In progress
@@ -35,6 +35,8 @@ The board. One row per live work item, grouped by status. Items live in
 | Id | Title | Type |
 | --- | --- | --- |
 | [WI-063](items/WI-063-external-module-roots.md) | Resolve modules from roots outside the package, and record where each installed module came from | feature |
+| [WI-100](items/WI-100-local-operator-interface.md) | Add a local interface for repository inspection and gate execution | feature |
+| [WI-101](items/WI-101-operator-workflow-extensions.md) | Validate operator workflow extensions and register admission criteria | spike |
 
 [WI-085](archive/WI-085-existing-promises-remediation.md), accepted and completed 2026-09-06 — **the
 programme that completed what the tool already claimed.** [WI-084](archive/WI-084-tool-evaluation.md) found six
